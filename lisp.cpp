@@ -19,7 +19,7 @@ void dolist(Environment& env, ObjectPtr list, Proc&& proc) {
     }
 }
 
-Environment::Environment() : heap_(4096),
+Environment::Environment() : heap_(8192),
                      booleans_{{create<Boolean>(*this, false)},
                                {create<Boolean>(*this, true)}},
                      nullValue_{create<Null>(*this)},
@@ -160,118 +160,4 @@ Environment::Environment() : heap_(4096),
                   })}
 }} {}
 
-namespace TEST {
-
-auto call(lisp::Environment& env,
-          const std::string& fn,
-          std::vector<ObjectPtr>& argv) {
-    auto found = env.topLevel_.find(fn);
-    if (found != env.topLevel_.end()) {
-        auto subr = checkedCast<Subr>(env, found->second);
-        return subr.deref(env).call(env, argv);
-    }
-    throw std::runtime_error("not found: " + std::string(fn));
-}
-
-template <Lexer::Token TOK>
-Lexer::Token expect(Lexer& lexer) {
-    const auto result = lexer.lex();
-    if (result not_eq TOK) {
-        throw std::runtime_error("bad input");
-    }
-    return result;
-}
-
-ObjectPtr evalExpr(Environment& env, Lexer& lexer) {
-    expect<Lexer::Token::SYMBOL>(lexer);
-    const std::string subrName = lexer.rdbuf();
-    std::vector<ObjectPtr> params;
-    while (true) {
-        switch (auto tok = lexer.lex()) {
-        case Lexer::Token::LPAREN:
-            params.push_back(evalExpr(env, lexer));
-            break;
-
-        case Lexer::Token::SYMBOL: {
-            auto found = env.topLevel_.find(lexer.rdbuf());
-            if (found != env.topLevel_.end()) {
-                params.push_back(found->second);
-            } else {
-                throw std::runtime_error("variable lookup failed!");
-            }
-            break;
-        }
-
-        case Lexer::Token::RPAREN:
-            goto DO_CALL;
-
-        case Lexer::Token::NONE:
-            throw std::runtime_error("bad input");
-
-        case Lexer::Token::FIXNUM: {
-            auto num = FixNum::Rep(std::stoi(lexer.rdbuf()));
-            params.push_back(create<FixNum>(env, num));
-            break;
-        }
-
-        default:
-            throw std::runtime_error("invalid token");
-        }
-    }
- DO_CALL:
-    return call(env, subrName, params);
-}
-
-ObjectPtr eval(Environment& env, const std::string& code) {
-    Lexer lexer(code);
-    expect<Lexer::Token::LPAREN>(lexer);
-    return evalExpr(env, lexer);
-}
-
-void display(Environment& env, ObjectPtr obj) {
-    if (isType<Pair>(env, obj)) {
-        auto pair = obj.cast<Pair>();
-        std::cout << "(";
-        display(env, pair.deref(env).getCar());
-        std::cout << " ";
-        display(env, pair.deref(env).getCdr());
-        std::cout << ")";
-    } else if (isType<FixNum>(env, obj)) {
-        std::cout << obj.cast<FixNum>().deref(env).value();
-    } else if (isType<Null>(env, obj)) {
-        std::cout << "null";
-    } else if (obj == env.booleans_[1].get()) {
-        std::cout << "#t";
-    } else if (obj == env.booleans_[0].get()) {
-        std::cout << "#f";
-    }
-}
-
-} // TEST
-
 } // lisp
-
-
-////////////////////////////////////////////////////////////////////////////////
-// TEST
-////////////////////////////////////////////////////////////////////////////////
-
-#include <iostream>
-
-int main() {
-    lisp::Environment env;
-    std::string input;
-    while (true) {
-        std::cout << "> ";
-        std::getline(std::cin, input);
-        if (not input.empty()) {
-            try {
-                lisp::TEST::display(env, lisp::TEST::eval(env, input));
-                std::cout << std::endl;
-                std::cout << "heap usage: " << env.heap_.size() << std::endl;
-            } catch (const std::exception& ex) {
-                std::cout << "Error: " << ex.what() << std::endl;
-            }
-        }
-    }
-}
