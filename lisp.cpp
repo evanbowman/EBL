@@ -260,19 +260,17 @@ void display(Environment& env, ObjectPtr obj) {
 
 int main() {
     lisp::Environment env;
+    std::string input;
     while (true) {
-        std::string input;
-        while (true) {
-            std::cout << "> ";
-            std::getline(std::cin, input);
-            if (not input.empty()) {
-                try {
-                    lisp::TEST::display(env, lisp::TEST::eval(env, input));
-                    std::cout << std::endl;
-                    std::cout << "heap usage: " << env.heap_.size() << std::endl;
-                } catch (const std::exception& ex) {
-                    std::cout << "Error: " << ex.what() << std::endl;
-                }
+        std::cout << "> ";
+        std::getline(std::cin, input);
+        if (not input.empty()) {
+            try {
+                lisp::TEST::display(env, lisp::TEST::eval(env, input));
+                std::cout << std::endl;
+                std::cout << "heap usage: " << env.heap_.size() << std::endl;
+            } catch (const std::exception& ex) {
+                std::cout << "Error: " << ex.what() << std::endl;
             }
         }
     }
