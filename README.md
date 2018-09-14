@@ -1,6 +1,6 @@
 # EB LISP
 
-This is my lisp interpreter. There are many like it, but this one is mine.
+### This is my lisp interpreter. There are many like it, but this one is mine.
 
 Seriously though, I could have used an existing one, but I had a specialized use case in mind, and besides, it's not hard to write a lisp interpreter.
 
