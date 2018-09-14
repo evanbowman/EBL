@@ -8,28 +8,26 @@
 #include "memory.hpp"
 #include "utility.hpp"
 #include <functional>
+#include <limits>
 
 namespace lisp {
 
-struct TypeInfo {
-    size_t size_;
-    const char* name_;
-};
+using TypeId = uint8_t;
 
 class Object {
 public:
-    // TypeInfo _could_ be a smaller integer index into the type
-    // info table, but due to alignment, this isn't likely to
-    // save that many bytes, at least for cons cells. May be worth
-    // doing for integers, because (for 64 bit) it could save four
-    // bytes per integer.
-    const TypeInfo* typeInfo_;
-    enum GCFlags : uint8_t {
-        None = 0,
-        Marked = 1 << 0
-    } gcFlags_ = GCFlags::None;
+    Object(TypeId id) : header_{id, Header::Flags::None} {}
 
-    bool isLive() { return gcFlags_ & GCFlags::Marked; }
+    TypeId typeId() const { return header_.typeInfoIndex; }
+
+private:
+    struct Header {
+        const TypeId typeInfoIndex;
+        enum Flags : uint8_t {
+            None = 0,
+            Marked = 1 << 0
+        } gcFlags_;
+    } header_;
 };
 
 
@@ -38,7 +36,7 @@ using ObjectPtr = Heap::Ptr<Object>;
 
 class Null : public Object {
 public:
-    Null(const TypeInfo* tp)
+    Null(TypeId tp)
         : Object{tp} {}
 
     static constexpr auto name() { return "<Null>"; }
@@ -47,7 +45,7 @@ public:
 
 class Pair : public Object {
 public:
-    Pair(const TypeInfo* tp, ObjectPtr car, ObjectPtr cdr)
+    Pair(TypeId tp, ObjectPtr car, ObjectPtr cdr)
         : Object{tp}, car_(car), cdr_(cdr) {}
 
     static constexpr auto name() { return "<Pair>"; }
@@ -66,7 +64,7 @@ private:
 
 class Boolean : public Object {
 public:
-    Boolean(const TypeInfo* tp, bool value)
+    Boolean(TypeId tp, bool value)
         : Object{tp}, value_(value) {}
 
     static constexpr auto name() { return "<Boolean>"; }
@@ -82,7 +80,7 @@ class FixNum : public Object {
 public:
     using Rep = uint32_t;
 
-    FixNum(const TypeInfo* tp, Rep value)
+    FixNum(TypeId tp, Rep value)
         : Object{tp}, value_(value) {}
 
     static constexpr auto name() { return "<FixNum>"; }
@@ -102,7 +100,7 @@ public:
                                          ArgCount,
                                          ArgVec)>;
 
-    Subr(const TypeInfo* tp,
+    Subr(TypeId tp,
          const char* docstring,
          ArgCount requiredArgs,
          Impl impl)
@@ -129,45 +127,36 @@ private:
 };
 
 
-// FIXME: incomplete!
-class String : public Object {
-public:
-    String(const TypeInfo* tp, const char* value) :
-        Object{tp},
-        value_(value) {}
-
-    static constexpr auto name() { return "<String>"; }
-
-    const char* value() { return value_; }
-
-private:
-    const char* value_;
+struct TypeInfo {
+    size_t size_;
+    const char* name_;
 };
 
+template <typename T>
+constexpr TypeInfo makeInfo() { return { sizeof(T), T::name() }; }
 
 template <typename ...Builtins>
 struct TypeInfoTable {
     template <typename T>
-    constexpr const TypeInfo* get() const {
-        return &std::get<Info<T>>(table).info;
+    constexpr const TypeInfo& get() const {
+        return table[typeId<T>()];
     }
+    const TypeInfo& operator[](TypeId index) const { return table[index]; }
     template <typename T>
-    constexpr int index() {
+    constexpr TypeId typeId() const {
+        static_assert(sizeof...(Builtins) < std::numeric_limits<TypeId>::max(),
+                      "TypeInfoTable parameter count exhausts the range of "
+                      "TypeId");
         return ::Index<T, Builtins...>::value;
     }
-    template <typename T>
-    struct Info {
-        TypeInfo info = { sizeof(T), T::name() };
-    };
-    std::tuple<Info<Builtins>...> table;
+    TypeInfo table[sizeof...(Builtins)] = { makeInfo<Builtins>()... };
 };
 
 constexpr TypeInfoTable<Null,
                         Pair,
                         Boolean,
                         FixNum,
-                        Subr,
-                        String> typeInfo{};
+                        Subr> typeInfo{};
 
 
 struct Environment {
@@ -176,21 +165,20 @@ struct Environment {
     Persistent<Boolean> booleans_[2];
     Persistent<Null> nullValue_;
     // TODO: of course we'll need something better than this!
-    std::unordered_map<std::string, ObjectPtr> variables_;
+    std::unordered_map<std::string, ObjectPtr> topLevel_;
     Environment();
 };
 
 
 template <typename T>
 bool isType(Environment& env, ObjectPtr obj) {
-    return typeInfo.get<T>() == obj.deref(env).typeInfo_;
+    return typeInfo.typeId<T>() == obj.deref(env).typeId();
 }
 
-
 struct ConversionError : public std::runtime_error {
-    ConversionError(const TypeInfo* from, const TypeInfo* to) :
-        std::runtime_error(std::string("bad cast from ") + from->name_
-                           + " to " + to->name_) {}
+    ConversionError(TypeId from, TypeId to) :
+        std::runtime_error(std::string("bad cast from ") + typeInfo[from].name_
+                           + " to " + typeInfo[to].name_) {}
 };
 
 
@@ -199,14 +187,14 @@ Heap::Ptr<T> checkedCast(Environment& env, ObjectPtr obj) {
     if (isType<T>(env, obj)) {
         return obj.cast<T>();
     }
-    throw ConversionError { obj.deref(env).typeInfo_, typeInfo.get<T>() };
+    throw ConversionError { obj.deref(env).typeId(), typeInfo.typeId<T>() };
 }
 
 
 template <typename T, typename ...Args>
 Heap::Ptr<T> create(Environment& env, Args&& ...args) {
     auto allocObj = [&] {
-        return env.heap_.alloc<typeInfo.get<T>()->size_>().template cast<T>();
+        return env.heap_.alloc<typeInfo.get<T>().size_>().template cast<T>();
     };
     auto mem = [&] {
         try {
@@ -217,7 +205,7 @@ Heap::Ptr<T> create(Environment& env, Args&& ...args) {
             return allocObj();
         }
     }();
-    new (&mem.deref(env)) T{typeInfo.get<T>(), std::forward<Args>(args)...};
+    new (&mem.deref(env)) T{typeInfo.typeId<T>(), std::forward<Args>(args)...};
     return mem;
 }
 

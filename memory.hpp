@@ -145,6 +145,8 @@ Heap::Ptr<T>::Ptr(Persistent<T> other) : Ptr(other.value_) {}
 template <typename T>
 class Persistent {
 public:
+    Heap::Ptr<T> get() { return value_; }
+
     // TODO
     Heap::Ptr<T> value_;
 };

@@ -9,11 +9,21 @@
 
 namespace lisp {
 
+template <typename Proc>
+void dolist(Environment& env, ObjectPtr list, Proc&& proc) {
+    Heap::Ptr<Pair> current = checkedCast<Pair>(env, list);
+    proc(current.deref(env).getCar());
+    while (not isType<Null>(env, current.deref(env).getCdr())) {
+        current = checkedCast<Pair>(env, current.deref(env).getCdr());
+        proc(current.deref(env).getCar());
+    }
+}
+
 Environment::Environment() : heap_(4096),
                      booleans_{{create<Boolean>(*this, false)},
                                {create<Boolean>(*this, true)}},
                      nullValue_{create<Null>(*this)},
-                     variables_{{
+                     topLevel_{{
     {"cons",
      create<Subr>(*this, "(cons CAR CDR)", 2,
                   [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
@@ -25,14 +35,14 @@ Environment::Environment() : heap_(4096),
                      Subr::ArgVec argv) -> ObjectPtr {
                       if (argc) {
                           auto tail = create<Pair>(env, argv[argc - 1],
-                                                   env.nullValue_.value_);
+                                                   env.nullValue_.get());
                           Local<Pair> list(env, tail);
                           for (Subr::ArgCount pos = argc - 2; pos > -1; --pos) {
                               list = create<Pair>(env, argv[pos], list.get());
                           }
                           return list.get();
                       } else {
-                          return env.nullValue_.value_;
+                          return env.nullValue_.get();
                       }
                   })},
     {"car",
@@ -48,38 +58,36 @@ Environment::Environment() : heap_(4096),
     {"null?",
      create<Subr>(*this, nullptr, 1,
                   [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[isType<Null>(env, argv[0])].value_;
+                      return env.booleans_[isType<Null>(env, argv[0])].get();
                   })},
     {"pair?",
      create<Subr>(*this, nullptr, 1,
                   [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[isType<Pair>(env, argv[0])].value_;
+                      return env.booleans_[isType<Pair>(env, argv[0])].get();
                   })},
     {"bool?",
      create<Subr>(*this, nullptr, 1,
                   [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[isType<Boolean>(env, argv[0])].value_;
+                      return env.booleans_[isType<Boolean>(env, argv[0])].get();
                   })},
     {"eq?",
      create<Subr>(*this, nullptr, 2,
                   [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[argv[0] == argv[1]].value_;
+                      return env.booleans_[argv[0] == argv[1]].get();
                   })},
-    {"len",
+    {"identity",
      create<Subr>(*this, nullptr, 1,
                   [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
+                      return argv[0];
+                  })},
+    {"length",
+     create<Subr>(*this, nullptr, 1,
+                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
+                      FixNum::Rep length = 0;
                       if (not isType<Null>(env, argv[0])) {
-                          FixNum::Rep length = 1;
-                          Heap::Ptr<Pair> lst = checkedCast<Pair>(env, argv[0]);
-                          while (not isType<Null>(env, lst.deref(env).getCdr())) {
-                              length += 1;
-                              lst = checkedCast<Pair>(env,
-                                                      lst.deref(env).getCdr());
-                          }
-                          return create<FixNum>(env, length);
-                      } else {
-                          return create<FixNum>(env, FixNum::Rep(0));
+                          dolist(env, argv[0], [&](ObjectPtr) { ++length; });
                       }
+                      return create<FixNum>(env, length);
                   })},
     {"map",
      create<Subr>(*this, nullptr, 2,
@@ -90,19 +98,55 @@ Environment::Environment() : heap_(4096),
                           auto subr = checkedCast<Subr>(env, argv[0]);
                           Heap::Ptr<Pair> lst = checkedCast<Pair>(env, argv[1]);
                           paramVec = {lst.deref(env).getCar()};
-                          Local<Pair> result(env, create<Pair>(env,
-                                                               subr.deref(env).
-                                                               call(env, paramVec),
-                                                               env.nullValue_.value_));
+                          Local<Pair> result(env,
+                                             create<Pair>(env,
+                                                          subr.deref(env).
+                                                          call(env, paramVec),
+                                                          env.nullValue_.get()));
+                          auto current = result.get();
                           while (not isType<Null>(env, lst.deref(env).getCdr())) {
                               lst = checkedCast<Pair>(env, lst.deref(env).getCdr());
                               paramVec = {lst.deref(env).getCar()};
-                              result = create<Pair>(env, subr.deref(env).call(env, paramVec),
-                                                    result.get());
+                              auto next = create<Pair>(env, subr.deref(env).call(env, paramVec),
+                                                       env.nullValue_.get());
+                              current.deref(env).setCdr(next);
+                              current = next;
                           }
                           return result.get();
                       }
-                      return env.nullValue_.value_;
+                      return env.nullValue_.get();
+                  })},
+    {"apply",
+     create<Subr>(*this, nullptr, 2,
+                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
+                      std::vector<ObjectPtr> params;
+                      if (not isType<Null>(env, argv[1])) {
+                          dolist(env, argv[1], [&](ObjectPtr elem) {
+                                                   params.push_back(elem);
+                                               });
+                      }
+                      auto subr = checkedCast<Subr>(env, argv[0]);
+                      return subr.deref(env).call(env, params);
+                  })},
+    {"+",
+     create<Subr>(*this, nullptr, 0,
+                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
+                      FixNum::Rep result = 0;
+                      for (Subr::ArgCount i = 0; i < argc; ++i) {
+                          result += checkedCast<FixNum>(env, argv[i])
+                              .deref(env).value();
+                      }
+                      return create<FixNum>(env, result);
+                  })},
+    {"*",
+     create<Subr>(*this, nullptr, 0,
+                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
+                      FixNum::Rep result = 1;
+                      for (Subr::ArgCount i = 0; i < argc; ++i) {
+                          result *= checkedCast<FixNum>(env, argv[i])
+                              .deref(env).value();
+                      }
+                      return create<FixNum>(env, result);
                   })},
     {"help",
      create<Subr>(*this, nullptr, 1,
@@ -110,9 +154,9 @@ Environment::Environment() : heap_(4096),
                   -> ObjectPtr {
                       auto subr = checkedCast<Subr>(env, argv[0]);
                       if (auto doc = subr.deref(env).getDocstring()) {
-                          return create<String>(env, doc);
+                          std::cout << doc << std::endl;
                       }
-                      return env.nullValue_.value_;
+                      return env.nullValue_.get();
                   })}
 }} {}
 
@@ -121,8 +165,8 @@ namespace TEST {
 auto call(lisp::Environment& env,
           const std::string& fn,
           std::vector<ObjectPtr>& argv) {
-    auto found = env.variables_.find(fn);
-    if (found != env.variables_.end()) {
+    auto found = env.topLevel_.find(fn);
+    if (found != env.topLevel_.end()) {
         auto subr = checkedCast<Subr>(env, found->second);
         return subr.deref(env).call(env, argv);
     }
@@ -149,8 +193,8 @@ ObjectPtr evalExpr(Environment& env, Lexer& lexer) {
             break;
 
         case Lexer::Token::SYMBOL: {
-            auto found = env.variables_.find(lexer.rdbuf());
-            if (found != env.variables_.end()) {
+            auto found = env.topLevel_.find(lexer.rdbuf());
+            if (found != env.topLevel_.end()) {
                 params.push_back(found->second);
             } else {
                 throw std::runtime_error("variable lookup failed!");
@@ -196,13 +240,10 @@ void display(Environment& env, ObjectPtr obj) {
         std::cout << obj.cast<FixNum>().deref(env).value();
     } else if (isType<Null>(env, obj)) {
         std::cout << "null";
-    } else if (obj == env.booleans_[1].value_) {
+    } else if (obj == env.booleans_[1].get()) {
         std::cout << "#t";
-    } else if (obj == env.booleans_[0].value_) {
+    } else if (obj == env.booleans_[0].get()) {
         std::cout << "#f";
-    } else if (isType<String>(env, obj)) {
-        std::cout << "\"" <<
-            obj.cast<String>().deref(env).value() << "\"";
     }
 }
 
@@ -224,9 +265,15 @@ int main() {
         while (true) {
             std::cout << "> ";
             std::getline(std::cin, input);
-            lisp::TEST::display(env, lisp::TEST::eval(env, input));
-            std::cout << std::endl;
-            std::cout << "heap usage: " << env.heap_.size() << std::endl;
+            if (not input.empty()) {
+                try {
+                    lisp::TEST::display(env, lisp::TEST::eval(env, input));
+                    std::cout << std::endl;
+                    std::cout << "heap usage: " << env.heap_.size() << std::endl;
+                } catch (const std::exception& ex) {
+                    std::cout << "Error: " << ex.what() << std::endl;
+                }
+            }
         }
     }
 }
