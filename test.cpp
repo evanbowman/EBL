@@ -74,7 +74,7 @@ void display(lisp::Environment& env, lisp::ObjectPtr obj) {
         auto pair = obj.cast<lisp::Pair>();
         std::cout << "(";
         display(env, pair.deref(env).getCar());
-        std::cout << " ";
+        std::cout << " . ";
         display(env, pair.deref(env).getCdr());
         std::cout << ")";
     } else if (lisp::isType<lisp::FixNum>(env, obj)) {
