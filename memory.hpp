@@ -8,7 +8,7 @@
 
 namespace lisp {
 
-struct Environment;
+class Environment;
 
 class Heap {
 public:
@@ -63,9 +63,10 @@ public:
 
         Ptr(Persistent<T> persistent);
 
-        T& deref(Environment& env) {
-            return *reinterpret_cast<T*>(handle());
-        }
+        T* operator*() { return reinterpret_cast<T*>(handle()); }
+        T* operator->() { return reinterpret_cast<T*>(handle()); }
+
+        T* get() { return reinterpret_cast<T*>(handle()); }
 
     protected:
         friend class GenericPtr;
@@ -74,6 +75,8 @@ public:
     };
 
     size_t size() const { return end_ - begin_; }
+
+    size_t capacity() const { return capacity_; }
 
     struct OOM : public std::runtime_error {
         OOM() : std::runtime_error("heap exhausted") {}
@@ -98,18 +101,6 @@ private:
 };
 
 
-class Stack {
-public:
-    // TODO...
-private:
-    friend class GC;
-
-    uint8_t* begin_;
-    uint8_t* end_;
-    size_t capacity_;
-};
-
-
 template <typename T>
 class Local {
 public:
@@ -122,7 +113,7 @@ public:
         return *this;
     }
 
-    auto get() const { return value_; }
+    Heap::Ptr<T> get() const { return value_; }
 
     // Copying or moving a local doesn't make any sense!
     Local(Local&) = delete;

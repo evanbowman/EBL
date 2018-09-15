@@ -3,161 +3,215 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
-#include "lisp.hpp"
-#include "lexer.hpp"
 #include <chrono>
+
+#include "lexer.hpp"
+#include "types.hpp"
+#include "environment.hpp"
 
 namespace lisp {
 
 template <typename Proc>
 void dolist(Environment& env, ObjectPtr list, Proc&& proc) {
     Heap::Ptr<Pair> current = checkedCast<Pair>(env, list);
-    proc(current.deref(env).getCar());
-    while (not isType<Null>(env, current.deref(env).getCdr())) {
-        current = checkedCast<Pair>(env, current.deref(env).getCdr());
-        proc(current.deref(env).getCar());
+    proc(current->getCar());
+    while (not isType<Null>(env, current->getCdr())) {
+        current = checkedCast<Pair>(env, current->getCdr());
+        proc(current->getCar());
     }
 }
 
-Environment::Environment() : heap_(8192),
-                     booleans_{{create<Boolean>(*this, false)},
-                               {create<Boolean>(*this, true)}},
-                     nullValue_{create<Null>(*this)},
-                     topLevel_{{
-    {"cons",
-     create<Subr>(*this, "(cons CAR CDR)", 2,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return create<Pair>(env, argv[0], argv[1]);
-                  })},
-    {"list",
-     create<Subr>(*this, nullptr, 0,
-                  [](Environment& env, Subr::ArgCount argc,
-                     Subr::ArgVec argv) -> ObjectPtr {
-                      if (argc) {
-                          auto tail = create<Pair>(env, argv[argc - 1],
-                                                   env.nullValue_.get());
-                          Local<Pair> list(env, tail);
-                          for (Subr::ArgCount pos = argc - 2; pos > -1; --pos) {
-                              list = create<Pair>(env, argv[pos], list.get());
-                          }
-                          return list.get();
-                      } else {
-                          return env.nullValue_.get();
-                      }
-                  })},
-    {"car",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return checkedCast<Pair>(env, argv[0]).deref(env).getCar();
-                  })},
-    {"cdr",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return checkedCast<Pair>(env, argv[0]).deref(env).getCdr();
-                  })},
-    {"null?",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[isType<Null>(env, argv[0])].get();
-                  })},
-    {"pair?",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[isType<Pair>(env, argv[0])].get();
-                  })},
-    {"bool?",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[isType<Boolean>(env, argv[0])].get();
-                  })},
-    {"eq?",
-     create<Subr>(*this, nullptr, 2,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return env.booleans_[argv[0] == argv[1]].get();
-                  })},
-    {"identity",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      return argv[0];
-                  })},
-    {"length",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      FixNum::Rep length = 0;
-                      if (not isType<Null>(env, argv[0])) {
-                          dolist(env, argv[0], [&](ObjectPtr) { ++length; });
-                      }
-                      return create<FixNum>(env, length);
-                  })},
-    {"map",
-     create<Subr>(*this, nullptr, 2,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv)
-                  -> ObjectPtr {
-                      std::vector<ObjectPtr> paramVec;
-                      if (not isType<Null>(env, argv[1])) {
-                          auto subr = checkedCast<Subr>(env, argv[0]);
-                          Heap::Ptr<Pair> lst = checkedCast<Pair>(env, argv[1]);
-                          paramVec = {lst.deref(env).getCar()};
-                          Local<Pair> result(env,
-                                             create<Pair>(env,
-                                                          subr.deref(env).
-                                                          call(env, paramVec),
-                                                          env.nullValue_.get()));
-                          auto current = result.get();
-                          while (not isType<Null>(env, lst.deref(env).getCdr())) {
-                              lst = checkedCast<Pair>(env, lst.deref(env).getCdr());
-                              paramVec = {lst.deref(env).getCar()};
-                              auto next = create<Pair>(env, subr.deref(env).call(env, paramVec),
-                                                       env.nullValue_.get());
-                              current.deref(env).setCdr(next);
-                              current = next;
-                          }
-                          return result.get();
-                      }
-                      return env.nullValue_.get();
-                  })},
-    {"apply",
-     create<Subr>(*this, nullptr, 2,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      std::vector<ObjectPtr> params;
-                      if (not isType<Null>(env, argv[1])) {
-                          dolist(env, argv[1], [&](ObjectPtr elem) {
-                                                   params.push_back(elem);
-                                               });
-                      }
-                      auto subr = checkedCast<Subr>(env, argv[0]);
-                      return subr.deref(env).call(env, params);
-                  })},
-    {"+",
-     create<Subr>(*this, nullptr, 0,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      FixNum::Rep result = 0;
-                      for (Subr::ArgCount i = 0; i < argc; ++i) {
-                          result += checkedCast<FixNum>(env, argv[i])
-                              .deref(env).value();
-                      }
-                      return create<FixNum>(env, result);
-                  })},
-    {"*",
-     create<Subr>(*this, nullptr, 0,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv) {
-                      FixNum::Rep result = 1;
-                      for (Subr::ArgCount i = 0; i < argc; ++i) {
-                          result *= checkedCast<FixNum>(env, argv[i])
-                              .deref(env).value();
-                      }
-                      return create<FixNum>(env, result);
-                  })},
-    {"help",
-     create<Subr>(*this, nullptr, 1,
-                  [](Environment& env, Subr::ArgCount argc, Subr::ArgVec argv)
-                  -> ObjectPtr {
-                      auto subr = checkedCast<Subr>(env, argv[0]);
-                      if (auto doc = subr.deref(env).getDocstring()) {
-                          std::cout << doc << std::endl;
-                      }
-                      return env.nullValue_.get();
-                  })}
-}} {}
+static const struct BuiltinSubrInfo {
+    const char* name;
+    const char* docstring;
+    Arguments::Count requiredArgs;
+    Subr::Impl impl;
+} builtins[] = {
+    {"cons", "(cons CAR CDR)", 2,
+     [](Environment& env, const Arguments& args) {
+         return env.create<Pair>(args[0], args[1]);
+     }},
+    {"list", nullptr, 0,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         if (auto argc = args.count()) {
+             auto tail = env.create<Pair>(args[argc - 1],
+                                          env.getNull());
+             Local<Pair> list(env, tail);
+             for (auto pos = argc - 2; pos > -1; --pos) {
+                 list = env.create<Pair>(args[pos], list.get());
+             }
+             return list.get();
+         } else {
+             return env.getNull();
+         }
+     }},
+    {"car", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return checkedCast<Pair>(env, args[0])->getCar();
+     }},
+    {"cdr", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return checkedCast<Pair>(env, args[0])->getCdr();
+     }},
+    {"set-car!", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         checkedCast<Pair>(env, args[0])->setCar(args[1]);
+         return env.getNull();
+     }},
+    {"set-cdr!", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         checkedCast<Pair>(env, args[0])->setCdr(args[1]);
+         return env.getNull();
+     }},
+    {"null?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<Null>(env, args[0]));
+     }},
+    {"pair?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<Pair>(env, args[0]));
+     }},
+    {"bool?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<Boolean>(env, args[0]));
+     }},
+    {"eq?", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(args[0] == args[1]);
+     }},
+    {"identity", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return args[0];
+     }},
+    {"length", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         FixNum::Rep length = 0;
+         if (not isType<Null>(env, args[0])) {
+             dolist(env, args[0], [&](ObjectPtr) { ++length; });
+         }
+         return env.create<FixNum>(length);
+     }},
+    {"map", nullptr, 2,
+     [](Environment& env, const Arguments& args)
+     -> ObjectPtr {
+         std::vector<ObjectPtr> paramVec;
+         if (not isType<Null>(env, args[1])) {
+             auto subr = checkedCast<Subr>(env, args[0]);
+             Heap::Ptr<Pair> lst = checkedCast<Pair>(env, args[1]);
+             paramVec = {lst->getCar()};
+             Local<Pair> result(env,
+                                env.create<Pair>(subr->
+                                                 call(paramVec),
+                                                 env.getNull()));
+             auto current = result.get();
+             while (not isType<Null>(env, lst->getCdr())) {
+                 lst = checkedCast<Pair>(env, lst->getCdr());
+                 paramVec = {lst->getCar()};
+                 auto next = env.create<Pair>(subr->call(paramVec),
+                                              env.getNull());
+                 current->setCdr(next);
+                 current = next;
+             }
+             return result.get();
+         }
+         return env.getNull();
+     }},
+    {"apply", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         std::vector<ObjectPtr> params;
+         if (not isType<Null>(env, args[1])) {
+             dolist(env, args[1], [&](ObjectPtr elem) {
+                                      params.push_back(elem);
+                                  });
+         }
+         auto subr = checkedCast<Subr>(env, args[0]);
+         return subr->call(params);
+     }},
+    {"+", nullptr, 0,
+     [](Environment& env, const Arguments& args) {
+         FixNum::Rep result = 0;
+         for (Arguments::Count i = 0; i < args.count(); ++i) {
+             result += checkedCast<FixNum>(env, args[i])
+                 ->value();
+         }
+         return env.create<FixNum>(result);
+     }},
+    {"*", nullptr, 0,
+     [](Environment& env, const Arguments& args) {
+         FixNum::Rep result = 1;
+         for (Arguments::Count i = 0; i < args.count(); ++i) {
+             result *= checkedCast<FixNum>(env, args[i])
+                 ->value();
+         }
+         return env.create<FixNum>(result);
+     }},
+    {"help", nullptr, 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         auto subr = checkedCast<Subr>(env, args[0]);
+         if (auto doc = subr->getDocstring()) {
+             std::cout << doc << std::endl;
+         }
+         return env.getNull();
+     }}
+};
 
-} // lisp
+void Environment::store(const std::string& key, ObjectPtr value) {
+    vars_.insert({key, value});
+}
+
+ObjectPtr Environment::load(const std::string& key) {
+    auto found = vars_.find(key);
+    if (found not_eq vars_.end()) {
+        return found->second;
+    }
+    throw std::runtime_error("binding for \'" + key + "\' does not exist");
+}
+
+ObjectPtr Context::getNull() {
+    return nullValue_.get();
+}
+
+ObjectPtr Environment::getNull() {
+    return context_->getNull();
+}
+
+ObjectPtr Context::getBool(bool trueOrFalse) {
+    return booleans_[trueOrFalse].get();
+}
+
+ObjectPtr Environment::getBool(bool trueOrFalse) {
+    return context_->getBool(trueOrFalse);
+}
+
+EnvPtr Environment::derive() {
+    throw std::runtime_error("TODO");
+}
+
+EnvPtr Environment::parent() {
+    return parent_;
+}
+
+EnvPtr Environment::reference() {
+    return shared_from_this();
+}
+
+Context::Context(const Configuration& config) :
+    heap_(1000000),
+    topLevel_(std::make_shared<Environment>(this, nullptr)),
+    booleans_{{topLevel_->create<Boolean>(false)},
+              {topLevel_->create<Boolean>(true)}},
+    nullValue_{topLevel_->create<Null>()} {
+    std::for_each(std::begin(builtins), std::end(builtins),
+                 [&](const BuiltinSubrInfo& info) {
+                     auto subr = topLevel_->create<Subr>(info.docstring,
+                                                         info.requiredArgs,
+                                                         info.impl);
+                     topLevel_->store(info.name, subr);
+                 });
+}
+
+std::shared_ptr<Environment> Context::topLevel() {
+    return topLevel_;
+}
+
+} // namespace lisp
