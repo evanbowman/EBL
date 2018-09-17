@@ -42,7 +42,7 @@ public:
 private:
     Context* context_;
     EnvPtr parent_;
-    std::map<std::string, ObjectPtr> vars_;
+    std::vector<std::pair<std::string, ObjectPtr>> vars_;
 };
 
 
@@ -70,10 +70,7 @@ public:
 
     Context(const Configuration& config);
 
-    ObjectPtr getNull();
-    ObjectPtr getBool(bool trueOrFalse);
-
-    std::shared_ptr<Environment> topLevel();
+    EnvPtr topLevel();
 
     friend class Environment;
 

@@ -92,8 +92,7 @@ static const struct BuiltinSubrInfo {
          return env.create<FixNum>(length);
      }},
     {"map", nullptr, 2,
-     [](Environment& env, const Arguments& args)
-     -> ObjectPtr {
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
          std::vector<ObjectPtr> paramVec;
          if (not isType<Null>(env, args[1])) {
              auto subr = checkedCast<Subr>(env, args[0]);
@@ -156,31 +155,30 @@ static const struct BuiltinSubrInfo {
 };
 
 void Environment::store(const std::string& key, ObjectPtr value) {
-    vars_.insert({key, value});
+    for (auto& binding : vars_) {
+        if (binding.first == key) {
+            binding.second = value;
+            return;
+        }
+    }
+    vars_.push_back({key, value});
 }
 
 ObjectPtr Environment::load(const std::string& key) {
-    auto found = vars_.find(key);
-    if (found not_eq vars_.end()) {
-        return found->second;
+    for (auto& binding : vars_) {
+        if (binding.first == key) {
+            return binding.second;
+        }
     }
     throw std::runtime_error("binding for \'" + key + "\' does not exist");
 }
 
-ObjectPtr Context::getNull() {
-    return nullValue_.get();
-}
-
 ObjectPtr Environment::getNull() {
-    return context_->getNull();
-}
-
-ObjectPtr Context::getBool(bool trueOrFalse) {
-    return booleans_[trueOrFalse].get();
+    return context_->nullValue_.get();
 }
 
 ObjectPtr Environment::getBool(bool trueOrFalse) {
-    return context_->getBool(trueOrFalse);
+    return context_->booleans_[trueOrFalse].get();
 }
 
 EnvPtr Environment::derive() {
