@@ -24,18 +24,27 @@ void dolist(Environment& env, ObjectPtr list, Proc&& proc) {
 
 class ListBuilder {
 public:
-    ListBuilder(Environment& env) : head_(env, env.getNull()),
-                                    env_(env) {}
+    ListBuilder(Environment& env, ObjectPtr first) :
+        env_(env),
+        front_(env, env.create<Pair>(first, env.getNull())),
+        back_(front_.get()) {}
 
-    void push(ObjectPtr value) {
-        head_ = env_.create<Pair>(value, head_.get());
+    void pushFront(ObjectPtr value) {
+        front_ = env_.create<Pair>(value, front_.get());
     }
 
-    ObjectPtr head() { return head_.get(); }
+    void pushBack(ObjectPtr value) {
+        auto next = env_.create<Pair>(value, env_.getNull());
+        back_->setCdr(next);
+        back_ = next;
+    }
+
+    ObjectPtr result() { return front_.get(); }
 
 private:
-    Local<Object> head_;
     Environment& env_;
+    Local<Pair> front_;
+    Heap::Ptr<Pair> back_;
 };
 
 
@@ -52,12 +61,11 @@ static const struct BuiltinSubrInfo {
     {"list", nullptr, 0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          if (auto argc = args.count()) {
-             ListBuilder builder(env);
-             builder.push(args[argc - 1]);
-             for (auto pos = argc - 2; pos > -1; --pos) {
-                 builder.push(args[pos]);
+             ListBuilder builder(env, args[0]);
+             for (Arguments::Count pos = 1; pos < argc; ++pos) {
+                 builder.pushBack(args[pos]);
              }
-             return builder.head();
+             return builder.result();
          } else {
              return env.getNull();
          }
@@ -69,16 +77,6 @@ static const struct BuiltinSubrInfo {
     {"cdr", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          return checkedCast<Pair>(env, args[0])->getCdr();
-     }},
-    {"set-car!", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         checkedCast<Pair>(env, args[0])->setCar(args[1]);
-         return env.getNull();
-     }},
-    {"set-cdr!", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         checkedCast<Pair>(env, args[0])->setCdr(args[1]);
-         return env.getNull();
      }},
     {"length", nullptr, 1,
      [](Environment& env, const Arguments& args) {
@@ -107,23 +105,16 @@ static const struct BuiltinSubrInfo {
                  }
                  return true;
              };
-             Local<Pair> result(env,
-                                env.create<Pair>(subr->
-                                                 call(paramVec),
-                                                 env.getNull()));
-             auto current = result.get();
+             ListBuilder builder(env, subr->call(paramVec));
              while (keepGoing()) {
                  paramVec.clear();
                  for (auto& lst : inputLists) {
                      lst = checkedCast<Pair>(env, lst->getCdr());
                      paramVec.push_back(lst->getCar());
                  }
-                 auto next = env.create<Pair>(subr->call(paramVec),
-                                              env.getNull());
-                 current->setCdr(next);
-                 current = next;
+                 builder.pushBack(subr->call(paramVec));
              }
-             return result.get();
+             return builder.result();
          }
          return env.getNull();
      }},
