@@ -63,26 +63,6 @@ static const struct BuiltinSubrInfo {
          checkedCast<Pair>(env, args[0])->setCdr(args[1]);
          return env.getNull();
      }},
-    {"null?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Null>(env, args[0]));
-     }},
-    {"pair?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Pair>(env, args[0]));
-     }},
-    {"bool?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Boolean>(env, args[0]));
-     }},
-    {"same?", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(args[0] == args[1]);
-     }},
-    {"identity", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return args[0];
-     }},
     {"length", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          FixNum::Rep length = 0;
@@ -129,6 +109,26 @@ static const struct BuiltinSubrInfo {
              return result.get();
          }
          return env.getNull();
+     }},
+    {"null?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<Null>(env, args[0]));
+     }},
+    {"pair?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<Pair>(env, args[0]));
+     }},
+    {"bool?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<Boolean>(env, args[0]));
+     }},
+    {"same?", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(args[0] == args[1]);
+     }},
+    {"identity", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return args[0];
      }},
     {"apply", nullptr, 2,
      [](Environment& env, const Arguments& args) {
