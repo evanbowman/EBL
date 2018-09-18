@@ -93,19 +93,34 @@ static const struct BuiltinSubrInfo {
      }},
     {"map", nullptr, 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
-         std::vector<ObjectPtr> paramVec;
          if (not isType<Null>(env, args[1])) {
              auto subr = checkedCast<Subr>(env, args[0]);
-             Heap::Ptr<Pair> lst = checkedCast<Pair>(env, args[1]);
-             paramVec = {lst->getCar()};
+             // TODO: replace vectors with small size optimized containers
+             std::vector<ObjectPtr> paramVec;
+             std::vector<Heap::Ptr<Pair>> inputLists;
+             for (Arguments::Count i = 1; i < args.count(); ++i) {
+                 inputLists.push_back(checkedCast<Pair>(env, args[i]));
+                 paramVec.push_back(inputLists.back()->getCar());
+             }
+             auto keepGoing = [&] {
+                 for (auto lst : inputLists) {
+                     if (isType<Null>(env, lst->getCdr())) {
+                         return false;
+                     }
+                 }
+                 return true;
+             };
              Local<Pair> result(env,
                                 env.create<Pair>(subr->
                                                  call(paramVec),
                                                  env.getNull()));
              auto current = result.get();
-             while (not isType<Null>(env, lst->getCdr())) {
-                 lst = checkedCast<Pair>(env, lst->getCdr());
-                 paramVec = {lst->getCar()};
+             while (keepGoing()) {
+                 paramVec.clear();
+                 for (auto& lst : inputLists) {
+                     lst = checkedCast<Pair>(env, lst->getCdr());
+                     paramVec.push_back(lst->getCar());
+                 }
                  auto next = env.create<Pair>(subr->call(paramVec),
                                               env.getNull());
                  current->setCdr(next);
