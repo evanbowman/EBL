@@ -86,6 +86,24 @@ static const struct BuiltinSubrInfo {
          }
          return env.create<FixNum>(length);
      }},
+    {"list-ref", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         const auto index = checkedCast<FixNum>(env, args[1])->value();
+         if (not isType<Null>(env, args[0])) {
+             Heap::Ptr<Pair> current = checkedCast<Pair>(env, args[0]);
+             if (index == 0) {
+                 return current->getCar();
+             }
+             size_t i = 1;
+             while (not isType<Null>(env, current->getCdr())) {
+                 current = checkedCast<Pair>(env, current->getCdr());
+                 if (i++ == index) {
+                     return current->getCar();
+                 }
+             }
+         }
+         return env.getNull();
+     }},
     {"map", nullptr, 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          if (not isType<Null>(env, args[1])) {
@@ -153,8 +171,7 @@ static const struct BuiltinSubrInfo {
      [](Environment& env, const Arguments& args) {
          FixNum::Rep result = 0;
          for (Arguments::Count i = 0; i < args.count(); ++i) {
-             result += checkedCast<FixNum>(env, args[i])
-                 ->value();
+             result += checkedCast<FixNum>(env, args[i])->value();
          }
          return env.create<FixNum>(result);
      }},
@@ -162,10 +179,31 @@ static const struct BuiltinSubrInfo {
      [](Environment& env, const Arguments& args) {
          FixNum::Rep result = 1;
          for (Arguments::Count i = 0; i < args.count(); ++i) {
-             result *= checkedCast<FixNum>(env, args[i])
-                 ->value();
+             result *= checkedCast<FixNum>(env, args[i])->value();
          }
          return env.create<FixNum>(result);
+     }},
+    {"max", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         auto result = checkedCast<FixNum>(env, args[0]);
+         for (Arguments::Count i = 0; i < args.count(); ++i) {
+             auto current = checkedCast<FixNum>(env, args[i]);
+             if (current->value() > result->value()) {
+                 result = current;
+             }
+         }
+         return result;
+     }},
+    {"min", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         auto result = checkedCast<FixNum>(env, args[0]);
+         for (Arguments::Count i = 0; i < args.count(); ++i) {
+             auto current = checkedCast<FixNum>(env, args[i]);
+             if (current->value() < result->value()) {
+                 result = current;
+             }
+         }
+         return result;
      }},
     {"profile", nullptr, 2,
      [](Environment& env, const Arguments& args) {
@@ -181,7 +219,7 @@ static const struct BuiltinSubrInfo {
          auto result = subr->call(params);
          const auto stop = steady_clock::now();
          std::cout << duration_cast<nanoseconds>(stop - start).count()
-                   << std::endl;
+                   << " nanoseconds" << std::endl;
          return result;
      }},
     {"help", nullptr, 1,
