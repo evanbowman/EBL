@@ -21,6 +21,24 @@ void dolist(Environment& env, ObjectPtr list, Proc&& proc) {
     }
 }
 
+
+class ListBuilder {
+public:
+    ListBuilder(Environment& env) : head_(env, env.getNull()),
+                                    env_(env) {}
+
+    void push(ObjectPtr value) {
+        head_ = env_.create<Pair>(value, head_.get());
+    }
+
+    ObjectPtr head() { return head_.get(); }
+
+private:
+    Local<Object> head_;
+    Environment& env_;
+};
+
+
 static const struct BuiltinSubrInfo {
     const char* name;
     const char* docstring;
@@ -34,13 +52,12 @@ static const struct BuiltinSubrInfo {
     {"list", nullptr, 0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          if (auto argc = args.count()) {
-             auto tail = env.create<Pair>(args[argc - 1],
-                                          env.getNull());
-             Local<Pair> list(env, tail);
+             ListBuilder builder(env);
+             builder.push(args[argc - 1]);
              for (auto pos = argc - 2; pos > -1; --pos) {
-                 list = env.create<Pair>(args[pos], list.get());
+                 builder.push(args[pos]);
              }
-             return list.get();
+             return builder.head();
          } else {
              return env.getNull();
          }
