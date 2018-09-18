@@ -144,6 +144,23 @@ static const struct BuiltinSubrInfo {
          }
          return env.create<FixNum>(result);
      }},
+    {"profile", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         std::vector<ObjectPtr> params;
+         if (not isType<Null>(env, args[1])) {
+             dolist(env, args[1], [&](ObjectPtr elem) {
+                                      params.push_back(elem);
+                                  });
+         }
+         auto subr = checkedCast<Subr>(env, args[0]);
+         using namespace std::chrono;
+         const auto start = steady_clock::now();
+         auto result = subr->call(params);
+         const auto stop = steady_clock::now();
+         std::cout << duration_cast<nanoseconds>(stop - start).count()
+                   << std::endl;
+         return result;
+     }},
     {"help", nullptr, 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          auto subr = checkedCast<Subr>(env, args[0]);
