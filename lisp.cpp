@@ -75,7 +75,7 @@ static const struct BuiltinSubrInfo {
      [](Environment& env, const Arguments& args) {
          return env.getBool(isType<Boolean>(env, args[0]));
      }},
-    {"eq?", nullptr, 2,
+    {"same?", nullptr, 2,
      [](Environment& env, const Arguments& args) {
          return env.getBool(args[0] == args[1]);
      }},
