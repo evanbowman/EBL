@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "lexer.hpp"
+#include "extlib/optional.hpp"
 #include "types.hpp"
 #include "environment.hpp"
 
@@ -48,6 +49,34 @@ private:
 };
 
 
+// More overhead, but doesn't require an initial element like ListBuilder
+class LazyListBuilder {
+public:
+    LazyListBuilder(Environment& env) : env_(env) {}
+
+    void pushFront(ObjectPtr value)
+    { push(value, [&](ListBuilder& builder) { builder.pushFront(value); }); }
+    void pushBack(ObjectPtr value)
+    { push(value, [&](ListBuilder& builder) { builder.pushBack(value); }); }
+
+    ObjectPtr result() {
+        if (builder_) return builder_->result();
+        else return env_.getNull();
+    }
+
+private:
+    template <typename F>
+    void push(ObjectPtr value, F&& callback) {
+        if (not builder_)
+            builder_.emplace(env_, value);
+        else
+            callback(*builder_);
+    }
+    Environment& env_;
+    nonstd::optional<ListBuilder> builder_;
+};
+
+
 static const struct BuiltinSubrInfo {
     const char* name;
     const char* docstring;
@@ -80,15 +109,15 @@ static const struct BuiltinSubrInfo {
      }},
     {"length", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         FixNum::Rep length = 0;
+         Integer::Rep length = 0;
          if (not isType<Null>(env, args[0])) {
              dolist(env, args[0], [&](ObjectPtr) { ++length; });
          }
-         return env.create<FixNum>(length);
+         return env.create<Integer>(length);
      }},
     {"list-ref", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         const auto index = checkedCast<FixNum>(env, args[1])->value();
+         const auto index = checkedCast<Integer>(env, args[1])->value();
          if (not isType<Null>(env, args[0])) {
              Heap::Ptr<Pair> current = checkedCast<Pair>(env, args[0]);
              if (index == 0) {
@@ -136,6 +165,22 @@ static const struct BuiltinSubrInfo {
          }
          return env.getNull();
      }},
+    {"filter", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         LazyListBuilder builder(env);
+         auto pred = checkedCast<Subr>(env, args[0]);
+         if (not isType<Null>(env, args[1])) {
+             std::vector<ObjectPtr> params;
+             dolist(env, args[1],
+                    [&](ObjectPtr element) {
+                        params = {element};
+                        if (pred->call(params) == env.getBool(true)) {
+                            builder.pushBack(element);
+                        }
+                    });
+         }
+         return builder.result();
+     }},
     {"null?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          return env.getBool(isType<Null>(env, args[0]));
@@ -147,6 +192,10 @@ static const struct BuiltinSubrInfo {
     {"bool?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          return env.getBool(isType<Boolean>(env, args[0]));
+     }},
+    {"integer?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<Integer>(env, args[0]));
      }},
     {"identical?", nullptr, 2,
      [](Environment& env, const Arguments& args) {
@@ -169,25 +218,25 @@ static const struct BuiltinSubrInfo {
      }},
     {"+", nullptr, 0,
      [](Environment& env, const Arguments& args) {
-         FixNum::Rep result = 0;
+         Integer::Rep result = 0;
          for (Arguments::Count i = 0; i < args.count(); ++i) {
-             result += checkedCast<FixNum>(env, args[i])->value();
+             result += checkedCast<Integer>(env, args[i])->value();
          }
-         return env.create<FixNum>(result);
+         return env.create<Integer>(result);
      }},
     {"*", nullptr, 0,
      [](Environment& env, const Arguments& args) {
-         FixNum::Rep result = 1;
+         Integer::Rep result = 1;
          for (Arguments::Count i = 0; i < args.count(); ++i) {
-             result *= checkedCast<FixNum>(env, args[i])->value();
+             result *= checkedCast<Integer>(env, args[i])->value();
          }
-         return env.create<FixNum>(result);
+         return env.create<Integer>(result);
      }},
     {"max", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         auto result = checkedCast<FixNum>(env, args[0]);
+         auto result = checkedCast<Integer>(env, args[0]);
          for (Arguments::Count i = 0; i < args.count(); ++i) {
-             auto current = checkedCast<FixNum>(env, args[i]);
+             auto current = checkedCast<Integer>(env, args[i]);
              if (current->value() > result->value()) {
                  result = current;
              }
@@ -196,16 +245,16 @@ static const struct BuiltinSubrInfo {
      }},
     {"min", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         auto result = checkedCast<FixNum>(env, args[0]);
+         auto result = checkedCast<Integer>(env, args[0]);
          for (Arguments::Count i = 0; i < args.count(); ++i) {
-             auto current = checkedCast<FixNum>(env, args[i]);
+             auto current = checkedCast<Integer>(env, args[i]);
              if (current->value() < result->value()) {
                  result = current;
              }
          }
          return result;
      }},
-    {"profile", nullptr, 2,
+    {"time", nullptr, 2,
      [](Environment& env, const Arguments& args) {
          std::vector<ObjectPtr> params;
          if (not isType<Null>(env, args[1])) {

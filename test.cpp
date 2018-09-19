@@ -53,9 +53,9 @@ lisp::ObjectPtr evalExpr(lisp::Environment& env, lisp::Lexer& lexer) {
         case lisp::Lexer::Token::NONE:
             throw std::runtime_error("bad input");
 
-        case lisp::Lexer::Token::FIXNUM: {
-            auto num = lisp::FixNum::Rep(std::stoi(lexer.rdbuf()));
-            params.push_back(env.create<lisp::FixNum>(num));
+        case lisp::Lexer::Token::INTEGER: {
+            auto num = lisp::Integer::Rep(std::stoi(lexer.rdbuf()));
+            params.push_back(env.create<lisp::Integer>(num));
             break;
         }
 
@@ -81,8 +81,8 @@ void display(lisp::Environment& env, lisp::ObjectPtr obj) {
         std::cout << " . ";
         display(env, pair->getCdr());
         std::cout << ")";
-    } else if (lisp::isType<lisp::FixNum>(env, obj)) {
-        std::cout << obj.cast<lisp::FixNum>()->value();
+    } else if (lisp::isType<lisp::Integer>(env, obj)) {
+        std::cout << obj.cast<lisp::Integer>()->value();
     } else if (lisp::isType<lisp::Null>(env, obj)) {
         std::cout << "null";
     } else if (obj == env.getBool(true)) {

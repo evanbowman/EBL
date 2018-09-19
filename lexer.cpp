@@ -31,7 +31,7 @@ Lexer::Token Lexer::lex() {
                     inputBuffer_.push_back(current());
                 }
             }
-            return Token::FIXNUM;
+            return Token::INTEGER;
         }
         default:
             inputBuffer_.clear();

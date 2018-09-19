@@ -73,13 +73,13 @@ private:
 };
 
 
-class FixNum : public Object {
+class Integer : public Object {
 public:
     using Rep = uint32_t;
 
-    inline FixNum(TypeId tp, Rep value) : Object{tp}, value_(value) {}
+    inline Integer(TypeId tp, Rep value) : Object{tp}, value_(value) {}
 
-    static constexpr const char* name() { return "<FixNum>"; }
+    static constexpr const char* name() { return "<Integer>"; }
 
     inline Rep value() const { return value_; }
 
@@ -153,7 +153,7 @@ struct TypeInfoTable {
 constexpr TypeInfoTable<Null,
                         Pair,
                         Boolean,
-                        FixNum,
+                        Integer,
                         Subr> typeInfo{};
 
 template <typename T>

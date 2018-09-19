@@ -12,7 +12,7 @@ public:
         RPAREN,
         SYMBOL,
         QUOTE,
-        FIXNUM,
+        INTEGER,
         FLOAT
     };
 
