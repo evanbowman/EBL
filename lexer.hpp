@@ -35,7 +35,9 @@ private:
         return position_ < input_.size()
                and not checkWhitespace(current())
                and current() not_eq ')'
-               and current() not_eq '(';
+               and current() not_eq '('
+               and current() not_eq ']'
+               and current() not_eq '[';
     }
 
     size_t position_;

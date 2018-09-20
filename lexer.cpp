@@ -5,9 +5,11 @@ Lexer::Token Lexer::lex() {
     if (position_ < input_.size()) {
     RETRY:
         switch (current()) {
+        case '[':
         case '(':
             position_++;
             return Token::LPAREN;
+        case ']':
         case ')':
             position_++;
             return Token::RPAREN;
