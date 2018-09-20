@@ -5,6 +5,7 @@
 #include <new>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "utility.hpp"
 #include "memory.hpp"
@@ -102,18 +103,32 @@ public:
 
 class Subr : public Object {
 public:
-    using Impl = std::function<ObjectPtr(Environment&, const Arguments&)>;
+    using CFunction =
+        std::function<ObjectPtr(Environment&, const Arguments&)>;
+
+    // TODO: a variant + enum might be faster, time it and see.
+    class Impl {
+    public:
+        virtual ~Impl() {}
+        virtual ObjectPtr call(Environment& env,
+                               std::vector<ObjectPtr>&) = 0;
+    };
 
     Subr(TypeId tp,
          Environment& env,
          const char* docstring,
          Arguments::Count requiredArgs,
-         Impl impl);
+         CFunction impl);
 
     static constexpr const char* name() { return "<Subr>"; }
 
     // TODO: call function should be defined differently?
-    ObjectPtr call(std::vector<ObjectPtr>& params);
+    inline ObjectPtr call(std::vector<ObjectPtr>& params) {
+        if ((int)params.size() < requiredArgs_) {
+            throw std::runtime_error("not enough params for subr!");
+        }
+        return impl_->call(*envPtr_, params);
+    }
 
     inline const char* getDocstring() { return docstring_; }
     inline Arguments::Count argCount() { return requiredArgs_; }
@@ -121,9 +136,10 @@ public:
 private:
     const char* docstring_;
     Arguments::Count requiredArgs_;
-    Impl impl_;
+    std::unique_ptr<Impl> impl_;
     EnvPtr envPtr_;
 };
+
 
 struct TypeInfo {
     size_t size_;

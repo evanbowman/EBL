@@ -10,6 +10,12 @@
 #include "types.hpp"
 #include "environment.hpp"
 
+#ifdef __GNUC__
+#define unlikely(COND) __builtin_expect(COND, false)
+#else
+#define unlikely(COND) COND
+#endif
+
 namespace lisp {
 
 template <typename Proc>
@@ -81,7 +87,7 @@ static const struct BuiltinSubrInfo {
     const char* name;
     const char* docstring;
     Arguments::Count requiredArgs;
-    Subr::Impl impl;
+    Subr::CFunction impl;
 } builtins[] = {
     {"cons", "(cons CAR CDR)", 2,
      [](Environment& env, const Arguments& args) {
@@ -338,5 +344,6 @@ Context::Context(const Configuration& config) :
 std::shared_ptr<Environment> Context::topLevel() {
     return topLevel_;
 }
+
 
 } // namespace lisp
