@@ -19,6 +19,21 @@ private:
 };
 
 
+class MemoizedFunctionImpl : public Subr::Impl {
+public:
+    MemoizedFunctionImpl(std::unique_ptr<Subr::Impl> from) :
+        wrapped_(std::move(from)) {}
+
+    ObjectPtr call(Environment& env,
+                   std::vector<ObjectPtr>& params) override {
+        return wrapped_->call(env, params);
+    }
+
+private:
+    std::unique_ptr<Subr::Impl> wrapped_;
+};
+
+
 class BytecodeFunctionImpl : public Subr::Impl {
     // TODO...
 };
@@ -35,5 +50,14 @@ Subr::Subr(TypeId tp,
     impl_(std::unique_ptr<CFunctionImpl>(new CFunctionImpl(impl))),
     envPtr_(env.reference())
 {}
+
+
+void Subr::memoize() {
+    if (not dynamic_cast<MemoizedFunctionImpl*>(impl_.get())) {
+        impl_ =
+            std::unique_ptr<Impl>(new MemoizedFunctionImpl(std::move(impl_)));
+    }
+}
+
 
 }

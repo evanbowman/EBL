@@ -76,7 +76,7 @@ private:
 
 class Integer : public Object {
 public:
-    using Rep = uint32_t;
+    using Rep = int32_t;
 
     inline Integer(TypeId tp, Rep value) : Object{tp}, value_(value) {}
 
@@ -129,6 +129,8 @@ public:
         }
         return impl_->call(*envPtr_, params);
     }
+
+    void memoize();
 
     inline const char* getDocstring() { return docstring_; }
     inline Arguments::Count argCount() { return requiredArgs_; }

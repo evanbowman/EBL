@@ -222,6 +222,21 @@ static const struct BuiltinSubrInfo {
          auto subr = checkedCast<Subr>(env, args[0]);
          return subr->call(params);
      }},
+    {"memoize!", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         checkedCast<Subr>(env, args[0])->memoize();
+         return env.getNull();
+     }},
+    {"incr", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         const auto prev = checkedCast<Integer>(env, args[0])->value();
+         return env.create<Integer>(prev + 1);
+     }},
+    {"decr", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         const auto prev = checkedCast<Integer>(env, args[0])->value();
+         return env.create<Integer>(prev - 1);
+     }},
     {"+", nullptr, 0,
      [](Environment& env, const Arguments& args) {
          Integer::Rep result = 0;
