@@ -15,6 +15,14 @@ Lexer::Token Lexer::lex()
         case ')':
             position_++;
             return Token::RPAREN;
+        case ';':
+            while (position_ < input_.size()) {
+                position_++;
+                if (current() == '\n' or current() == '\r') {
+                    position_++;
+                    goto RETRY;
+                }
+            }
         case ' ':
         case '\n':
         case '\r':
