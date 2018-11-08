@@ -1,8 +1,8 @@
-#include "parser.hpp"
+#include "lib/parser.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include "lisp.hpp"
+#include "lib/lisp.hpp"
 
 
 int main(int argc, char** argv)

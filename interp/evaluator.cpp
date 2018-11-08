@@ -1,5 +1,5 @@
 #include "evaluator.hpp"
-#include "lexer.hpp"
+#include "lib/lexer.hpp"
 #include <iostream>
 
 // I haven't written a bytecode compiler yet. This file includes an admittedly

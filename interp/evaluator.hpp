@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lisp.hpp"
+#include "lib/lisp.hpp"
 
 namespace lisp {
 

@@ -1,4 +1,4 @@
-#include "evaluator.hpp"
+#include "interp/evaluator.hpp"
 #include <iostream>
 
 int main()
