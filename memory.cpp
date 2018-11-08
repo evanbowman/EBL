@@ -2,12 +2,13 @@
 
 namespace lisp {
 
-void GC::mark(Environment& env) {
+void GC::mark(Environment& env)
+{
     // TODO
 }
 
-void GC::compact(Environment& env) {
-
+void GC::compact(Environment& env)
+{
 }
 
-} // lisp
+} // namespace lisp

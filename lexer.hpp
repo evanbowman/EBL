@@ -13,31 +13,62 @@ public:
         SYMBOL,
         QUOTE,
         INTEGER,
-        FLOAT
+        FLOAT,
+        STRING,
     };
 
-    Lexer(const std::string& input) :
-        position_(0),
-        input_(input) {}
+    Lexer(const std::string& input) : position_(0), input_(input)
+    {
+    }
 
     Token lex();
 
-    const std::string& rdbuf() { return inputBuffer_; }
+    void jumpPosition(size_t offset)
+    {
+        position_ += offset;
+    }
+
+    const std::string& rdbuf()
+    {
+        return inputBuffer_;
+    }
+
+    std::string remaining() const
+    {
+        return input_.substr(position_);
+    }
+
+    bool hasText() const
+    {
+        return position_ < input_.size();
+    }
+
+    bool isOpenDelimiter(char c) const
+    {
+        return c == '[' or c == '(';
+    }
+
+    bool isCloseDelimiter(char c) const
+    {
+        return c == ']' or c == ')';
+    }
 
 private:
-    bool checkWhitespace(char c) const {
+    bool checkWhitespace(char c) const
+    {
         return c == ' ' or c == '\n' or c == '\r';
     }
 
-    char current() const { return input_[position_]; }
+    char current() const
+    {
+        return input_[position_];
+    }
 
-    bool checkTermCond() const {
-        return position_ < input_.size()
-               and not checkWhitespace(current())
-               and current() not_eq ')'
-               and current() not_eq '('
-               and current() not_eq ']'
-               and current() not_eq '[';
+    bool checkTermCond() const
+    {
+        return position_ < input_.size() and not checkWhitespace(current()) and
+               not isOpenDelimiter(current()) and
+               not isCloseDelimiter(current());
     }
 
     size_t position_;
@@ -45,4 +76,4 @@ private:
     std::string inputBuffer_;
 };
 
-}
+} // namespace lisp
