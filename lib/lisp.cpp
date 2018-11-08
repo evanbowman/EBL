@@ -8,8 +8,8 @@
 #include "environment.hpp"
 #include "extlib/optional.hpp"
 #include "lexer.hpp"
-#include "types.hpp"
 #include "parser.hpp"
+#include "types.hpp"
 
 #ifdef __GNUC__
 #define unlikely(COND) __builtin_expect(COND, false)
@@ -53,7 +53,9 @@ void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out)
         out << "lambda<" << obj.cast<lisp::Function>()->argCount() << ">";
     } else if (lisp::isType<lisp::String>(env, obj)) {
         out << '\"' << obj.cast<lisp::String>()->value() << '\"';
-    } else {
+    } else if (lisp::isType<lisp::Complex>(env, obj)) {
+        out << obj.cast<lisp::Complex>()->value();
+    }else {
         out << "unknown object" << std::endl;
     }
 }
@@ -426,7 +428,28 @@ static const struct BuiltinFunctionInfo {
          std::cout << " " << std::endl;
          return env.getNull();
      }},
-
+    {"cabs", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         auto c = checkedCast<Complex>(env, args[0]);
+         const Integer::Rep result = std::abs(c->value());
+         return env.create<Integer>(result);
+     }},
+    {"c+", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         return env.create<Complex>(checkedCast<Complex>(env, args[0])->value() +
+                                    checkedCast<Complex>(env, args[1])->value());
+     }},
+    {"c*", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         return env.create<Complex>(checkedCast<Complex>(env, args[0])->value() *
+                                    checkedCast<Complex>(env, args[1])->value());
+     }},
+    {"complex", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         const auto real = checkedCast<Integer>(env, args[0])->value();
+         const auto imag = checkedCast<Integer>(env, args[1])->value();
+         return env.create<Complex>(Complex::Rep(real, imag));
+     }},
 };
 
 void Environment::store(const std::string& key, ObjectPtr value)

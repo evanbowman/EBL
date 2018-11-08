@@ -72,7 +72,7 @@ template <> struct ConstructImpl<Function> {
 };
 
 namespace ast {
-    struct Node;
+struct Node;
 }
 
 class Context {

@@ -109,17 +109,17 @@ ObjectPtr Begin::execute(Environment& env)
 }
 
 
- ObjectPtr If::execute(Environment& env)
- {
-     auto cond = condition_->execute(env);
-     if (cond == env.getBool(true)) {
-         return trueBranch_->execute(env);
-     } else if (cond == env.getBool(false)) {
-         return falseBranch_->execute(env);
-     } else {
-         throw std::runtime_error("bad if expression condition");
-     }
- }
+ObjectPtr If::execute(Environment& env)
+{
+    auto cond = condition_->execute(env);
+    if (cond == env.getBool(true)) {
+        return trueBranch_->execute(env);
+    } else if (cond == env.getBool(false)) {
+        return falseBranch_->execute(env);
+    } else {
+        throw std::runtime_error("bad if expression condition");
+    }
+}
 
 
 ObjectPtr Def::execute(Environment& env)

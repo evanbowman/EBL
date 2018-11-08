@@ -1,5 +1,6 @@
 #pragma once
 
+#include <complex>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -133,6 +134,28 @@ private:
     Rep value_;
 };
 
+class Complex : public Object {
+public:
+    using Rep = std::complex<double>;
+
+    inline Complex(TypeId tp, Rep value) : Object{tp}, value_(value)
+    {
+    }
+
+    static constexpr const char* name()
+    {
+        return "<Complex>";
+    }
+
+    inline Rep value() const
+    {
+        return value_;
+    }
+
+private:
+    Rep value_;
+};
+
 class String : public Object {
 public:
     inline String(TypeId tp, const char* data, size_t length)
@@ -253,7 +276,7 @@ template <typename... Builtins> struct TypeInfoTable {
     TypeInfo table[sizeof...(Builtins)] = {makeInfo<Builtins>()...};
 };
 
-constexpr TypeInfoTable<Null, Pair, Boolean, Integer, String, Function>
+constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Complex, String, Function>
     typeInfo{};
 
 template <typename T> bool isType(Environment& env, ObjectPtr obj)
