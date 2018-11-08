@@ -61,7 +61,11 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
 
 ast::Ptr<ast::If> parseIf(Lexer& lexer)
 {
-    throw "TODO";
+    auto ifExpr = make_unique<ast::If>();
+    ifExpr->condition_ = parseStatement(lexer);
+    ifExpr->trueBranch_ = parseStatement(lexer);
+    ifExpr->falseBranch_ = parseStatement(lexer);
+    return ifExpr;
 }
 
 ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)

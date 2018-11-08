@@ -188,6 +188,20 @@ struct If : Expr {
     Ptr<Statement> condition_;
     Ptr<Statement> trueBranch_;
     Ptr<Statement> falseBranch_;
+    void serialize(std::ostream& out, int indent) override
+    {
+        out << "(if\n";
+        format(out, indent + 2);
+        condition_->serialize(out, indent + 2);
+        out << '\n';
+        format(out, indent + 2);
+        trueBranch_->serialize(out, indent + 2);
+        out << '\n';
+        format(out, indent + 2);
+        falseBranch_->serialize(out, indent + 2);
+        out << '\n';
+    }
+    Heap::Ptr<Object> execute(Environment& env) override;
 };
 
 
