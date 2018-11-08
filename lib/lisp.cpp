@@ -9,6 +9,7 @@
 #include "extlib/optional.hpp"
 #include "lexer.hpp"
 #include "types.hpp"
+#include "parser.hpp"
 
 #ifdef __GNUC__
 #define unlikely(COND) __builtin_expect(COND, false)
@@ -505,5 +506,12 @@ const Heap& Environment::getHeap() const
 {
     return context_->heap_;
 }
+
+ObjectPtr exec(Environment& env, const std::string& code)
+{
+    auto top = lisp::parse(code);
+    return top->execute(env);
+}
+
 
 } // namespace lisp
