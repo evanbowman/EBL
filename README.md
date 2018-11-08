@@ -47,6 +47,6 @@ int main()
     env->store("foo", lfoo);
 
     // exec some lisp code that calls our function
-    exec(*env, "(foo 42)");
+    env->exec("(foo 42)");
 }
 ```

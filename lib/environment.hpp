@@ -35,6 +35,8 @@ public:
     void store(StackIndex index, ObjectPtr value);
     ObjectPtr load(StackIndex index);
 
+    ObjectPtr exec(const std::string& code);
+
     ObjectPtr getNull();
     ObjectPtr getBool(bool trueOrFalse);
 
@@ -43,6 +45,8 @@ public:
     EnvPtr reference();
 
     const Heap& getHeap() const;
+
+    Context* getContext();
 
 private:
     Context* context_;
@@ -67,6 +71,10 @@ template <> struct ConstructImpl<Function> {
     }
 };
 
+namespace ast {
+    struct Node;
+}
+
 class Context {
 public:
     struct Configuration {
@@ -77,6 +85,8 @@ public:
     EnvPtr topLevel();
 
     friend class Environment;
+
+    void pushAst(ast::Node* root);
 
 private:
     template <typename T, typename... Args>
@@ -106,6 +116,11 @@ private:
     EnvPtr topLevel_;
     Persistent<Boolean> booleans_[2];
     Persistent<Null> nullValue_;
+
+    // TODO: Eventually the codebase will execute bytecode instead of doing tree
+    // walking, but for now, previously exec'd trees need to be stored because
+    // some variables in the environment might reference the old ast(s).
+    std::vector<ast::Node*> astRoots_;
 };
 
 template <typename T, typename... Args>

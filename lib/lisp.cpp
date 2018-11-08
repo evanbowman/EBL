@@ -507,10 +507,22 @@ const Heap& Environment::getHeap() const
     return context_->heap_;
 }
 
-ObjectPtr exec(Environment& env, const std::string& code)
+Context* Environment::getContext()
 {
-    auto top = lisp::parse(code);
-    return top->execute(env);
+    return context_;
+}
+
+void Context::pushAst(ast::Node* root)
+{
+    astRoots_.push_back(root);
+}
+
+ObjectPtr Environment::exec(const std::string& code)
+{
+    auto root = lisp::parse(code);
+    auto result = root->execute(*this);
+    getContext()->pushAst(root.release());
+    return result;
 }
 
 
