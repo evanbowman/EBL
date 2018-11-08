@@ -18,7 +18,15 @@ int main(int argc, char** argv)
     try {
         auto top = lisp::parse(buffer.str());
         top->serialize(std::cout, 0);
-        top->execute(*env);
+        {
+            using namespace std::chrono;
+            auto start = high_resolution_clock::now();
+            top->execute(*env);
+            auto stop = high_resolution_clock::now();
+            std::cout << "\nexecution finished in "
+                      << duration_cast<nanoseconds>(stop - start).count()
+                      << "ns" << std::endl;
+        }
     } catch (const std::exception& ex) {
         std::cout << "Error: " << ex.what() << std::endl;
     }

@@ -40,7 +40,7 @@ public:
 
     bool hasText() const
     {
-        return position_ < input_.size();
+        return position_ < input_.size() - 1;
     }
 
     bool isOpenDelimiter(char c) const
