@@ -1,4 +1,4 @@
-#include "interp/evaluator.hpp"
+#include "lib/lisp.hpp"
 #include <iostream>
 
 int main()
@@ -12,7 +12,7 @@ int main()
         std::getline(std::cin, input);
         if (not input.empty()) {
             try {
-                auto result = eval(*env, input);
+                auto result = env->exec(input);
                 auto print =
                     lisp::checkedCast<lisp::Function>(*env, env->load("print"));
                 printArg = {result};

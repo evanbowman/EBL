@@ -16,20 +16,12 @@ add_library(lisp
   lib/ast.cpp)
 
 
-# The interpreter. Should be replaced with a bytecode compiler in the future.
-add_library(lisp-evaluator
-  interp/evaluator.cpp)
-
-target_link_libraries(lisp-evaluator
-  lisp)
-
-
 # A repl.
 add_executable(repl
   tools/repl.cpp)
 
 target_link_libraries(repl
-  lisp-evaluator)
+  lisp)
 
 
 # Execute a script file.
