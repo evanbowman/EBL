@@ -9,6 +9,7 @@
 #include <tuple>
 #include <vector>
 
+#include "common.hpp"
 #include "memory.hpp"
 #include "types.hpp"
 
@@ -28,12 +29,11 @@ public:
 
     template <typename T, typename... Args> Heap::Ptr<T> create(Args&&... args);
 
-    void store(const std::string& key, ObjectPtr value);
-    ObjectPtr load(const std::string& key);
+    void store(ObjectPtr value);
+    ObjectPtr load(VarLoc loc);
 
-    using StackIndex = size_t;
-    void store(StackIndex index, ObjectPtr value);
-    ObjectPtr load(StackIndex index);
+    ObjectPtr loadI(ImmediateId immediate);
+    ImmediateId storeI(ObjectPtr value);
 
     ObjectPtr exec(const std::string& code);
 
@@ -51,7 +51,7 @@ public:
 private:
     Context* context_;
     EnvPtr parent_;
-    std::vector<std::pair<std::string, ObjectPtr>> vars_;
+    std::vector<ObjectPtr> vars_;
 };
 
 template <typename T> struct ConstructImpl {
@@ -71,6 +71,8 @@ template <> struct ConstructImpl<Function> {
     }
 };
 
+std::vector<std::string> getBuiltinList();
+
 namespace ast {
 struct Node;
 }
@@ -85,8 +87,6 @@ public:
     EnvPtr topLevel();
 
     friend class Environment;
-
-    void pushAst(ast::Node* root);
 
 private:
     template <typename T, typename... Args>
@@ -116,6 +116,7 @@ private:
     EnvPtr topLevel_;
     Persistent<Boolean> booleans_[2];
     Persistent<Null> nullValue_;
+    std::vector<ObjectPtr> immediates_;
 
     // TODO: Eventually the codebase will execute bytecode instead of doing tree
     // walking, but for now, previously exec'd trees need to be stored because

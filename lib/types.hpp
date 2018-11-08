@@ -134,6 +134,28 @@ private:
     Rep value_;
 };
 
+class Double : public Object {
+public:
+    using Rep = double;
+
+    inline Double(TypeId tp, Rep value) : Object{tp}, value_(value)
+    {
+    }
+
+    static constexpr const char* name()
+    {
+        return "<Double>";
+    }
+
+    inline Rep value() const
+    {
+        return value_;
+    }
+
+private:
+    Rep value_;
+};
+
 class Complex : public Object {
 public:
     using Rep = std::complex<double>;
@@ -276,7 +298,8 @@ template <typename... Builtins> struct TypeInfoTable {
     TypeInfo table[sizeof...(Builtins)] = {makeInfo<Builtins>()...};
 };
 
-constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Complex, String, Function>
+constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
+                        Function>
     typeInfo{};
 
 template <typename T> bool isType(Environment& env, ObjectPtr obj)
@@ -284,10 +307,17 @@ template <typename T> bool isType(Environment& env, ObjectPtr obj)
     return typeInfo.typeId<T>() == obj->typeId();
 }
 
-struct ConversionError : public std::runtime_error {
+struct TypeError : std::runtime_error {
+    TypeError(TypeId t, const std::string& reason)
+        : std::runtime_error(std::string("for type ") + typeInfo[t].name_ +
+                             ": " + reason)
+    {
+    }
+};
+
+struct ConversionError : TypeError {
     ConversionError(TypeId from, TypeId to)
-        : std::runtime_error(std::string("bad cast from ") +
-                             typeInfo[from].name_ + " to " + typeInfo[to].name_)
+        : TypeError(from, std::string("invalid cast to ") + typeInfo[to].name_)
     {
     }
 };

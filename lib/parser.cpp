@@ -20,6 +20,21 @@ struct UnexpectedClosingParen {
 
 ast::Ptr<ast::Expr> parseExpr(Lexer& lexer);
 
+ast::Ptr<ast::Value> parseValue(const std::string& name)
+{
+    if (name == "null") {
+        return make_unique<ast::Null>();
+    } else if (name == "true") {
+        return make_unique<ast::True>();
+    } else if (name == "false") {
+        return make_unique<ast::False>();
+    } else {
+        auto ret = make_unique<ast::LValue>();
+        ret->name_ = name;
+        return ret;
+    }
+}
+
 ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
 {
     const auto tok = lexer.lex();
@@ -28,13 +43,7 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
         return parseExpr(lexer);
 
     case Lexer::Token::SYMBOL:
-        if (lexer.rdbuf() == "null") {
-            return make_unique<ast::Null>();
-        } else {
-            auto ret = make_unique<ast::LValue>();
-            ret->name_ = lexer.rdbuf();
-            return ret;
-        }
+        return parseValue(lexer.rdbuf());
 
     case Lexer::Token::RPAREN:
         throw UnexpectedClosingParen{};
@@ -45,6 +54,12 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
     case Lexer::Token::INTEGER: {
         auto ret = make_unique<ast::Integer>();
         ret->value_ = std::stoi(lexer.rdbuf());
+        return ret;
+    }
+
+    case Lexer::Token::FLOAT: {
+        auto ret = make_unique<ast::Double>();
+        ret->value_ = std::stod(lexer.rdbuf());
         return ret;
     }
 
@@ -86,7 +101,7 @@ ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)
     auto lambda = make_unique<ast::Lambda>();
     expect<Lexer::Token::LPAREN>(lexer, "in parse lambda");
     while (true) {
-        switch (auto tok = lexer.lex()) {
+        switch (lexer.lex()) {
         case Lexer::Token::RPAREN:
             goto BODY;
 
@@ -134,7 +149,7 @@ ast::Ptr<ast::Let> parseLet(Lexer& lexer)
     auto let = make_unique<ast::Let>();
     expect<Lexer::Token::LPAREN>(lexer, "in eval let");
     while (true) {
-        switch (auto tok = lexer.lex()) {
+        switch (lexer.lex()) {
         case Lexer::Token::RPAREN:
             goto BODY;
 
@@ -176,19 +191,13 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
     auto apply = make_unique<ast::Application>();
     apply->target_ = fnName;
     while (true) {
-        switch (auto tok = lexer.lex()) {
+        switch (lexer.lex()) {
         case Lexer::Token::LPAREN:
             apply->args_.push_back(parseExpr(lexer));
             break;
 
         case Lexer::Token::SYMBOL:
-            if (lexer.rdbuf() == "null") {
-                apply->args_.push_back(make_unique<ast::Null>());
-            } else {
-                auto lval = make_unique<ast::LValue>();
-                lval->name_ = lexer.rdbuf();
-                apply->args_.push_back(std::move(lval));
-            }
+            apply->args_.push_back(parseValue(lexer.rdbuf()));
             break;
 
         case Lexer::Token::RPAREN:
@@ -200,6 +209,13 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         case Lexer::Token::INTEGER: {
             auto param = make_unique<ast::Integer>();
             param->value_ = std::stoi(lexer.rdbuf());
+            apply->args_.push_back(std::move(param));
+            break;
+        }
+
+        case Lexer::Token::FLOAT: {
+            auto param = make_unique<ast::Double>();
+            param->value_ = std::stod(lexer.rdbuf());
             apply->args_.push_back(std::move(param));
             break;
         }
@@ -219,40 +235,14 @@ DONE:
     return apply;
 }
 
-ast::Ptr<ast::Begin> parse(const std::string& code)
+ast::Ptr<ast::TopLevel> parse(const std::string& code)
 {
     Lexer lexer(code);
-    auto top = make_unique<ast::Begin>();
+    auto top = make_unique<ast::TopLevel>();
     while (lexer.hasText()) {
         top->statements_.push_back(parseStatement(lexer));
     }
     return top;
 }
-
-// ObjectPtr evalIf(Environment & env, Lexer & lexer)
-// {
-//     ObjectPtr cond = evalValueOrExpr(env, lexer);
-//     auto parsed = lexer.remaining();
-//     size_t parenBalance = 1;
-//     size_t i;
-//     for (i = 0; i < parsed.size(); ++i) {
-//         if (lexer.isOpenDelimiter(parsed[i])) {
-//             parenBalance++;
-//         } else if (lexer.isCloseDelimiter(parsed[i])) {
-//             parenBalance--;
-//             if (parenBalance == 0) {
-//                 break;
-//             }
-//         }
-//     }
-//     parsed = parsed.substr(0, i);
-//     lexer.jumpPosition(i);
-//     expect<Lexer::Token::RPAREN>(lexer, "in eval if");
-//     if (cond == env.getBool(true)) {
-//         return eval(env, parsed);
-//     } else {
-//         return env.getBool(false);
-//     }
-// }
 
 } // namespace lisp

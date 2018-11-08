@@ -7,6 +7,10 @@
              (println n)
              (iters (- n 1))))))
 
-(iters 5)
+;; (iters 5)
 
-(memory-statistics)
+;; (memory-statistics)
+
+
+(def a (complex 4 5))
+(def b (complex 1 2))

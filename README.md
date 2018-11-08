@@ -2,7 +2,7 @@
 
 A lisp interpreter. Lexically scoped, with proper closures, and easily embeddable.
 
-``` lisp
+``` scheme
 (def closure-test
      (let ((a 41))
        (lambda (b)
@@ -11,42 +11,98 @@ A lisp interpreter. Lexically scoped, with proper closures, and easily embeddabl
 (println (closure-test 1)) ;; 42
 ```
 
+## Example
 
-### Embedding
+Here's something a little more advanced, mandelbrot sets:
 
-Example:
-``` c++
-#include "lisp.hpp"
+``` scheme
 
-using namespace lisp;
+(def iters 500)
+
+(def mandelbrot
+     (lambda (z c iter-depth)
+       (if (> iter-depth 0)
+           (if (< (abs z) 2.0)
+               (mandelbrot (+ (* z z) c) c (- iter-depth 1))
+               false)
+           true)))
+
+(def make-matrix
+     (lambda (xl yl n)
+       (if (< n 1)
+           (cons xl yl)
+           (begin
+             (def list-x (cons (- 1.0 (* n (/ 3.5 100.0))) xl))
+             (def list-y (if (< n 50)
+                             (cons (- 1.0 (* n (/ 2.0 50.0))) yl)
+                             yl))
+             (make-matrix list-x list-y (- n 1))))))
+
+(def data-mat (make-matrix null null 100))
+
+(dolist
+ (lambda (i)
+   (dolist
+    (lambda (r)
+      (if (mandelbrot (complex 0.0 0.0) (complex r i) iters)
+          (print "*")
+          (print " ")))
+    (car data-mat))
+   (println ""))
+ (cdr data-mat))
+
+```
+
+Output:
+```
 
 
-ObjectPtr foo(Environment& env, const Arguments& args)
-{
-    std::cout << "printing from foo: "
-              << checkedCast<Integer>(env, args[0])->value()
-              << std::endl;
+                               *
+                               *
+                             *****
+                             *****
+                             *****
+                              ****
+                          * ********* *
+                        **************    **
+                  ***  *********************
+                   ***********************
+                    ************************
+                   ****************************
+                   ***************************
+                  ****************************
+                 ******************************
+                  ******************************
+                 ********************************     ***** *
+                 ********************************   *********
+                 ********************************  ************
+                  ******************************* *************
+                  ******************************* *************
+                   ****************************** *****************
+                     ****************************************************************
+                   ****************************** *****************
+                  ******************************* *************
+                  ******************************* *************
+                 ********************************  ************
+                 ********************************   *********
+                 ********************************     ***** *
+                  ******************************
+                 ******************************
+                  ****************************
+                   ***************************
+                   ****************************
+                    ************************
+                   ***********************
+                  ***  *********************
+                        **************    **
+                          * ********* *
+                              ****
+                             *****
+                             *****
+                             *****
+                               *
+                               *
 
-    return env.getNull();
-}
 
 
-int main()
-{
-    // create an execution context
-    Context context({});
-
-    // get a reference to the top level environment (i.e. the global scope)
-    auto env = context.topLevel();
-
-    // wrap our custom function in a lisp Function object
-    static const int argc = 1;
-    auto lfoo = env->create<Function>("my docstring", argc, foo);
-
-    // store the lisp function in the top level environment
-    env->store("foo", lfoo);
-
-    // exec some lisp code that calls our function
-    env->exec("(foo 42)");
-}
 ```

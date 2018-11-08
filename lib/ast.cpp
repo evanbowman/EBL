@@ -1,19 +1,25 @@
 #include "ast.hpp"
 #include "lisp.hpp"
-
+#include <iostream>
 
 namespace lisp {
 namespace ast {
 
 ObjectPtr Integer::execute(Environment& env)
 {
-    return env.create<lisp::Integer>(value_);
+    return env.loadI(cachedVal_);
+}
+
+
+ObjectPtr Double::execute(Environment& env)
+{
+    return env.loadI(cachedVal_);
 }
 
 
 ObjectPtr String::execute(Environment& env)
 {
-    return env.create<lisp::String>(value_.c_str(), value_.length());
+    return env.loadI(cachedVal_);
 }
 
 
@@ -23,18 +29,26 @@ ObjectPtr Null::execute(Environment& env)
 }
 
 
+ObjectPtr True::execute(Environment& env)
+{
+    return env.getBool(true);
+}
+
+
+ObjectPtr False::execute(Environment& env)
+{
+    return env.getBool(false);
+}
+
+
 ObjectPtr LValue::execute(Environment& env)
 {
-    return env.load(name_);
+    return env.load(cachedVarLoc_);
 }
 
 
 class InterpretedFunctionImpl : public Function::Impl {
 public:
-    // This solution stores a raw pointer to an ast subtree. While
-    // the code may appear unsafe, the ast will definitely outlive
-    // the raw pointer; you are traversing the ast while executing
-    // the program, after all :).
     InterpretedFunctionImpl(ast::Lambda* impl) : impl_(impl)
     {
     }
@@ -44,7 +58,7 @@ public:
     {
         auto derived = env.derive();
         for (size_t i = 0; i < args.size(); ++i) {
-            derived->store(impl_->argNames_[i], args[i]);
+            derived->store(args[i]);
         }
         auto up = env.getNull();
         for (auto& statement : impl_->statements_) {
@@ -69,7 +83,7 @@ ObjectPtr Lambda::execute(Environment& env)
 
 ObjectPtr Application::execute(Environment& env)
 {
-    auto loaded = checkedCast<lisp::Function>(env, env.load(target_));
+    auto loaded = checkedCast<lisp::Function>(env, env.load(cachedTargetLoc_));
     std::vector<ObjectPtr> args;
     for (const auto& arg : args_) {
         args.push_back(arg->execute(env));
@@ -80,7 +94,7 @@ ObjectPtr Application::execute(Environment& env)
 
 ObjectPtr Let::Binding::execute(Environment& env)
 {
-    env.store(name_, value_->execute(env));
+    env.store(value_->execute(env));
     return env.getNull();
 }
 
@@ -124,8 +138,107 @@ ObjectPtr If::execute(Environment& env)
 
 ObjectPtr Def::execute(Environment& env)
 {
-    env.store(name_, value_->execute(env));
+    env.store(value_->execute(env));
     return env.getNull();
+}
+
+
+void String::init(Environment& env, Scope& scope)
+{
+    cachedVal_ =
+        env.storeI(env.create<lisp::String>(value_.c_str(), value_.length()));
+}
+
+
+void Integer::init(Environment& env, Scope& scope)
+{
+    cachedVal_ = env.storeI(env.create<lisp::Integer>(value_));
+}
+
+
+void Double::init(Environment& env, Scope& scope)
+{
+    cachedVal_ = env.storeI(env.create<lisp::Double>(value_));
+}
+
+
+void LValue::init(Environment& env, Scope& scope)
+{
+    cachedVarLoc_ = scope.find(name_);
+}
+
+
+void Lambda::init(Environment& env, Scope& scope)
+{
+    Scope::setParent(&scope);
+    for (const auto& argName : argNames_) {
+        Scope::insert(argName);
+    }
+    for (const auto& statement : statements_) {
+        statement->init(env, *this);
+    }
+}
+
+
+void Application::init(Environment& env, Scope& scope)
+{
+    cachedTargetLoc_ = scope.find(target_);
+    for (const auto& arg : args_) {
+        arg->init(env, scope);
+    }
+}
+
+
+void Let::Binding::init(Environment& env, Scope& scope)
+{
+    scope.insert(name_);
+    value_->init(env, scope);
+}
+
+
+void Let::init(Environment& env, Scope& scope)
+{
+    Scope::setParent(&scope);
+    for (const auto& binding : bindings_) {
+        binding->init(env, *this);
+    }
+    for (const auto& statement : statements_) {
+        statement->init(env, *this);
+    }
+}
+
+
+void Begin::init(Environment& env, Scope& scope)
+{
+    for (const auto& statement : statements_) {
+        statement->init(env, scope);
+    }
+}
+
+
+void If::init(Environment& env, Scope& scope)
+{
+    condition_->init(env, scope);
+    trueBranch_->init(env, scope);
+    falseBranch_->init(env, scope);
+}
+
+
+void Def::init(Environment& env, Scope& scope)
+{
+    scope.insert(name_);
+    value_->init(env, scope);
+}
+
+
+void TopLevel::init(Environment& env, Scope& scope)
+{
+    // The builtin functions wouldn't be visible to the compiler otherwise.
+    const auto names = getBuiltinList();
+    for (auto& name : names) {
+        scope.insert(name);
+    }
+    Begin::init(env, scope);
 }
 
 

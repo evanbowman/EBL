@@ -5,9 +5,11 @@
 #include <string>
 #include <vector>
 
+#include "builtin.hpp"
 #include "environment.hpp"
 #include "extlib/optional.hpp"
 #include "lexer.hpp"
+#include "math.hpp"
 #include "parser.hpp"
 #include "types.hpp"
 
@@ -46,16 +48,18 @@ void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out)
     } else if (lisp::isType<lisp::Null>(env, obj)) {
         out << "null";
     } else if (obj == env.getBool(true)) {
-        out << "#t";
+        out << "true";
     } else if (obj == env.getBool(false)) {
-        out << "#f";
+        out << "false";
     } else if (lisp::isType<lisp::Function>(env, obj)) {
         out << "lambda<" << obj.cast<lisp::Function>()->argCount() << ">";
     } else if (lisp::isType<lisp::String>(env, obj)) {
-        out << '\"' << obj.cast<lisp::String>()->value() << '\"';
+        out << obj.cast<lisp::String>()->value();
+    } else if (lisp::isType<lisp::Double>(env, obj)) {
+        out << obj.cast<lisp::Double>()->value();
     } else if (lisp::isType<lisp::Complex>(env, obj)) {
         out << obj.cast<lisp::Complex>()->value();
-    }else {
+    } else {
         out << "unknown object" << std::endl;
     }
 }
@@ -127,12 +131,25 @@ private:
     nonstd::optional<ListBuilder> builder_;
 };
 
-static const struct BuiltinFunctionInfo {
+struct BuiltinFunctionInfo {
     const char* name;
     const char* docstring;
     Arguments::Count requiredArgs;
     CFunction impl;
-} builtins[] = {
+};
+
+template <size_t size>
+void initBuiltins(Environment& env, const BuiltinFunctionInfo (&builtins)[size])
+{
+    std::for_each(std::begin(builtins), std::end(builtins),
+                  [&](const BuiltinFunctionInfo& info) {
+                      auto fn = env.create<Function>(
+                          info.docstring, info.requiredArgs, info.impl);
+                      env.store(fn);
+                  });
+}
+
+static const BuiltinFunctionInfo builtins[] = {
     {"cons", "(cons CAR CDR)", 2,
      [](Environment& env, const Arguments& args) {
          return env.create<Pair>(args[0], args[1]);
@@ -230,6 +247,30 @@ static const struct BuiltinFunctionInfo {
          }
          return builder.result();
      }},
+    {"dolist", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         auto pred = checkedCast<Function>(env, args[0]);
+         if (not isType<Null>(env, args[1])) {
+             std::vector<ObjectPtr> params;
+             dolist(env, args[1], [&](ObjectPtr element) {
+                 params = {element};
+                 pred->call(params);
+             });
+         }
+         return env.getNull();
+     }},
+    {"dotimes", nullptr, 2,
+     [](Environment& env, const Arguments& args) {
+         auto pred = checkedCast<Function>(env, args[0]);
+         const auto times = checkedCast<Integer>(env, args[1])->value();
+         std::vector<ObjectPtr> params;
+         for (Integer::Rep i = 0; i < times; ++i) {
+             auto iObj = env.create<Integer>(i);
+             params = {iObj};
+             pred->call(params);
+         }
+         return env.getNull();
+     }},
     {"null?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          return env.getBool(isType<Null>(env, args[0]));
@@ -302,37 +343,6 @@ static const struct BuiltinFunctionInfo {
          const auto prev = checkedCast<Integer>(env, args[0])->value();
          return env.create<Integer>(prev - 1);
      }},
-    {"abs", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         auto val = checkedCast<Integer>(env, args[0]);
-         if (val->value() > 0) {
-             return val;
-         } else {
-             return env.create<Integer>(val->value() * -1);
-         }
-     }},
-    {"+", nullptr, 0,
-     [](Environment& env, const Arguments& args) {
-         Integer::Rep result = 0;
-         for (Arguments::Count i = 0; i < args.count(); ++i) {
-             result += checkedCast<Integer>(env, args[i])->value();
-         }
-         return env.create<Integer>(result);
-     }},
-    {"-", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         auto lhs = checkedCast<Integer>(env, args[0]);
-         auto rhs = checkedCast<Integer>(env, args[1]);
-         return env.create<Integer>(lhs->value() - rhs->value());
-     }},
-    {"*", nullptr, 0,
-     [](Environment& env, const Arguments& args) {
-         Integer::Rep result = 1;
-         for (Arguments::Count i = 0; i < args.count(); ++i) {
-             result *= checkedCast<Integer>(env, args[i])->value();
-         }
-         return env.create<Integer>(result);
-     }},
     {"max", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          auto result = checkedCast<Integer>(env, args[0]);
@@ -385,18 +395,6 @@ static const struct BuiltinFunctionInfo {
          }
          return env.getNull();
      }},
-    {">", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         auto lhs = checkedCast<Integer>(env, args[0]);
-         auto rhs = checkedCast<Integer>(env, args[1]);
-         return env.getBool(lhs->value() > rhs->value());
-     }},
-    {"<", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         auto lhs = checkedCast<Integer>(env, args[0]);
-         auto rhs = checkedCast<Integer>(env, args[1]);
-         return env.getBool(lhs->value() < rhs->value());
-     }},
     {"memory-statistics", nullptr, 0,
      [](Environment& env, const Arguments& args) {
          std::cout << "heap capacity: " << env.getHeap().capacity()
@@ -416,7 +414,6 @@ static const struct BuiltinFunctionInfo {
          std::cout << "\n";
          return env.getNull();
      }},
-
     // Temporary, until we have support for characters
     {"newline", nullptr, 0,
      [](Environment& env, const Arguments& args) {
@@ -428,57 +425,226 @@ static const struct BuiltinFunctionInfo {
          std::cout << " " << std::endl;
          return env.getNull();
      }},
-    {"cabs", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         auto c = checkedCast<Complex>(env, args[0]);
-         const Integer::Rep result = std::abs(c->value());
-         return env.create<Integer>(result);
+    {"+", nullptr, 0,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         Integer::Rep iSum = 0;
+         Complex::Rep cSum;
+         Double::Rep dSum = 0.0;
+         for (Arguments::Count i = 0; i < args.count(); ++i) {
+             switch (args[i]->typeId()) {
+             case typeInfo.typeId<Integer>():
+                 iSum += args[i].cast<Integer>()->value();
+                 break;
+
+             case typeInfo.typeId<Double>():
+                 dSum += args[i].cast<Double>()->value();
+                 break;
+
+             case typeInfo.typeId<Complex>():
+                 cSum += args[i].cast<Complex>()->value();
+                 break;
+
+             default:
+                 throw TypeError(args[i]->typeId(), "not a number");
+             }
+         }
+         if (cSum not_eq Complex::Rep{0.0, 0.0}) {
+             return env.create<Complex>(cSum + dSum +
+                                        static_cast<Double::Rep>(iSum));
+         } else if (dSum) {
+             return env.create<Double>(dSum + iSum);
+         }
+         return env.create<Integer>(iSum);
      }},
-    {"c+", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         return env.create<Complex>(checkedCast<Complex>(env, args[0])->value() +
-                                    checkedCast<Complex>(env, args[1])->value());
+    {"-", nullptr, 2,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         // FIXME: this isn't as flexible as it should be
+         switch (args[0]->typeId()) {
+         case typeInfo.typeId<Integer>():
+             return env.create<Integer>(
+                 args[0].cast<Integer>()->value() -
+                 checkedCast<Integer>(env, args[1])->value());
+
+         case typeInfo.typeId<Double>():
+             return env.create<Double>(
+                 args[0].cast<Double>()->value() -
+                 checkedCast<Double>(env, args[1])->value());
+
+         case typeInfo.typeId<Complex>():
+             return env.create<Complex>(
+                 args[0].cast<Complex>()->value() -
+                 checkedCast<Complex>(env, args[1])->value());
+         default:
+             throw TypeError(args[0]->typeId(), "not a number");
+         }
      }},
-    {"c*", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         return env.create<Complex>(checkedCast<Complex>(env, args[0])->value() *
-                                    checkedCast<Complex>(env, args[1])->value());
+    {"*", nullptr, 0,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         Integer::Rep iProd = 1;
+         Double::Rep dProd = 1.0;
+         Complex::Rep cProd(1.0);
+         for (Arguments::Count i = 0; i < args.count(); ++i) {
+             switch (args[i]->typeId()) {
+             case typeInfo.typeId<Integer>():
+                 iProd *= args[i].cast<Integer>()->value();
+                 break;
+
+             case typeInfo.typeId<Double>():
+                 dProd *= args[i].cast<Double>()->value();
+                 break;
+
+             case typeInfo.typeId<Complex>():
+                 cProd *= args[i].cast<Complex>()->value();
+                 break;
+             }
+         }
+         if (cProd not_eq Complex::Rep{1.0}) {
+             return env.create<Complex>(cProd * dProd *
+                                        static_cast<Double::Rep>(iProd));
+         } else if (dProd not_eq 1.0) {
+             return env.create<Double>(dProd * iProd);
+         }
+         return env.create<Integer>(iProd);
+     }},
+    {"/", nullptr, 2,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         // FIXME: this isn't as flexible as it should be
+         switch (args[0]->typeId()) {
+         case typeInfo.typeId<Integer>():
+             return env.create<Integer>(
+                 args[0].cast<Integer>()->value() /
+                 checkedCast<Integer>(env, args[1])->value());
+
+         case typeInfo.typeId<Double>():
+             return env.create<Double>(
+                 args[0].cast<Double>()->value() /
+                 checkedCast<Double>(env, args[1])->value());
+
+         case typeInfo.typeId<Complex>():
+             return env.create<Complex>(
+                 args[0].cast<Complex>()->value() /
+                 checkedCast<Complex>(env, args[1])->value());
+         default:
+             throw TypeError(args[0]->typeId(), "not a number");
+         }
+     }},
+    {">", nullptr, 2,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         switch (args[0]->typeId()) {
+         case typeInfo.typeId<Integer>():
+             return env.getBool(args[0].cast<Integer>()->value() >
+                                checkedCast<Integer>(env, args[1])->value());
+
+         case typeInfo.typeId<Double>():
+             return env.getBool(args[0].cast<Double>()->value() >
+                                checkedCast<Double>(env, args[1])->value());
+
+         case typeInfo.typeId<Complex>():
+             throw TypeError(typeInfo.typeId<Complex>(),
+                             "Comparison unsupported for complex numbers. "
+                             "Why not try comparing the magnitude?");
+
+         default:
+             throw TypeError(args[0]->typeId(), "not a number");
+         }
+     }},
+    {"<", nullptr, 2,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         switch (args[0]->typeId()) {
+         case typeInfo.typeId<Integer>():
+             return env.getBool(args[0].cast<Integer>()->value() <
+                                checkedCast<Integer>(env, args[1])->value());
+
+         case typeInfo.typeId<Double>():
+             return env.getBool(args[0].cast<Double>()->value() <
+                                checkedCast<Double>(env, args[1])->value());
+
+         case typeInfo.typeId<Complex>():
+             throw TypeError(typeInfo.typeId<Complex>(),
+                             "Comparison unsupported for complex numbers. "
+                             "Why not try comparing the magnitude?");
+
+         default:
+             throw TypeError(args[0]->typeId(), "not a number");
+         }
+     }},
+    {"abs", nullptr, 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         auto inp = args[0];
+         switch (inp->typeId()) {
+         case typeInfo.typeId<Integer>():
+             if (inp.cast<Integer>()->value() > 0) {
+                 return inp;
+             } else {
+                 const auto result = inp.cast<Integer>()->value() * -1;
+                 return env.create<Integer>(result);
+             }
+             break;
+
+         case typeInfo.typeId<Double>():
+             if (inp.cast<Double>()->value() > 0.0) {
+                 return inp;
+             } else {
+                 const auto result = std::abs(inp.cast<Double>()->value());
+                 return env.create<Double>(result);
+             }
+             break;
+
+         case typeInfo.typeId<Complex>(): {
+             const auto result = std::abs(inp.cast<Complex>()->value());
+             return env.create<Double>(result);
+         }
+
+         default:
+             throw TypeError(inp->typeId(), "not a number");
+         }
      }},
     {"complex", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         const auto real = checkedCast<Integer>(env, args[0])->value();
-         const auto imag = checkedCast<Integer>(env, args[1])->value();
+         const auto real = checkedCast<Double>(env, args[0])->value();
+         const auto imag = checkedCast<Double>(env, args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
      }},
 };
 
-void Environment::store(const std::string& key, ObjectPtr value)
+std::vector<std::string> getBuiltinList()
 {
-    for (auto& binding : vars_) {
-        if (binding.first == key) {
-            binding.second = value;
-            return;
-        }
-    }
-    vars_.push_back({key, value});
+    std::vector<std::string> ret;
+    std::for_each(
+        std::begin(builtins), std::end(builtins),
+        [&](const BuiltinFunctionInfo& info) { ret.push_back(info.name); });
+    return ret;
 }
 
-ObjectPtr Environment::load(const std::string& key)
+void Environment::store(ObjectPtr value)
 {
-    for (auto& binding : vars_) {
-        if (binding.first == key) {
-            return binding.second;
-        }
+    vars_.push_back(value);
+}
+
+ObjectPtr Environment::load(VarLoc loc)
+{
+    // std::cout << "loading: " << loc.frameDist_ << ", "
+    //           << loc.offset_ << std::endl;
+    // The compiler will have already validated variable offsets, so there's
+    // no need to check out of bounds access.
+    auto frame = reference();
+    while (loc.frameDist_ > 0) {
+        frame = frame->parent_;
+        loc.frameDist_--;
     }
-    if (parent_) {
-        // TODO: Need to create visibility barrier for function calls.
-        // e.g.: With this implementation, a function can reference variables
-        // in the caller's environment. Upwards visibility is necessary for
-        // some special forms (like let bindings), but needs to be prevented
-        // for function calls.
-        return parent_->load(key);
-    }
-    throw std::runtime_error("binding for \'" + key + "\' does not exist");
+    return frame->vars_[loc.offset_];
+}
+
+ObjectPtr Environment::loadI(ImmediateId immediate)
+{
+    return context_->immediates_[immediate];
+}
+
+ImmediateId Environment::storeI(ObjectPtr value)
+{
+    const auto ret = context_->immediates_.size();
+    context_->immediates_.push_back(value);
+    return ret;
 }
 
 ObjectPtr Environment::getNull()
@@ -507,17 +673,13 @@ EnvPtr Environment::reference()
 }
 
 Context::Context(const Configuration& config)
-    : heap_(1000000), topLevel_(std::make_shared<Environment>(this, nullptr)),
+    : heap_(100000000), topLevel_(std::make_shared<Environment>(this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},
       nullValue_{topLevel_->create<Null>()}
 {
-    std::for_each(std::begin(builtins), std::end(builtins),
-                  [&](const BuiltinFunctionInfo& info) {
-                      auto fn = topLevel_->create<Function>(
-                          info.docstring, info.requiredArgs, info.impl);
-                      topLevel_->store(info.name, fn);
-                  });
+    initBuiltins(*topLevel_, builtins);
+    initMath(*topLevel_);
 }
 
 std::shared_ptr<Environment> Context::topLevel()
@@ -535,16 +697,12 @@ Context* Environment::getContext()
     return context_;
 }
 
-void Context::pushAst(ast::Node* root)
-{
-    astRoots_.push_back(root);
-}
-
 ObjectPtr Environment::exec(const std::string& code)
 {
     auto root = lisp::parse(code);
+    root->init(*this, *root);
     auto result = root->execute(*this);
-    getContext()->pushAst(root.release());
+    context_->astRoots_.push_back(root.release());
     return result;
 }
 

@@ -45,6 +45,8 @@ Lexer::Token Lexer::lex()
             for (; checkTermCond(); ++position_) {
                 if (not std::isdigit(current())) {
                     if (current() == '.') {
+                        inputBuffer_.push_back('.');
+                        ++position_;
                         goto TOKENIZE_FLOAT;
                     } else {
                         goto TOKENIZE_SYMBOL;
