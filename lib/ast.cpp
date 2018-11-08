@@ -99,7 +99,7 @@ ObjectPtr Let::execute(Environment& env)
 }
 
 
-ObjectPtr TopLevel::execute(Environment& env)
+ObjectPtr Begin::execute(Environment& env)
 {
     auto up = env.getNull();
     for (const auto& st : statements_) {

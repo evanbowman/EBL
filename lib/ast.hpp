@@ -167,18 +167,18 @@ struct Let : Expr {
 };
 
 
-struct TopLevel : Expr {
+struct Begin : Expr {
     Vector<Ptr<Statement>> statements_;
 
     void serialize(std::ostream& out, int indent) override
     {
-        out << "(top";
+        out << "(begin";
         for (const auto& st : statements_) {
             out << '\n';
             format(out, indent + 2);
             st->serialize(out, indent + 2);
         }
-        out << ")\n";
+        out << ")";
     }
     Heap::Ptr<Object> execute(Environment& env) override;
 };

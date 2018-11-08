@@ -4,6 +4,6 @@
 
 namespace lisp {
 
-ast::Ptr<ast::TopLevel> parse(const std::string& code);
+ast::Ptr<ast::Begin> parse(const std::string& code);
 
 }

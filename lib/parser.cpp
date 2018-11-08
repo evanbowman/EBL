@@ -59,12 +59,25 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
     }
 }
 
+ast::Ptr<ast::Begin> parseBegin(Lexer& lexer)
+{
+    auto begin = make_unique<ast::Begin>();
+    try {
+        while (true) {
+            begin->statements_.push_back(parseStatement(lexer));
+        }
+    } catch (const UnexpectedClosingParen&) {
+        return begin;
+    }
+}
+
 ast::Ptr<ast::If> parseIf(Lexer& lexer)
 {
     auto ifExpr = make_unique<ast::If>();
     ifExpr->condition_ = parseStatement(lexer);
     ifExpr->trueBranch_ = parseStatement(lexer);
     ifExpr->falseBranch_ = parseStatement(lexer);
+    expect<Lexer::Token::RPAREN>(lexer, "in parse if");
     return ifExpr;
 }
 
@@ -157,6 +170,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         return parseLet(lexer);
     } else if (fnName == "if") {
         return parseIf(lexer);
+    } else if (fnName == "begin") {
+        return parseBegin(lexer);
     }
     auto apply = make_unique<ast::Application>();
     apply->target_ = fnName;
@@ -204,10 +219,10 @@ DONE:
     return apply;
 }
 
-ast::Ptr<ast::TopLevel> parse(const std::string& code)
+ast::Ptr<ast::Begin> parse(const std::string& code)
 {
     Lexer lexer(code);
-    auto top = make_unique<ast::TopLevel>();
+    auto top = make_unique<ast::Begin>();
     while (lexer.hasText()) {
         top->statements_.push_back(parseStatement(lexer));
     }
