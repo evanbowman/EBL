@@ -29,6 +29,8 @@ public:
 
     template <typename T, typename... Args> Heap::Ptr<T> create(Args&&... args);
 
+    ObjectPtr load(const std::string& key);
+
     void store(ObjectPtr value);
     ObjectPtr load(VarLoc loc);
 
@@ -74,7 +76,7 @@ template <> struct ConstructImpl<Function> {
 std::vector<std::string> getBuiltinList();
 
 namespace ast {
-struct Node;
+struct TopLevel;
 }
 
 class Context {
@@ -121,7 +123,8 @@ private:
     // TODO: Eventually the codebase will execute bytecode instead of doing tree
     // walking, but for now, previously exec'd trees need to be stored because
     // some variables in the environment might reference the old ast(s).
-    std::vector<ast::Node*> astRoots_;
+    // TODO: Should new code be merged into the top level of the existing ast?
+    ast::TopLevel* astRoot_ = nullptr;
 };
 
 template <typename T, typename... Args>

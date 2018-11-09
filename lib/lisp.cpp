@@ -9,7 +9,6 @@
 #include "environment.hpp"
 #include "extlib/optional.hpp"
 #include "lexer.hpp"
-#include "math.hpp"
 #include "parser.hpp"
 #include "types.hpp"
 
@@ -616,6 +615,12 @@ std::vector<std::string> getBuiltinList()
     return ret;
 }
 
+ObjectPtr Environment::load(const std::string& key)
+{
+    auto loc = context_->astRoot_->find(key);
+    return context_->topLevel_->load(loc);
+}
+
 void Environment::store(ObjectPtr value)
 {
     vars_.push_back(value);
@@ -679,7 +684,6 @@ Context::Context(const Configuration& config)
       nullValue_{topLevel_->create<Null>()}
 {
     initBuiltins(*topLevel_, builtins);
-    initMath(*topLevel_);
 }
 
 std::shared_ptr<Environment> Context::topLevel()
@@ -700,9 +704,20 @@ Context* Environment::getContext()
 ObjectPtr Environment::exec(const std::string& code)
 {
     auto root = lisp::parse(code);
-    root->init(*this, *root);
-    auto result = root->execute(*this);
-    context_->astRoots_.push_back(root.release());
+    auto result = getNull();
+    if (context_->astRoot_) {
+        // Splice and process each statement into the existing environment
+        for (auto& st : root->statements_) {
+            context_->astRoot_->statements_.push_back(std::move(st));
+            context_->astRoot_->statements_.back()->init(*this,
+                                                         *context_->astRoot_);
+            result = context_->astRoot_->statements_.back()->execute(*this);
+        }
+    } else {
+        root->init(*this, *root);
+        result = root->execute(*this);
+        context_->astRoot_ = root.release();
+    }
     return result;
 }
 

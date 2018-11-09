@@ -9,7 +9,6 @@ project(lisp)
 
 add_library(lisp
   lib/lisp.cpp
-  lib/math.cpp
   lib/memory.cpp
   lib/subr.cpp
   lib/lexer.cpp
@@ -18,11 +17,11 @@ add_library(lisp
 
 
 # A repl.
-# add_executable(repl
-#   tools/repl.cpp)
+add_executable(repl
+  tools/repl.cpp)
 
-# target_link_libraries(repl
-#   lisp)
+target_link_libraries(repl
+  lisp)
 
 
 # Execute a script file.
