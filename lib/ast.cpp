@@ -5,6 +5,13 @@
 namespace lisp {
 namespace ast {
 
+
+ObjectPtr Import::execute(Environment& env)
+{
+    return env.getNull();
+}
+
+
 ObjectPtr Integer::execute(Environment& env)
 {
     return env.loadI(cachedVal_);
@@ -54,7 +61,7 @@ public:
     }
 
 
-    ObjectPtr call(Environment& env, std::vector<ObjectPtr>& args)
+    ObjectPtr call(Environment& env, Arguments& args)
     {
         auto derived = env.derive();
         for (size_t i = 0; i < args.size(); ++i) {
@@ -76,7 +83,7 @@ private:
 ObjectPtr Lambda::execute(Environment& env)
 {
     auto impl = make_unique<InterpretedFunctionImpl>(this);
-    const Arguments::Count argc = argNames_.size();
+    const auto argc = argNames_.size();
     return env.create<lisp::Function>("", argc, std::move(impl));
 }
 
@@ -84,7 +91,7 @@ ObjectPtr Lambda::execute(Environment& env)
 ObjectPtr Application::execute(Environment& env)
 {
     auto loaded = checkedCast<lisp::Function>(env, env.load(cachedTargetLoc_));
-    std::vector<ObjectPtr> args;
+    Arguments args;
     for (const auto& arg : args_) {
         args.push_back(arg->execute(env));
     }
@@ -140,6 +147,12 @@ ObjectPtr Def::execute(Environment& env)
 {
     env.store(value_->execute(env));
     return env.getNull();
+}
+
+
+void Import::init(Environment& env, Scope& scope)
+{
+    std::cout << "importing " << name_ << std::endl;
 }
 
 

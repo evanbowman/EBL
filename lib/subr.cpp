@@ -21,6 +21,12 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
             return false;
         }
     } break;
+    case lisp::typeInfo.typeId<lisp::Complex>(): {
+        if (lhs.cast<lisp::Complex>()->value() not_eq
+            rhs.cast<lisp::Complex>()->value()) {
+            return false;
+        }
+    } break;
     default:
         std::cerr << "bad input" << std::endl;
         break;
@@ -35,6 +41,10 @@ size_t Hash::operator()(ObjectPtr obj) const noexcept
         std::hash<lisp::Integer::Rep> hash;
         return hash(obj.cast<lisp::Integer>()->value());
     } break;
+    case lisp::typeInfo.typeId<lisp::Complex>(): {
+        std::hash<lisp::Complex::Rep> hash;
+        return hash(obj.cast<lisp::Complex>()->value());
+    } break;
     default:
         std::cerr << "bad input" << std::endl;
         return 0;
@@ -48,9 +58,9 @@ public:
     {
     }
 
-    ObjectPtr call(Environment& env, std::vector<ObjectPtr>& params) override
+    ObjectPtr call(Environment& env, Arguments& params) override
     {
-        return fn_(env, Arguments{(int)params.size(), params.data()});
+        return fn_(env, params);
     }
 
 private:
@@ -68,7 +78,7 @@ public:
     {
     }
 
-    ObjectPtr call(Environment& env, std::vector<ObjectPtr>& params) override
+    ObjectPtr call(Environment& env, Arguments& params) override
     {
         auto found = results_.find(params);
         if (found not_eq results_.end()) {
@@ -87,8 +97,7 @@ public:
 
 private:
     struct ParamEq {
-        bool operator()(const std::vector<ObjectPtr>& lhs,
-                        const std::vector<ObjectPtr>& rhs) const
+        bool operator()(const Arguments& lhs, const Arguments& rhs) const
         {
             if (lhs.size() not_eq rhs.size()) {
                 return false;
@@ -104,7 +113,7 @@ private:
     };
 
     struct ParamHash {
-        size_t operator()(const std::vector<lisp::ObjectPtr>& key) const
+        size_t operator()(const Arguments& key) const
         {
             Hash hash;
             size_t res = 17;
@@ -115,26 +124,12 @@ private:
         }
     };
 
-    std::unordered_map<std::vector<ObjectPtr>, ObjectPtr, ParamHash, ParamEq>
-        results_;
+    std::unordered_map<Arguments, ObjectPtr, ParamHash, ParamEq> results_;
     std::unique_ptr<Function::Impl> wrapped_;
 };
 
-class BytecodeFunctionImpl : public Function::Impl {
-public:
-    ObjectPtr call(Environment& env, std::vector<ObjectPtr>& params) override
-    {
-        auto derivedEnv = env.derive(/* TODO: stackSize_ */);
-        // ... TODO ...
-        return env.getNull();
-    }
-
-private:
-    size_t stackSize_;
-};
-
 Function::Function(TypeId tp, Environment& env, const char* docstring,
-                   Arguments::Count requiredArgs, CFunction impl)
+                   size_t requiredArgs, CFunction impl)
     : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
       impl_(std::unique_ptr<CFunctionImpl>(new CFunctionImpl(impl))),
       envPtr_(env.reference())
@@ -142,7 +137,7 @@ Function::Function(TypeId tp, Environment& env, const char* docstring,
 }
 
 Function::Function(TypeId tp, Environment& env, const char* docstring,
-                   Arguments::Count requiredArgs, std::unique_ptr<Impl> impl)
+                   size_t requiredArgs, std::unique_ptr<Impl> impl)
     : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
       impl_(std::move(impl)), envPtr_(env.reference())
 {

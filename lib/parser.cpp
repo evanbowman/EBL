@@ -18,6 +18,9 @@ template <Lexer::Token TOK> Lexer::Token expect(Lexer& lexer, const char* ctx)
 struct UnexpectedClosingParen {
 };
 
+struct UnexpectedEOF {
+};
+
 ast::Ptr<ast::Expr> parseExpr(Lexer& lexer);
 
 ast::Ptr<ast::Value> parseValue(const std::string& name)
@@ -49,7 +52,7 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
         throw UnexpectedClosingParen{};
 
     case Lexer::Token::NONE:
-        throw std::runtime_error("unexpected EOF in statement");
+        throw UnexpectedEOF{};
 
     case Lexer::Token::INTEGER: {
         auto ret = make_unique<ast::Integer>();
@@ -126,28 +129,37 @@ BODY:
 
 ast::Ptr<ast::Def> parseDef(Lexer& lexer)
 {
-    expect<Lexer::Token::SYMBOL>(lexer, "in eval binding");
+    expect<Lexer::Token::SYMBOL>(lexer, "in parse binding");
     auto def = make_unique<ast::Def>();
     def->name_ = lexer.rdbuf();
     def->value_ = parseStatement(lexer);
-    expect<Lexer::Token::RPAREN>(lexer, "in eval binding");
+    expect<Lexer::Token::RPAREN>(lexer, "in parse binding");
     return def;
+}
+
+ast::Ptr<ast::Import> parseImport(Lexer& lexer)
+{
+    expect<Lexer::Token::STRING>(lexer, "in parse import");
+    auto import = make_unique<ast::Import>();
+    import->name_ = lexer.rdbuf();
+    expect<Lexer::Token::RPAREN>(lexer, "in parse import");
+    return import;
 }
 
 ast::Ptr<ast::Let::Binding> parseLetBinding(Lexer& lexer)
 {
-    expect<Lexer::Token::SYMBOL>(lexer, "in eval binding");
+    expect<Lexer::Token::SYMBOL>(lexer, "in parse binding");
     auto binding = make_unique<ast::Let::Binding>();
     binding->name_ = lexer.rdbuf();
     binding->value_ = parseStatement(lexer);
-    expect<Lexer::Token::RPAREN>(lexer, "in eval binding");
+    expect<Lexer::Token::RPAREN>(lexer, "in parse binding");
     return binding;
 }
 
 ast::Ptr<ast::Let> parseLet(Lexer& lexer)
 {
     auto let = make_unique<ast::Let>();
-    expect<Lexer::Token::LPAREN>(lexer, "in eval let");
+    expect<Lexer::Token::LPAREN>(lexer, "in parse let");
     while (true) {
         switch (lexer.lex()) {
         case Lexer::Token::RPAREN:
@@ -174,7 +186,7 @@ BODY:
 
 ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
 {
-    expect<Lexer::Token::SYMBOL>(lexer, "in eval expr");
+    expect<Lexer::Token::SYMBOL>(lexer, "in parse expr");
     const std::string fnName = lexer.rdbuf();
     // special forms
     if (fnName == "def") {
@@ -187,6 +199,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         return parseIf(lexer);
     } else if (fnName == "begin") {
         return parseBegin(lexer);
+    } else if (fnName == "import") {
+        return parseImport(lexer);
     }
     auto apply = make_unique<ast::Application>();
     apply->target_ = fnName;
@@ -239,8 +253,14 @@ ast::Ptr<ast::TopLevel> parse(const std::string& code)
 {
     Lexer lexer(code);
     auto top = make_unique<ast::TopLevel>();
-    while (lexer.hasText()) {
-        top->statements_.push_back(parseStatement(lexer));
+    try {
+        while (true) {
+            top->statements_.push_back(parseStatement(lexer));
+        }
+    } catch (const UnexpectedClosingParen&) {
+        return top;
+    } catch (const UnexpectedEOF&) {
+        return top;
     }
     return top;
 }

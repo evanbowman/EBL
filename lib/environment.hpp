@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "common.hpp"
+#include "extlib/smallVector.hpp"
 #include "memory.hpp"
 #include "types.hpp"
 
@@ -53,7 +54,7 @@ public:
 private:
     Context* context_;
     EnvPtr parent_;
-    std::vector<ObjectPtr> vars_;
+    Ogre::SmallVector<ObjectPtr, 6> vars_;
 };
 
 template <typename T> struct ConstructImpl {

@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "builtin.hpp"
 #include "environment.hpp"
 #include "extlib/optional.hpp"
 #include "lexer.hpp"
@@ -133,7 +132,7 @@ private:
 struct BuiltinFunctionInfo {
     const char* name;
     const char* docstring;
-    Arguments::Count requiredArgs;
+    size_t requiredArgs;
     CFunction impl;
 };
 
@@ -155,9 +154,9 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"list", nullptr, 0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
-         if (auto argc = args.count()) {
+         if (auto argc = args.size()) {
              ListBuilder builder(env, args[0]);
-             for (Arguments::Count pos = 1; pos < argc; ++pos) {
+             for (size_t pos = 1; pos < argc; ++pos) {
                  builder.pushBack(args[pos]);
              }
              return builder.result();
@@ -204,9 +203,9 @@ static const BuiltinFunctionInfo builtins[] = {
          if (not isType<Null>(env, args[1])) {
              auto fn = checkedCast<Function>(env, args[0]);
              // TODO: replace vectors with small size optimized containers
-             std::vector<ObjectPtr> paramVec;
+             Arguments paramVec;
              std::vector<Heap::Ptr<Pair>> inputLists;
-             for (Arguments::Count i = 1; i < args.count(); ++i) {
+             for (size_t i = 1; i < args.size(); ++i) {
                  inputLists.push_back(checkedCast<Pair>(env, args[i]));
                  paramVec.push_back(inputLists.back()->getCar());
              }
@@ -236,12 +235,13 @@ static const BuiltinFunctionInfo builtins[] = {
          LazyListBuilder builder(env);
          auto pred = checkedCast<Function>(env, args[0]);
          if (not isType<Null>(env, args[1])) {
-             std::vector<ObjectPtr> params;
+             Arguments params;
              dolist(env, args[1], [&](ObjectPtr element) {
-                 params = {element};
+                 params.push_back(element);
                  if (pred->call(params) == env.getBool(true)) {
                      builder.pushBack(element);
                  }
+                 params.clear();
              });
          }
          return builder.result();
@@ -250,10 +250,11 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) {
          auto pred = checkedCast<Function>(env, args[0]);
          if (not isType<Null>(env, args[1])) {
-             std::vector<ObjectPtr> params;
+             Arguments params;
              dolist(env, args[1], [&](ObjectPtr element) {
-                 params = {element};
+                 params.push_back(element);
                  pred->call(params);
+                 params.clear();
              });
          }
          return env.getNull();
@@ -262,11 +263,12 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) {
          auto pred = checkedCast<Function>(env, args[0]);
          const auto times = checkedCast<Integer>(env, args[1])->value();
-         std::vector<ObjectPtr> params;
+         Arguments params;
          for (Integer::Rep i = 0; i < times; ++i) {
              auto iObj = env.create<Integer>(i);
-             params = {iObj};
+             params.push_back(iObj);
              pred->call(params);
+             params.clear();
          }
          return env.getNull();
      }},
@@ -310,7 +312,7 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) { return args[0]; }},
     {"apply", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         std::vector<ObjectPtr> params;
+         Arguments params;
          if (not isType<Null>(env, args[1])) {
              dolist(env, args[1],
                     [&](ObjectPtr elem) { params.push_back(elem); });
@@ -345,7 +347,7 @@ static const BuiltinFunctionInfo builtins[] = {
     {"max", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          auto result = checkedCast<Integer>(env, args[0]);
-         for (Arguments::Count i = 0; i < args.count(); ++i) {
+         for (size_t i = 0; i < args.size(); ++i) {
              auto current = checkedCast<Integer>(env, args[i]);
              if (current->value() > result->value()) {
                  result = current;
@@ -356,7 +358,7 @@ static const BuiltinFunctionInfo builtins[] = {
     {"min", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          auto result = checkedCast<Integer>(env, args[0]);
-         for (Arguments::Count i = 0; i < args.count(); ++i) {
+         for (size_t i = 0; i < args.size(); ++i) {
              auto current = checkedCast<Integer>(env, args[i]);
              if (current->value() < result->value()) {
                  result = current;
@@ -366,7 +368,7 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"time", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         std::vector<ObjectPtr> params;
+         Arguments params;
          if (not isType<Null>(env, args[1])) {
              dolist(env, args[1],
                     [&](ObjectPtr elem) { params.push_back(elem); });
@@ -429,7 +431,7 @@ static const BuiltinFunctionInfo builtins[] = {
          Integer::Rep iSum = 0;
          Complex::Rep cSum;
          Double::Rep dSum = 0.0;
-         for (Arguments::Count i = 0; i < args.count(); ++i) {
+         for (size_t i = 0; i < args.size(); ++i) {
              switch (args[i]->typeId()) {
              case typeInfo.typeId<Integer>():
                  iSum += args[i].cast<Integer>()->value();
@@ -482,7 +484,7 @@ static const BuiltinFunctionInfo builtins[] = {
          Integer::Rep iProd = 1;
          Double::Rep dProd = 1.0;
          Complex::Rep cProd(1.0);
-         for (Arguments::Count i = 0; i < args.count(); ++i) {
+         for (size_t i = 0; i < args.size(); ++i) {
              switch (args[i]->typeId()) {
              case typeInfo.typeId<Integer>():
                  iProd *= args[i].cast<Integer>()->value();
@@ -628,8 +630,6 @@ void Environment::store(ObjectPtr value)
 
 ObjectPtr Environment::load(VarLoc loc)
 {
-    // std::cout << "loading: " << loc.frameDist_ << ", "
-    //           << loc.offset_ << std::endl;
     // The compiler will have already validated variable offsets, so there's
     // no need to check out of bounds access.
     auto frame = reference();

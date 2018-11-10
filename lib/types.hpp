@@ -9,8 +9,10 @@
 #include <tuple>
 #include <vector>
 
+#include "extlib/smallVector.hpp"
 #include "memory.hpp"
 #include "utility.hpp"
+
 
 namespace lisp {
 
@@ -199,22 +201,7 @@ private:
     std::string data_;
 };
 
-class Arguments {
-public:
-    using Count = int64_t;
-
-    inline Count count() const
-    {
-        return argc;
-    }
-    inline ObjectPtr operator[](size_t index) const
-    {
-        return args[index];
-    }
-
-    Count argc;
-    ObjectPtr* args;
-};
+using Arguments = Ogre::SmallVector<ObjectPtr, 3>;
 
 using CFunction = std::function<ObjectPtr(Environment&, const Arguments&)>;
 
@@ -226,14 +213,14 @@ public:
         virtual ~Impl()
         {
         }
-        virtual ObjectPtr call(Environment& env, std::vector<ObjectPtr>&) = 0;
+        virtual ObjectPtr call(Environment& env, Arguments&) = 0;
     };
 
     Function(TypeId tp, Environment& env, const char* docstring,
-             Arguments::Count requiredArgs, CFunction cFn);
+             size_t requiredArgs, CFunction cFn);
 
     Function(TypeId tp, Environment& env, const char* docstring,
-             Arguments::Count requiredArgs, std::unique_ptr<Impl> impl);
+             size_t requiredArgs, std::unique_ptr<Impl> impl);
 
     static constexpr const char* name()
     {
@@ -241,9 +228,9 @@ public:
     }
 
     // TODO: call function should be defined differently?
-    inline ObjectPtr call(std::vector<ObjectPtr>& params)
+    inline ObjectPtr call(Arguments& params)
     {
-        if ((int)params.size() < requiredArgs_) {
+        if (params.size() < requiredArgs_) {
             throw std::runtime_error("not enough params for fn!");
         }
         return impl_->call(*envPtr_, params);
@@ -257,14 +244,14 @@ public:
     {
         return docstring_;
     }
-    inline Arguments::Count argCount()
+    inline size_t argCount()
     {
         return requiredArgs_;
     }
 
 private:
     const char* docstring_;
-    Arguments::Count requiredArgs_;
+    size_t requiredArgs_;
     std::unique_ptr<Impl> impl_;
     EnvPtr envPtr_;
 };

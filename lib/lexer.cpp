@@ -75,7 +75,13 @@ Lexer::Token Lexer::lex()
             for (; checkTermCond(); ++position_) {
                 inputBuffer_.push_back(current());
             }
-            return Token::SYMBOL;
+            // FIXME: I'm not sure whether this condition check resolves a bug,
+            // or masks a bug.
+            if (not inputBuffer_.empty()) {
+                return Token::SYMBOL;
+            } else {
+                return Token::NONE;
+            }
         }
     } else {
         return Token::NONE;

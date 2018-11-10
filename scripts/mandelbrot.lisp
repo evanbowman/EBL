@@ -10,15 +10,18 @@
            true)))
 
 (def make-matrix
-     (lambda (xl yl n)
-       (if (< n 1)
-           (cons xl yl)
-           (begin
-             (def list-x (cons (- 1.0 (* n (/ 3.5 100.0))) xl))
-             (def list-y (if (< n 50)
-                             (cons (- 1.0 (* n (/ 2.0 50.0))) yl)
-                             yl))
-             (make-matrix list-x list-y (- n 1))))))
+     (let ((x-coeff (/ 3.5 100.0))
+           (y-coeff (/ 2.0 50.0)))
+       (lambda (xl yl n)
+         (if (< n 1)
+             (cons xl yl)
+             (begin
+               (def list-x (cons (- 1.0 (* n x-coeff)) xl))
+               (def list-y (if (< n 50)
+                               (cons (- 1.0 (* n y-coeff)) yl)
+                               yl))
+               (make-matrix list-x list-y (- n 1)))))))
+
 
 (def data-mat (make-matrix null null 100))
 
