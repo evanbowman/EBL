@@ -143,6 +143,31 @@ ObjectPtr If::execute(Environment& env)
 }
 
 
+ObjectPtr Or::execute(Environment& env)
+{
+    for (const auto& statement : statements_) {
+        auto result = statement->execute(env);
+        if (not (result == env.getBool(false))) {
+            return result;
+        }
+    }
+    return env.getBool(false);
+}
+
+
+ObjectPtr And::execute(Environment& env)
+{
+    ObjectPtr result = env.getBool(true);
+    for (const auto& statement : statements_) {
+        result = statement->execute(env);
+        if (result == env.getBool(false)) {
+            return env.getBool(false);
+        }
+    }
+    return result;
+}
+
+
 ObjectPtr Def::execute(Environment& env)
 {
     env.store(value_->execute(env));
@@ -234,6 +259,22 @@ void If::init(Environment& env, Scope& scope)
     condition_->init(env, scope);
     trueBranch_->init(env, scope);
     falseBranch_->init(env, scope);
+}
+
+
+void Or::init(Environment& env, Scope& scope)
+{
+    for (const auto& statement : statements_) {
+        statement->init(env, scope);
+    }
+}
+
+
+void And::init(Environment& env, Scope& scope)
+{
+    for (const auto& statement : statements_) {
+        statement->init(env, scope);
+    }
 }
 
 

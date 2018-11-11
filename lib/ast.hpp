@@ -222,6 +222,22 @@ struct If : Expr {
 };
 
 
+struct Or : Expr {
+    std::vector<Ptr<Statement>> statements_;
+
+    Heap::Ptr<Object> execute(Environment& env) override;
+    void init(Environment&, Scope&) override;
+};
+
+
+struct And : Expr {
+    std::vector<Ptr<Statement>> statements_;
+
+    Heap::Ptr<Object> execute(Environment& env) override;
+    void init(Environment&, Scope&) override;
+};
+
+
 struct Def : Expr {
     StrVal name_;
     Ptr<Statement> value_;

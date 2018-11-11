@@ -99,6 +99,33 @@ ast::Ptr<ast::If> parseIf(Lexer& lexer)
     return ifExpr;
 }
 
+
+ast::Ptr<ast::Or> parseOr(Lexer& lexer)
+{
+    auto _or = make_unique<ast::Or>();
+    try {
+        while (true) {
+            _or->statements_.push_back(parseStatement(lexer));
+        }
+    } catch (const UnexpectedClosingParen&) {
+        return _or;
+    }
+}
+
+
+ast::Ptr<ast::And> parseAnd(Lexer& lexer)
+{
+    auto _and = make_unique<ast::And>();
+    try {
+        while (true) {
+            _and->statements_.push_back(parseStatement(lexer));
+        }
+    } catch (const UnexpectedClosingParen&) {
+        return _and;
+    }
+}
+
+
 ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)
 {
     auto lambda = make_unique<ast::Lambda>();
@@ -201,6 +228,10 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         return parseBegin(lexer);
     } else if (fnName == "import") {
         return parseImport(lexer);
+    } else if (fnName == "or") {
+        return parseOr(lexer);
+    } else if (fnName == "and") {
+        return parseAnd(lexer);
     }
     auto apply = make_unique<ast::Application>();
     apply->target_ = fnName;

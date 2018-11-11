@@ -28,8 +28,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         }
     } break;
     default:
-        std::cerr << "bad input" << std::endl;
-        break;
+        throw TypeError(type, "no equalto defined for input");
     }
     return true;
 }
@@ -41,14 +40,12 @@ size_t Hash::operator()(ObjectPtr obj) const noexcept
         std::hash<lisp::Integer::Rep> hash;
         return hash(obj.cast<lisp::Integer>()->value());
     } break;
-    case lisp::typeInfo.typeId<lisp::Complex>(): {
-        std::hash<lisp::Complex::Rep> hash;
-        return hash(obj.cast<lisp::Complex>()->value());
-    } break;
+    // case lisp::typeInfo.typeId<lisp::Complex>(): {
+    //     std::hash<lisp::Complex::Rep> hash;
+    //     return hash(obj.cast<lisp::Complex>()->value());
+    // } break;
     default:
-        std::cerr << "bad input" << std::endl;
-        return 0;
-        break;
+        throw TypeError(obj->typeId(), "no hash defined for input");
     }
 }
 
