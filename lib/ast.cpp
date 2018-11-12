@@ -2,9 +2,9 @@
 #include "lisp.hpp"
 #include <iostream>
 
+
 namespace lisp {
 namespace ast {
-
 
 ObjectPtr Import::execute(Environment& env)
 {
@@ -187,6 +187,12 @@ ObjectPtr Set::execute(Environment& env)
 {
     env.store(cachedVarLoc_, value_->execute(env));
     return env.getNull();
+}
+
+
+ObjectPtr UserObject::execute(Environment& env)
+{
+    return value_;
 }
 
 

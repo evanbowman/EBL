@@ -10,6 +10,20 @@ ObjectPtr Environment::load(const std::string& key)
     return context_->topLevel_->load(loc);
 }
 
+void Environment::store(const std::string& key, ObjectPtr value)
+{
+    auto def = make_unique<ast::Def>();
+    auto obj = make_unique<ast::UserObject>(value);
+    def->name_ = key;
+    def->value_ = std::move(obj);
+    if (context_->astRoot_) {
+        context_->astRoot_->statements_.push_back(std::move(def));
+        context_->astRoot_->statements_.back()->init(*context_->topLevel(),
+                                                     *context_->astRoot_);
+        context_->astRoot_->statements_.back()->execute(*this);
+    }
+}
+
 void Environment::push(ObjectPtr value)
 {
     vars_.push_back(value);
@@ -89,6 +103,10 @@ Context::Context(const Configuration& config)
       nullValue_{topLevel_->create<Null>()}
 {
     initBuiltins(*topLevel_);
+    topLevel_->exec(""); // Creates the empty ast root. Technically
+                         // it's not really necessary, but convenient
+                         // for users who want to store stuff in the
+                         // environment before having executed scripts.
 }
 
 std::shared_ptr<Environment> Context::topLevel()

@@ -8,6 +8,11 @@ int main()
     Context context({});
     std::string input;
     auto env = context.topLevel();
+    env->store("quit", env->create<Function>(nullptr, size_t(0),
+                                             [](Environment& env, const Arguments&) {
+                                                 exit(0);
+                                                 return env.getNull();
+                                             }));
     Arguments printArgv;
     while (true) {
         std::cout << "> ";

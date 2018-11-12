@@ -1,6 +1,6 @@
 # EB LISP
 
-A lisp interpreter. Lexically scoped, with proper closures, and easily embeddable.
+A lisp interpreter. Lexically scoped, with proper closures, and easily embeddable. See repl.cpp in tools/ for an example of embedding the interpreter in a C++ application.
 
 ``` scheme
 (def closure-test

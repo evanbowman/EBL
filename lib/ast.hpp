@@ -259,5 +259,17 @@ struct Set : Expr {
 };
 
 
+// Users of the library might want to push their own data into the environment,
+// but
+struct UserObject : Statement {
+    Heap::Ptr<Object> value_;
+
+    UserObject(Heap::Ptr<Object> value) : value_(value) {}
+
+    Heap::Ptr<Object> execute(Environment& env) override;
+    void init(Environment&, Scope&) override {}
+};
+
+
 } // namespace ast
 } // namespace lisp

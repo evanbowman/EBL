@@ -32,6 +32,7 @@ public:
 
     // Load a variable from the root environment.
     ObjectPtr load(const std::string& key);
+    void store(const std::string& key, ObjectPtr value);
 
     // For storing and loading intern'd immediates
     ObjectPtr loadI(ImmediateId immediate);
