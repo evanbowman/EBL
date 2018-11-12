@@ -20,11 +20,12 @@ include_directories(./)
 project(lisp)
 
 add_library(lisp
-  lib/lisp.cpp
+  lib/environment.cpp
   lib/memory.cpp
-  lib/subr.cpp
-  lib/lexer.cpp
   lib/parser.cpp
+  lib/types.cpp
+  lib/lexer.cpp
+  lib/lisp.cpp
   lib/ast.cpp)
 
 

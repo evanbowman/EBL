@@ -14,19 +14,14 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
     if (type not_eq rhs->typeId()) {
         return false;
     }
+#define LISP_EQ_CASE(T) \
+    case typeInfo.typeId<T>(): \
+        return lhs.cast<T>()->value() == rhs.cast<T>()->value();
     switch (type) {
-    case lisp::typeInfo.typeId<lisp::Integer>(): {
-        if (lhs.cast<lisp::Integer>()->value() not_eq
-            rhs.cast<lisp::Integer>()->value()) {
-            return false;
-        }
-    } break;
-    case lisp::typeInfo.typeId<lisp::Complex>(): {
-        if (lhs.cast<lisp::Complex>()->value() not_eq
-            rhs.cast<lisp::Complex>()->value()) {
-            return false;
-        }
-    } break;
+        LISP_EQ_CASE(Integer);
+        LISP_EQ_CASE(Double);
+        LISP_EQ_CASE(String);
+        LISP_EQ_CASE(Boolean);
     default:
         throw TypeError(type, "no equalto defined for input");
     }

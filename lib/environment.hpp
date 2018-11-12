@@ -30,18 +30,23 @@ public:
 
     template <typename T, typename... Args> Heap::Ptr<T> create(Args&&... args);
 
+    // Load a variable from the root environment.
     ObjectPtr load(const std::string& key);
 
-    void store(ObjectPtr value);
-    ObjectPtr load(VarLoc loc);
-
+    // For storing and loading intern'd immediates
     ObjectPtr loadI(ImmediateId immediate);
     ImmediateId storeI(ObjectPtr value);
 
+    // Compile and execute lisp code
     ObjectPtr exec(const std::string& code);
 
     ObjectPtr getNull();
     ObjectPtr getBool(bool trueOrFalse);
+
+    // For storing and loading from an environment's stack. Only meant to be
+    // called by the runtime or the vm.
+    void store(ObjectPtr value);
+    ObjectPtr load(VarLoc loc);
 
     EnvPtr derive();
     EnvPtr parent();

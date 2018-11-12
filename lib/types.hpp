@@ -110,6 +110,11 @@ public:
         return value_;
     }
 
+    inline bool value() const
+    {
+        return value_;
+    }
+
 private:
     bool value_;
 };

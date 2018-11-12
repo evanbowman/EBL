@@ -8,7 +8,6 @@
 #include "environment.hpp"
 #include "extlib/optional.hpp"
 #include "lexer.hpp"
-#include "parser.hpp"
 #include "types.hpp"
 
 #ifdef __GNUC__
@@ -134,17 +133,6 @@ struct BuiltinFunctionInfo {
     size_t requiredArgs;
     CFunction impl;
 };
-
-template <size_t size>
-void initBuiltins(Environment& env, const BuiltinFunctionInfo (&builtins)[size])
-{
-    std::for_each(std::begin(builtins), std::end(builtins),
-                  [&](const BuiltinFunctionInfo& info) {
-                      auto fn = env.create<Function>(
-                          info.docstring, info.requiredArgs, info.impl);
-                      env.store(fn);
-                  });
-}
 
 static const BuiltinFunctionInfo builtins[] = {
     {"cons", "(cons CAR CDR)", 2,
@@ -599,6 +587,16 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
 };
 
+void initBuiltins(Environment& env)
+{
+    std::for_each(std::begin(builtins), std::end(builtins),
+                  [&](const BuiltinFunctionInfo& info) {
+                      auto fn = env.create<Function>(
+                          info.docstring, info.requiredArgs, info.impl);
+                      env.store(fn);
+                  });
+}
+
 std::vector<std::string> getBuiltinList()
 {
     std::vector<std::string> ret;
@@ -607,110 +605,5 @@ std::vector<std::string> getBuiltinList()
         [&](const BuiltinFunctionInfo& info) { ret.push_back(info.name); });
     return ret;
 }
-
-ObjectPtr Environment::load(const std::string& key)
-{
-    auto loc = context_->astRoot_->find(key);
-    return context_->topLevel_->load(loc);
-}
-
-void Environment::store(ObjectPtr value)
-{
-    vars_.push_back(value);
-}
-
-ObjectPtr Environment::load(VarLoc loc)
-{
-    // The compiler will have already validated variable offsets, so there's
-    // no need to check out of bounds access.
-    auto frame = reference();
-    while (loc.frameDist_ > 0) {
-        frame = frame->parent_;
-        loc.frameDist_--;
-    }
-    return frame->vars_[loc.offset_];
-}
-
-ObjectPtr Environment::loadI(ImmediateId immediate)
-{
-    return context_->immediates_[immediate];
-}
-
-ImmediateId Environment::storeI(ObjectPtr value)
-{
-    const auto ret = context_->immediates_.size();
-    context_->immediates_.push_back(value);
-    return ret;
-}
-
-ObjectPtr Environment::getNull()
-{
-    return context_->nullValue_.get();
-}
-
-ObjectPtr Environment::getBool(bool trueOrFalse)
-{
-    return context_->booleans_[trueOrFalse].get();
-}
-
-EnvPtr Environment::derive()
-{
-    return std::make_shared<Environment>(context_, reference());
-}
-
-EnvPtr Environment::parent()
-{
-    return parent_;
-}
-
-EnvPtr Environment::reference()
-{
-    return shared_from_this();
-}
-
-Context::Context(const Configuration& config)
-    : heap_(100000000), topLevel_(std::make_shared<Environment>(this, nullptr)),
-      booleans_{{topLevel_->create<Boolean>(false)},
-                {topLevel_->create<Boolean>(true)}},
-      nullValue_{topLevel_->create<Null>()}
-{
-    initBuiltins(*topLevel_, builtins);
-}
-
-std::shared_ptr<Environment> Context::topLevel()
-{
-    return topLevel_;
-}
-
-const Heap& Environment::getHeap() const
-{
-    return context_->heap_;
-}
-
-Context* Environment::getContext()
-{
-    return context_;
-}
-
-ObjectPtr Environment::exec(const std::string& code)
-{
-    auto root = lisp::parse(code);
-    auto result = getNull();
-    if (context_->astRoot_) {
-        // Splice and process each statement into the existing environment
-        for (auto& st : root->statements_) {
-            context_->astRoot_->statements_.push_back(std::move(st));
-            context_->astRoot_->statements_.back()->init(*this,
-                                                         *context_->astRoot_);
-            result = context_->astRoot_->statements_.back()->execute(*this);
-        }
-    } else {
-        root->init(*this, *root);
-        result = root->execute(*this);
-        context_->astRoot_ = root.release();
-    }
-    return result;
-}
-
 
 } // namespace lisp
