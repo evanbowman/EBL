@@ -289,7 +289,7 @@ constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
                         Function>
     typeInfo{};
 
-template <typename T> bool isType(Environment& env, ObjectPtr obj)
+template <typename T> bool isType(ObjectPtr obj)
 {
     return typeInfo.typeId<T>() == obj->typeId();
 }
@@ -309,9 +309,9 @@ struct ConversionError : TypeError {
     }
 };
 
-template <typename T> Heap::Ptr<T> checkedCast(Environment& env, ObjectPtr obj)
+template <typename T> Heap::Ptr<T> checkedCast(ObjectPtr obj)
 {
-    if (isType<T>(env, obj)) {
+    if (isType<T>(obj)) {
         return obj.cast<T>();
     }
     throw ConversionError{obj->typeId(), typeInfo.typeId<T>()};

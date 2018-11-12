@@ -21,41 +21,40 @@
 
 namespace lisp {
 
-template <typename Proc>
-void dolist(Environment& env, ObjectPtr list, Proc&& proc)
+template <typename Proc> void dolist(ObjectPtr list, Proc&& proc)
 {
-    Heap::Ptr<Pair> current = checkedCast<Pair>(env, list);
+    Heap::Ptr<Pair> current = checkedCast<Pair>(list);
     proc(current->getCar());
-    while (not isType<Null>(env, current->getCdr())) {
-        current = checkedCast<Pair>(env, current->getCdr());
+    while (not isType<Null>(current->getCdr())) {
+        current = checkedCast<Pair>(current->getCdr());
         proc(current->getCar());
     }
 }
 
 void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out)
 {
-    if (lisp::isType<lisp::Pair>(env, obj)) {
+    if (lisp::isType<lisp::Pair>(obj)) {
         auto pair = obj.cast<lisp::Pair>();
         out << "(";
         print(env, pair->getCar(), out);
         out << " . ";
         print(env, pair->getCdr(), out);
         out << ")";
-    } else if (lisp::isType<lisp::Integer>(env, obj)) {
+    } else if (lisp::isType<lisp::Integer>(obj)) {
         out << obj.cast<lisp::Integer>()->value();
-    } else if (lisp::isType<lisp::Null>(env, obj)) {
+    } else if (lisp::isType<lisp::Null>(obj)) {
         out << "null";
     } else if (obj == env.getBool(true)) {
         out << "true";
     } else if (obj == env.getBool(false)) {
         out << "false";
-    } else if (lisp::isType<lisp::Function>(env, obj)) {
+    } else if (lisp::isType<lisp::Function>(obj)) {
         out << "lambda<" << obj.cast<lisp::Function>()->argCount() << ">";
-    } else if (lisp::isType<lisp::String>(env, obj)) {
+    } else if (lisp::isType<lisp::String>(obj)) {
         out << obj.cast<lisp::String>()->value();
-    } else if (lisp::isType<lisp::Double>(env, obj)) {
+    } else if (lisp::isType<lisp::Double>(obj)) {
         out << obj.cast<lisp::Double>()->value();
-    } else if (lisp::isType<lisp::Complex>(env, obj)) {
+    } else if (lisp::isType<lisp::Complex>(obj)) {
         out << obj.cast<lisp::Complex>()->value();
     } else {
         out << "unknown object" << std::endl;
@@ -166,31 +165,31 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"car", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         return checkedCast<Pair>(env, args[0])->getCar();
+         return checkedCast<Pair>(args[0])->getCar();
      }},
     {"cdr", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         return checkedCast<Pair>(env, args[0])->getCdr();
+         return checkedCast<Pair>(args[0])->getCdr();
      }},
     {"length", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          Integer::Rep length = 0;
-         if (not isType<Null>(env, args[0])) {
-             dolist(env, args[0], [&](ObjectPtr) { ++length; });
+         if (not isType<Null>(args[0])) {
+             dolist(args[0], [&](ObjectPtr) { ++length; });
          }
          return env.create<Integer>(length);
      }},
     {"list-ref", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         const auto index = checkedCast<Integer>(env, args[1])->value();
-         if (not isType<Null>(env, args[0])) {
-             Heap::Ptr<Pair> current = checkedCast<Pair>(env, args[0]);
+         const auto index = checkedCast<Integer>(args[1])->value();
+         if (not isType<Null>(args[0])) {
+             Heap::Ptr<Pair> current = checkedCast<Pair>(args[0]);
              if (index == 0) {
                  return current->getCar();
              }
              Integer::Rep i = 1;
-             while (not isType<Null>(env, current->getCdr())) {
-                 current = checkedCast<Pair>(env, current->getCdr());
+             while (not isType<Null>(current->getCdr())) {
+                 current = checkedCast<Pair>(current->getCdr());
                  if (i++ == index) {
                      return current->getCar();
                  }
@@ -200,18 +199,18 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"map", nullptr, 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
-         if (not isType<Null>(env, args[1])) {
-             auto fn = checkedCast<Function>(env, args[0]);
+         if (not isType<Null>(args[1])) {
+             auto fn = checkedCast<Function>(args[0]);
              // TODO: replace vectors with small size optimized containers
              Arguments paramVec;
              std::vector<Heap::Ptr<Pair>> inputLists;
              for (size_t i = 1; i < args.size(); ++i) {
-                 inputLists.push_back(checkedCast<Pair>(env, args[i]));
+                 inputLists.push_back(checkedCast<Pair>(args[i]));
                  paramVec.push_back(inputLists.back()->getCar());
              }
              auto keepGoing = [&] {
                  for (auto lst : inputLists) {
-                     if (isType<Null>(env, lst->getCdr())) {
+                     if (isType<Null>(lst->getCdr())) {
                          return false;
                      }
                  }
@@ -221,7 +220,7 @@ static const BuiltinFunctionInfo builtins[] = {
              while (keepGoing()) {
                  paramVec.clear();
                  for (auto& lst : inputLists) {
-                     lst = checkedCast<Pair>(env, lst->getCdr());
+                     lst = checkedCast<Pair>(lst->getCdr());
                      paramVec.push_back(lst->getCar());
                  }
                  builder.pushBack(fn->call(paramVec));
@@ -233,10 +232,10 @@ static const BuiltinFunctionInfo builtins[] = {
     {"filter", nullptr, 2,
      [](Environment& env, const Arguments& args) {
          LazyListBuilder builder(env);
-         auto pred = checkedCast<Function>(env, args[0]);
-         if (not isType<Null>(env, args[1])) {
+         auto pred = checkedCast<Function>(args[0]);
+         if (not isType<Null>(args[1])) {
              Arguments params;
-             dolist(env, args[1], [&](ObjectPtr element) {
+             dolist(args[1], [&](ObjectPtr element) {
                  params.push_back(element);
                  if (pred->call(params) == env.getBool(true)) {
                      builder.pushBack(element);
@@ -248,10 +247,10 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"dolist", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         auto pred = checkedCast<Function>(env, args[0]);
-         if (not isType<Null>(env, args[1])) {
+         auto pred = checkedCast<Function>(args[0]);
+         if (not isType<Null>(args[1])) {
              Arguments params;
-             dolist(env, args[1], [&](ObjectPtr element) {
+             dolist(args[1], [&](ObjectPtr element) {
                  params.push_back(element);
                  pred->call(params);
                  params.clear();
@@ -261,8 +260,8 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"dotimes", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         auto pred = checkedCast<Function>(env, args[0]);
-         const auto times = checkedCast<Integer>(env, args[1])->value();
+         auto pred = checkedCast<Function>(args[0]);
+         const auto times = checkedCast<Integer>(args[1])->value();
          Arguments params;
          for (Integer::Rep i = 0; i < times; ++i) {
              auto iObj = env.create<Integer>(i);
@@ -274,19 +273,19 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"null?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Null>(env, args[0]));
+         return env.getBool(isType<Null>(args[0]));
      }},
     {"pair?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Pair>(env, args[0]));
+         return env.getBool(isType<Pair>(args[0]));
      }},
     {"bool?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Boolean>(env, args[0]));
+         return env.getBool(isType<Boolean>(args[0]));
      }},
     {"integer?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Integer>(env, args[0]));
+         return env.getBool(isType<Integer>(args[0]));
      }},
     {"identical?", nullptr, 2,
      [](Environment& env, const Arguments& args) {
@@ -313,42 +312,41 @@ static const BuiltinFunctionInfo builtins[] = {
     {"apply", nullptr, 2,
      [](Environment& env, const Arguments& args) {
          Arguments params;
-         if (not isType<Null>(env, args[1])) {
-             dolist(env, args[1],
-                    [&](ObjectPtr elem) { params.push_back(elem); });
+         if (not isType<Null>(args[1])) {
+             dolist(args[1], [&](ObjectPtr elem) { params.push_back(elem); });
          }
-         auto fn = checkedCast<Function>(env, args[0]);
+         auto fn = checkedCast<Function>(args[0]);
          return fn->call(params);
      }},
     {"memoize!", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         checkedCast<Function>(env, args[0])->memoize();
+         checkedCast<Function>(args[0])->memoize();
          return env.getNull();
      }},
     {"unmemoize!", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         checkedCast<Function>(env, args[0])->unmemoize();
+         checkedCast<Function>(args[0])->unmemoize();
          return env.getNull();
      }},
     {"memoized?", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         return env.getBool(checkedCast<Function>(env, args[0])->isMemoized());
+         return env.getBool(checkedCast<Function>(args[0])->isMemoized());
      }},
     {"incr", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         const auto prev = checkedCast<Integer>(env, args[0])->value();
+         const auto prev = checkedCast<Integer>(args[0])->value();
          return env.create<Integer>(prev + 1);
      }},
     {"decr", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         const auto prev = checkedCast<Integer>(env, args[0])->value();
+         const auto prev = checkedCast<Integer>(args[0])->value();
          return env.create<Integer>(prev - 1);
      }},
     {"max", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         auto result = checkedCast<Integer>(env, args[0]);
+         auto result = checkedCast<Integer>(args[0]);
          for (size_t i = 0; i < args.size(); ++i) {
-             auto current = checkedCast<Integer>(env, args[i]);
+             auto current = checkedCast<Integer>(args[i]);
              if (current->value() > result->value()) {
                  result = current;
              }
@@ -357,9 +355,9 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"min", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         auto result = checkedCast<Integer>(env, args[0]);
+         auto result = checkedCast<Integer>(args[0]);
          for (size_t i = 0; i < args.size(); ++i) {
-             auto current = checkedCast<Integer>(env, args[i]);
+             auto current = checkedCast<Integer>(args[i]);
              if (current->value() < result->value()) {
                  result = current;
              }
@@ -369,11 +367,10 @@ static const BuiltinFunctionInfo builtins[] = {
     {"time", nullptr, 2,
      [](Environment& env, const Arguments& args) {
          Arguments params;
-         if (not isType<Null>(env, args[1])) {
-             dolist(env, args[1],
-                    [&](ObjectPtr elem) { params.push_back(elem); });
+         if (not isType<Null>(args[1])) {
+             dolist(args[1], [&](ObjectPtr elem) { params.push_back(elem); });
          }
-         auto fn = checkedCast<Function>(env, args[0]);
+         auto fn = checkedCast<Function>(args[0]);
          using namespace std::chrono;
          const auto start = steady_clock::now();
          auto result = fn->call(params);
@@ -384,13 +381,13 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"sleep", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         const auto arg = checkedCast<Integer>(env, args[0])->value();
+         const auto arg = checkedCast<Integer>(args[0])->value();
          std::this_thread::sleep_for(std::chrono::microseconds(arg));
          return env.getNull();
      }},
     {"help", nullptr, 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
-         auto fn = checkedCast<Function>(env, args[0]);
+         auto fn = checkedCast<Function>(args[0]);
          if (auto doc = fn->getDocstring()) {
              std::cout << doc << std::endl;
          }
@@ -462,19 +459,16 @@ static const BuiltinFunctionInfo builtins[] = {
          // FIXME: this isn't as flexible as it should be
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Integer>():
-             return env.create<Integer>(
-                 args[0].cast<Integer>()->value() -
-                 checkedCast<Integer>(env, args[1])->value());
+             return env.create<Integer>(args[0].cast<Integer>()->value() -
+                                        checkedCast<Integer>(args[1])->value());
 
          case typeInfo.typeId<Double>():
-             return env.create<Double>(
-                 args[0].cast<Double>()->value() -
-                 checkedCast<Double>(env, args[1])->value());
+             return env.create<Double>(args[0].cast<Double>()->value() -
+                                       checkedCast<Double>(args[1])->value());
 
          case typeInfo.typeId<Complex>():
-             return env.create<Complex>(
-                 args[0].cast<Complex>()->value() -
-                 checkedCast<Complex>(env, args[1])->value());
+             return env.create<Complex>(args[0].cast<Complex>()->value() -
+                                        checkedCast<Complex>(args[1])->value());
          default:
              throw TypeError(args[0]->typeId(), "not a number");
          }
@@ -512,19 +506,16 @@ static const BuiltinFunctionInfo builtins[] = {
          // FIXME: this isn't as flexible as it should be
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Integer>():
-             return env.create<Integer>(
-                 args[0].cast<Integer>()->value() /
-                 checkedCast<Integer>(env, args[1])->value());
+             return env.create<Integer>(args[0].cast<Integer>()->value() /
+                                        checkedCast<Integer>(args[1])->value());
 
          case typeInfo.typeId<Double>():
-             return env.create<Double>(
-                 args[0].cast<Double>()->value() /
-                 checkedCast<Double>(env, args[1])->value());
+             return env.create<Double>(args[0].cast<Double>()->value() /
+                                       checkedCast<Double>(args[1])->value());
 
          case typeInfo.typeId<Complex>():
-             return env.create<Complex>(
-                 args[0].cast<Complex>()->value() /
-                 checkedCast<Complex>(env, args[1])->value());
+             return env.create<Complex>(args[0].cast<Complex>()->value() /
+                                        checkedCast<Complex>(args[1])->value());
          default:
              throw TypeError(args[0]->typeId(), "not a number");
          }
@@ -534,11 +525,11 @@ static const BuiltinFunctionInfo builtins[] = {
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Integer>():
              return env.getBool(args[0].cast<Integer>()->value() >
-                                checkedCast<Integer>(env, args[1])->value());
+                                checkedCast<Integer>(args[1])->value());
 
          case typeInfo.typeId<Double>():
              return env.getBool(args[0].cast<Double>()->value() >
-                                checkedCast<Double>(env, args[1])->value());
+                                checkedCast<Double>(args[1])->value());
 
          case typeInfo.typeId<Complex>():
              throw TypeError(typeInfo.typeId<Complex>(),
@@ -554,11 +545,11 @@ static const BuiltinFunctionInfo builtins[] = {
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Integer>():
              return env.getBool(args[0].cast<Integer>()->value() <
-                                checkedCast<Integer>(env, args[1])->value());
+                                checkedCast<Integer>(args[1])->value());
 
          case typeInfo.typeId<Double>():
              return env.getBool(args[0].cast<Double>()->value() <
-                                checkedCast<Double>(env, args[1])->value());
+                                checkedCast<Double>(args[1])->value());
 
          case typeInfo.typeId<Complex>():
              throw TypeError(typeInfo.typeId<Complex>(),
@@ -602,8 +593,8 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"complex", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         const auto real = checkedCast<Double>(env, args[0])->value();
-         const auto imag = checkedCast<Double>(env, args[1])->value();
+         const auto real = checkedCast<Double>(args[0])->value();
+         const auto imag = checkedCast<Double>(args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
      }},
 };

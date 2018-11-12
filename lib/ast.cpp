@@ -90,7 +90,7 @@ ObjectPtr Lambda::execute(Environment& env)
 
 ObjectPtr Application::execute(Environment& env)
 {
-    auto loaded = checkedCast<lisp::Function>(env, env.load(cachedTargetLoc_));
+    auto loaded = checkedCast<lisp::Function>(env.load(cachedTargetLoc_));
     Arguments args;
     for (const auto& arg : args_) {
         args.push_back(arg->execute(env));
@@ -147,7 +147,7 @@ ObjectPtr Or::execute(Environment& env)
 {
     for (const auto& statement : statements_) {
         auto result = statement->execute(env);
-        if (not (result == env.getBool(false))) {
+        if (not(result == env.getBool(false))) {
             return result;
         }
     }
