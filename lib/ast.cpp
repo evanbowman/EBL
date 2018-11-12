@@ -65,7 +65,7 @@ public:
     {
         auto derived = env.derive();
         for (size_t i = 0; i < args.size(); ++i) {
-            derived->store(args[i]);
+            derived->push(args[i]);
         }
         auto up = env.getNull();
         for (auto& statement : impl_->statements_) {
@@ -84,7 +84,15 @@ ObjectPtr Lambda::execute(Environment& env)
 {
     auto impl = make_unique<InterpretedFunctionImpl>(this);
     const auto argc = argNames_.size();
-    return env.create<lisp::Function>("", argc, std::move(impl));
+    return env.create<lisp::Function>(
+        [&]() -> const char* {
+            if (not docstring_.empty()) {
+                return docstring_.c_str();
+            } else {
+                return nullptr;
+            }
+        }(),
+        argc, std::move(impl));
 }
 
 
@@ -101,7 +109,7 @@ ObjectPtr Application::execute(Environment& env)
 
 ObjectPtr Let::Binding::execute(Environment& env)
 {
-    env.store(value_->execute(env));
+    env.push(value_->execute(env));
     return env.getNull();
 }
 
@@ -170,7 +178,14 @@ ObjectPtr And::execute(Environment& env)
 
 ObjectPtr Def::execute(Environment& env)
 {
-    env.store(value_->execute(env));
+    env.push(value_->execute(env));
+    return env.getNull();
+}
+
+
+ObjectPtr Set::execute(Environment& env)
+{
+    env.store(cachedVarLoc_, value_->execute(env));
     return env.getNull();
 }
 
@@ -281,6 +296,13 @@ void And::init(Environment& env, Scope& scope)
 void Def::init(Environment& env, Scope& scope)
 {
     scope.insert(name_);
+    value_->init(env, scope);
+}
+
+
+void Set::init(Environment& env, Scope& scope)
+{
+    cachedVarLoc_ = scope.find(name_);
     value_->init(env, scope);
 }
 

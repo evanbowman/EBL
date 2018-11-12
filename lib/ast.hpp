@@ -21,6 +21,7 @@ template <typename T> using Vector = std::vector<T>;
 using StrVal = std::string;
 using Error = std::runtime_error;
 
+struct TopLevel;
 
 class Scope {
 public:
@@ -166,6 +167,7 @@ struct LValue : Value {
 struct Lambda : Expr, Scope {
     Vector<StrVal> argNames_;
     Vector<Ptr<Statement>> statements_;
+    StrVal docstring_;
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
@@ -241,6 +243,16 @@ struct And : Expr {
 struct Def : Expr {
     StrVal name_;
     Ptr<Statement> value_;
+
+    Heap::Ptr<Object> execute(Environment& env) override;
+    void init(Environment&, Scope&) override;
+};
+
+
+struct Set : Expr {
+    StrVal name_;
+    Ptr<Statement> value_;
+    VarLoc cachedVarLoc_;
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;

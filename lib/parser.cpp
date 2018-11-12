@@ -146,6 +146,17 @@ ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)
 BODY:
     // FIXME: this is kind of nasty
     try {
+        lambda->statements_.push_back(parseStatement(lexer));
+        auto second = parseStatement(lexer);
+        // We can only register a docstring after making sure that at least one
+        // statement follows the string, otherwise we might eat a string return
+        // value.
+        if (auto str =
+                dynamic_cast<ast::String*>(lambda->statements_.front().get())) {
+            lambda->docstring_ = str->value_;
+            lambda->statements_.pop_back();
+        }
+        lambda->statements_.push_back(std::move(second));
         while (true) {
             lambda->statements_.push_back(parseStatement(lexer));
         }
@@ -162,6 +173,16 @@ ast::Ptr<ast::Def> parseDef(Lexer& lexer)
     def->value_ = parseStatement(lexer);
     expect<Lexer::Token::RPAREN>(lexer, "in parse binding");
     return def;
+}
+
+ast::Ptr<ast::Set> parseSet(Lexer& lexer)
+{
+    expect<Lexer::Token::SYMBOL>(lexer, "in parse set");
+    auto set = make_unique<ast::Set>();
+    set->name_ = lexer.rdbuf();
+    set->value_ = parseStatement(lexer);
+    expect<Lexer::Token::RPAREN>(lexer, "in parse set");
+    return set;
 }
 
 ast::Ptr<ast::Import> parseImport(Lexer& lexer)
@@ -232,6 +253,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         return parseOr(lexer);
     } else if (fnName == "and") {
         return parseAnd(lexer);
+    } else if (fnName == "set") {
+        return parseSet(lexer);
     }
     auto apply = make_unique<ast::Application>();
     apply->target_ = fnName;

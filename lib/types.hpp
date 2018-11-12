@@ -245,17 +245,18 @@ public:
     void unmemoize();
     bool isMemoized() const;
 
-    inline const char* getDocstring()
+    inline ObjectPtr getDocstring()
     {
         return docstring_;
     }
+
     inline size_t argCount()
     {
         return requiredArgs_;
     }
 
 private:
-    const char* docstring_;
+    ObjectPtr docstring_;
     size_t requiredArgs_;
     std::unique_ptr<Impl> impl_;
     EnvPtr envPtr_;

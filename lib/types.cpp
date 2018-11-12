@@ -1,5 +1,5 @@
-#include "lisp.hpp"
 #include "types.hpp"
+#include "lisp.hpp"
 
 #include <memory>
 #include <unordered_map>
@@ -14,8 +14,8 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
     if (type not_eq rhs->typeId()) {
         return false;
     }
-#define LISP_EQ_CASE(T) \
-    case typeInfo.typeId<T>(): \
+#define LISP_EQ_CASE(T)                                                        \
+    case typeInfo.typeId<T>():                                                 \
         return lhs.cast<T>()->value() == rhs.cast<T>()->value();
     switch (type) {
         LISP_EQ_CASE(Integer);
@@ -122,17 +122,23 @@ private:
 
 Function::Function(TypeId tp, Environment& env, const char* docstring,
                    size_t requiredArgs, CFunction impl)
-    : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
+    : Object{tp}, docstring_(env.getNull()), requiredArgs_(requiredArgs),
       impl_(std::unique_ptr<CFunctionImpl>(new CFunctionImpl(impl))),
       envPtr_(env.reference())
 {
+    if (docstring) {
+        docstring_ = env.create<String>(docstring, strlen(docstring));
+    }
 }
 
 Function::Function(TypeId tp, Environment& env, const char* docstring,
                    size_t requiredArgs, std::unique_ptr<Impl> impl)
-    : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
+    : Object{tp}, docstring_(env.getNull()), requiredArgs_(requiredArgs),
       impl_(std::move(impl)), envPtr_(env.reference())
 {
+    if (docstring) {
+        docstring_ = env.create<String>(docstring, strlen(docstring));
+    }
 }
 
 bool Function::isMemoized() const

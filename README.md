@@ -4,11 +4,13 @@ A lisp interpreter. Lexically scoped, with proper closures, and easily embeddabl
 
 ``` scheme
 (def closure-test
-     (let ((a 41))
+     (let ((a 1))
        (lambda (b)
-         (+ a b))))
+         (set a (+ a b))
+         a)))
 
-(println (closure-test 1)) ;; 42
+(println (closure-test 3))  ;; 4
+(println (closure-test 38)) ;; 42
 ```
 
 ## Example

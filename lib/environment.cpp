@@ -10,12 +10,12 @@ ObjectPtr Environment::load(const std::string& key)
     return context_->topLevel_->load(loc);
 }
 
-void Environment::store(ObjectPtr value)
+void Environment::push(ObjectPtr value)
 {
     vars_.push_back(value);
 }
 
-ObjectPtr Environment::load(VarLoc loc)
+Environment& Environment::getFrame(VarLoc loc)
 {
     // The compiler will have already validated variable offsets, so there's
     // no need to check out of bounds access.
@@ -24,7 +24,17 @@ ObjectPtr Environment::load(VarLoc loc)
         frame = frame->parent_;
         loc.frameDist_--;
     }
-    return frame->vars_[loc.offset_];
+    return *frame;
+}
+
+ObjectPtr Environment::load(VarLoc loc)
+{
+    return getFrame(loc).vars_[loc.offset_];
+}
+
+void Environment::store(VarLoc loc, ObjectPtr value)
+{
+    getFrame(loc).vars_[loc.offset_] = value;
 }
 
 ObjectPtr Environment::loadI(ImmediateId immediate)

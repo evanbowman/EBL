@@ -36,8 +36,19 @@ void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out)
         auto pair = obj.cast<lisp::Pair>();
         out << "(";
         print(env, pair->getCar(), out);
-        out << " . ";
-        print(env, pair->getCdr(), out);
+        while (true) {
+            if (isType<Pair>(pair->getCdr())) {
+                out << " ";
+                print(env, pair->getCdr().cast<Pair>()->getCar(), out);
+                pair = pair->getCdr().cast<Pair>();
+            } else if (not isType<Null>(pair->getCdr())) {
+                out << " ";
+                print(env, pair->getCdr(), out);
+                break;
+            } else {
+                break;
+            }
+        }
         out << ")";
     } else if (lisp::isType<lisp::Integer>(obj)) {
         out << obj.cast<lisp::Integer>()->value();
@@ -135,11 +146,14 @@ struct BuiltinFunctionInfo {
 };
 
 static const BuiltinFunctionInfo builtins[] = {
-    {"cons", "(cons CAR CDR)", 2,
+    {"cons", "[car cdr] -> create a pair from car and cdr", 2,
      [](Environment& env, const Arguments& args) {
          return env.create<Pair>(args[0], args[1]);
      }},
-    {"list", nullptr, 0,
+    {"list",
+     "[args...] -> create a chain of pairs, where each arg in args..."
+     " supplies the first element of each pair",
+     0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          if (auto argc = args.size()) {
              ListBuilder builder(env, args[0]);
@@ -151,15 +165,15 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.getNull();
          }
      }},
-    {"car", nullptr, 1,
+    {"car", "[pair] -> get the first element of pair", 1,
      [](Environment& env, const Arguments& args) {
          return checkedCast<Pair>(args[0])->getCar();
      }},
-    {"cdr", nullptr, 1,
+    {"cdr", "[pair] -> get the second element of pair", 1,
      [](Environment& env, const Arguments& args) {
          return checkedCast<Pair>(args[0])->getCdr();
      }},
-    {"length", nullptr, 1,
+    {"length", "[list] -> get the length of list", 1,
      [](Environment& env, const Arguments& args) {
          Integer::Rep length = 0;
          if (not isType<Null>(args[0])) {
@@ -167,7 +181,7 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return env.create<Integer>(length);
      }},
-    {"list-ref", nullptr, 2,
+    {"list-ref", "[list] -> get the nth element from list", 2,
      [](Environment& env, const Arguments& args) {
          const auto index = checkedCast<Integer>(args[1])->value();
          if (not isType<Null>(args[0])) {
@@ -233,7 +247,7 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return builder.result();
      }},
-    {"dolist", nullptr, 2,
+    {"dolist", "[fn list] -> call fn on each element of list", 2,
      [](Environment& env, const Arguments& args) {
          auto pred = checkedCast<Function>(args[0]);
          if (not isType<Null>(args[1])) {
@@ -246,7 +260,7 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return env.getNull();
      }},
-    {"dotimes", nullptr, 2,
+    {"dotimes", "[fn n] -> call fn n times, passing each n as an arg", 2,
      [](Environment& env, const Arguments& args) {
          auto pred = checkedCast<Function>(args[0]);
          const auto times = checkedCast<Integer>(args[1])->value();
@@ -306,20 +320,6 @@ static const BuiltinFunctionInfo builtins[] = {
          auto fn = checkedCast<Function>(args[0]);
          return fn->call(params);
      }},
-    {"memoize!", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         checkedCast<Function>(args[0])->memoize();
-         return env.getNull();
-     }},
-    {"unmemoize!", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         checkedCast<Function>(args[0])->unmemoize();
-         return env.getNull();
-     }},
-    {"memoized?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(checkedCast<Function>(args[0])->isMemoized());
-     }},
     {"incr", nullptr, 1,
      [](Environment& env, const Arguments& args) {
          const auto prev = checkedCast<Integer>(args[0])->value();
@@ -373,11 +373,12 @@ static const BuiltinFunctionInfo builtins[] = {
          std::this_thread::sleep_for(std::chrono::microseconds(arg));
          return env.getNull();
      }},
-    {"help", nullptr, 1,
+    {"help", "[fn] -> get the docstring for fn", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          auto fn = checkedCast<Function>(args[0]);
-         if (auto doc = fn->getDocstring()) {
-             std::cout << doc << std::endl;
+         auto doc = fn->getDocstring();
+         if (not(doc == env.getNull())) {
+             return doc;
          }
          return env.getNull();
      }},
@@ -593,7 +594,7 @@ void initBuiltins(Environment& env)
                   [&](const BuiltinFunctionInfo& info) {
                       auto fn = env.create<Function>(
                           info.docstring, info.requiredArgs, info.impl);
-                      env.store(fn);
+                      env.push(fn);
                   });
 }
 

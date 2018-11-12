@@ -45,7 +45,8 @@ public:
 
     // For storing and loading from an environment's stack. Only meant to be
     // called by the runtime or the vm.
-    void store(ObjectPtr value);
+    void push(ObjectPtr value);
+    void store(VarLoc loc, ObjectPtr value);
     ObjectPtr load(VarLoc loc);
 
     EnvPtr derive();
@@ -57,6 +58,8 @@ public:
     Context* getContext();
 
 private:
+    Environment& getFrame(VarLoc loc);
+
     Context* context_;
     EnvPtr parent_;
     Ogre::SmallVector<ObjectPtr, 6> vars_;
