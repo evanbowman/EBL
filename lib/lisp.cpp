@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -30,44 +31,65 @@ template <typename Proc> void dolist(ObjectPtr list, Proc&& proc)
     }
 }
 
-void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out)
+void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out,
+           bool showQuotes = false)
 {
-    if (lisp::isType<lisp::Pair>(obj)) {
+    switch (obj->typeId()) {
+    case typeInfo.typeId<Pair>(): {
         auto pair = obj.cast<lisp::Pair>();
         out << "(";
-        print(env, pair->getCar(), out);
+        print(env, pair->getCar(), out, true);
         while (true) {
             if (isType<Pair>(pair->getCdr())) {
                 out << " ";
-                print(env, pair->getCdr().cast<Pair>()->getCar(), out);
+                print(env, pair->getCdr().cast<Pair>()->getCar(), out, true);
                 pair = pair->getCdr().cast<Pair>();
             } else if (not isType<Null>(pair->getCdr())) {
                 out << " ";
-                print(env, pair->getCdr(), out);
+                print(env, pair->getCdr(), out, true);
                 break;
             } else {
                 break;
             }
         }
         out << ")";
-    } else if (lisp::isType<lisp::Integer>(obj)) {
+    } break;
+
+    case typeInfo.typeId<Integer>():
         out << obj.cast<lisp::Integer>()->value();
-    } else if (lisp::isType<lisp::Null>(obj)) {
+        break;
+
+    case typeInfo.typeId<Null>():
         out << "null";
-    } else if (obj == env.getBool(true)) {
-        out << "true";
-    } else if (obj == env.getBool(false)) {
-        out << "false";
-    } else if (lisp::isType<lisp::Function>(obj)) {
+        break;
+
+    case typeInfo.typeId<Boolean>():
+        out << ((obj == env.getBool(true)) ? "true" : "false");
+        break;
+
+    case typeInfo.typeId<Function>():
         out << "lambda<" << obj.cast<lisp::Function>()->argCount() << ">";
-    } else if (lisp::isType<lisp::String>(obj)) {
-        out << obj.cast<lisp::String>()->value();
-    } else if (lisp::isType<lisp::Double>(obj)) {
+        break;
+
+    case typeInfo.typeId<String>():
+        if (showQuotes) {
+            out << '"' << obj.cast<lisp::String>()->value() << '"';
+        } else {
+            out << obj.cast<lisp::String>()->value();
+        }
+        break;
+
+    case typeInfo.typeId<Double>():
         out << obj.cast<lisp::Double>()->value();
-    } else if (lisp::isType<lisp::Complex>(obj)) {
+        break;
+
+    case typeInfo.typeId<Complex>():
         out << obj.cast<lisp::Complex>()->value();
-    } else {
-        out << "unknown object" << std::endl;
+        break;
+
+    default:
+        out << "unknownObject";
+        break;
     }
 }
 
@@ -585,6 +607,13 @@ static const BuiltinFunctionInfo builtins[] = {
          const auto real = checkedCast<Double>(args[0])->value();
          const auto imag = checkedCast<Double>(args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
+     }},
+    {"load", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         std::ifstream ifstream(checkedCast<String>(args[0])->value());
+         std::stringstream buffer;
+         buffer << ifstream.rdbuf();
+         return env.exec(buffer.str());
      }},
 };
 

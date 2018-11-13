@@ -92,9 +92,10 @@ struct TopLevel;
 class Context {
 public:
     struct Configuration {
+        size_t heapSize_;
     };
 
-    Context(const Configuration& config);
+    Context(const Configuration& config = defaultConfig());
 
     EnvPtr topLevel();
 
@@ -123,6 +124,8 @@ private:
             return allocImpl();
         }
     }
+
+    static const Configuration& defaultConfig();
 
     Heap heap_;
     EnvPtr topLevel_;

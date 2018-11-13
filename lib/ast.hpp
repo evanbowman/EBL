@@ -264,10 +264,14 @@ struct Set : Expr {
 struct UserObject : Statement {
     Heap::Ptr<Object> value_;
 
-    UserObject(Heap::Ptr<Object> value) : value_(value) {}
+    UserObject(Heap::Ptr<Object> value) : value_(value)
+    {
+    }
 
     Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override {}
+    void init(Environment&, Scope&) override
+    {
+    }
 };
 
 

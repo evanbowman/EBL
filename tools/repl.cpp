@@ -5,7 +5,7 @@
 int main()
 {
     using namespace lisp;
-    Context context({});
+    Context context;
     std::string input;
     auto env = context.topLevel();
     env->store("quit", env->create<Function>(nullptr, size_t(0),

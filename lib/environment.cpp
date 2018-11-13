@@ -96,8 +96,17 @@ EnvPtr Environment::reference()
 
 void initBuiltins(Environment& env);
 
+
+const Context::Configuration& Context::defaultConfig()
+{
+    static const Configuration defaults{100000000};
+    return defaults;
+}
+
+
 Context::Context(const Configuration& config)
-    : heap_(100000000), topLevel_(std::make_shared<Environment>(this, nullptr)),
+    : heap_(config.heapSize_),
+      topLevel_(std::make_shared<Environment>(this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},
       nullValue_{topLevel_->create<Null>()}
