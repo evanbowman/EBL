@@ -22,6 +22,8 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         LISP_EQ_CASE(Double);
         LISP_EQ_CASE(String);
         LISP_EQ_CASE(Boolean);
+    case typeInfo.typeId<Symbol>():
+        return lhs == rhs;
     default:
         throw TypeError(type, "no equalto defined for input");
     }
@@ -120,25 +122,19 @@ private:
     std::unique_ptr<Function::Impl> wrapped_;
 };
 
-Function::Function(TypeId tp, Environment& env, const char* docstring,
+Function::Function(TypeId tp, Environment& env, ObjectPtr docstring,
                    size_t requiredArgs, CFunction impl)
-    : Object{tp}, docstring_(env.getNull()), requiredArgs_(requiredArgs),
+    : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
       impl_(std::unique_ptr<CFunctionImpl>(new CFunctionImpl(impl))),
       envPtr_(env.reference())
 {
-    if (docstring) {
-        docstring_ = env.create<String>(docstring, strlen(docstring));
-    }
 }
 
-Function::Function(TypeId tp, Environment& env, const char* docstring,
+Function::Function(TypeId tp, Environment& env, ObjectPtr docstring,
                    size_t requiredArgs, std::unique_ptr<Impl> impl)
-    : Object{tp}, docstring_(env.getNull()), requiredArgs_(requiredArgs),
+    : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
       impl_(std::move(impl)), envPtr_(env.reference())
 {
-    if (docstring) {
-        docstring_ = env.create<String>(docstring, strlen(docstring));
-    }
 }
 
 bool Function::isMemoized() const

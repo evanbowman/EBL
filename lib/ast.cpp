@@ -85,11 +85,12 @@ ObjectPtr Lambda::execute(Environment& env)
     auto impl = make_unique<InterpretedFunctionImpl>(this);
     const auto argc = argNames_.size();
     return env.create<lisp::Function>(
-        [&]() -> const char* {
+        [&]() -> ObjectPtr {
             if (not docstring_.empty()) {
-                return docstring_.c_str();
+                return env.create<lisp::String>(docstring_.c_str(),
+                                                docstring_.length());
             } else {
-                return nullptr;
+                return env.getNull();
             }
         }(),
         argc, std::move(impl));

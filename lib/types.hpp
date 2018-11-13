@@ -206,6 +206,28 @@ private:
     std::string data_;
 };
 
+class Symbol : public Object {
+public:
+    inline Symbol(TypeId tp, Heap::Ptr<String> str) :
+        Object{tp},
+        str_(str)
+    {
+    }
+
+    static constexpr const char* name()
+    {
+        return "<Symbol>";
+    }
+
+    inline Heap::Ptr<String> value()
+    {
+        return str_;
+    }
+
+private:
+    Heap::Ptr<String> str_;
+};
+
 using Arguments = Ogre::SmallVector<ObjectPtr, 3>;
 
 using CFunction = std::function<ObjectPtr(Environment&, const Arguments&)>;
@@ -221,10 +243,10 @@ public:
         virtual ObjectPtr call(Environment& env, Arguments&) = 0;
     };
 
-    Function(TypeId tp, Environment& env, const char* docstring,
+    Function(TypeId tp, Environment& env, ObjectPtr docstring,
              size_t requiredArgs, CFunction cFn);
 
-    Function(TypeId tp, Environment& env, const char* docstring,
+    Function(TypeId tp, Environment& env, ObjectPtr docstring,
              size_t requiredArgs, std::unique_ptr<Impl> impl);
 
     static constexpr const char* name()
@@ -292,7 +314,7 @@ template <typename... Builtins> struct TypeInfoTable {
 };
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
-                        Function>
+                        Symbol, Function>
     typeInfo{};
 
 template <typename T> bool isType(ObjectPtr obj)

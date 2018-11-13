@@ -31,12 +31,12 @@ template <typename Proc> void dolist(ObjectPtr list, Proc&& proc)
     }
 }
 
-void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out,
+void print(Environment& env, ObjectPtr obj, std::ostream& out,
            bool showQuotes = false)
 {
     switch (obj->typeId()) {
     case typeInfo.typeId<Pair>(): {
-        auto pair = obj.cast<lisp::Pair>();
+        auto pair = obj.cast<Pair>();
         out << "(";
         print(env, pair->getCar(), out, true);
         while (true) {
@@ -56,7 +56,7 @@ void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out,
     } break;
 
     case typeInfo.typeId<Integer>():
-        out << obj.cast<lisp::Integer>()->value();
+        out << obj.cast<Integer>()->value();
         break;
 
     case typeInfo.typeId<Null>():
@@ -68,23 +68,27 @@ void print(lisp::Environment& env, lisp::ObjectPtr obj, std::ostream& out,
         break;
 
     case typeInfo.typeId<Function>():
-        out << "lambda<" << obj.cast<lisp::Function>()->argCount() << ">";
+        out << "lambda<" << obj.cast<Function>()->argCount() << ">";
         break;
 
     case typeInfo.typeId<String>():
         if (showQuotes) {
-            out << '"' << obj.cast<lisp::String>()->value() << '"';
+            out << '"' << obj.cast<String>()->value() << '"';
         } else {
-            out << obj.cast<lisp::String>()->value();
+            out << obj.cast<String>()->value();
         }
         break;
 
     case typeInfo.typeId<Double>():
-        out << obj.cast<lisp::Double>()->value();
+        out << obj.cast<Double>()->value();
         break;
 
     case typeInfo.typeId<Complex>():
-        out << obj.cast<lisp::Complex>()->value();
+        out << obj.cast<Complex>()->value();
+        break;
+
+    case typeInfo.typeId<Symbol>():
+        out << obj.cast<Symbol>()->value()->value();
         break;
 
     default:
@@ -168,6 +172,20 @@ struct BuiltinFunctionInfo {
 };
 
 static const BuiltinFunctionInfo builtins[] = {
+    {"symbol", "[string] -> get symbol for string", 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         const auto target = checkedCast<String>(args[0]);
+         for (const auto& im : env.getContext()->immediates()) {
+             if (isType<Symbol>(im)) {
+                 if (im.cast<Symbol>()->value()->value() == target->value()) {
+                     return im;
+                 }
+             }
+         }
+         auto symb = env.create<Symbol>(target);
+         env.getContext()->immediates().push_back(symb);
+         return symb;
+     }},
     {"cons", "[car cdr] -> create a pair from car and cdr", 2,
      [](Environment& env, const Arguments& args) {
          return env.create<Pair>(args[0], args[1]);
@@ -608,21 +626,32 @@ static const BuiltinFunctionInfo builtins[] = {
          const auto imag = checkedCast<Double>(args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
      }},
-    {"load", nullptr, 1,
+    {"load", "[file] -> load lisp code from a file", 1,
      [](Environment& env, const Arguments& args) {
          std::ifstream ifstream(checkedCast<String>(args[0])->value());
          std::stringstream buffer;
          buffer << ifstream.rdbuf();
          return env.exec(buffer.str());
      }},
+    {"eval", "[data] -> evaluate data as code", 1,
+     [](Environment& env, const Arguments& args) {
+         std::stringstream buffer;
+         print(env, checkedCast<Pair>(args[0]), buffer);
+         return env.exec(buffer.str());
+     }}
 };
 
 void initBuiltins(Environment& env)
 {
     std::for_each(std::begin(builtins), std::end(builtins),
                   [&](const BuiltinFunctionInfo& info) {
+                      auto doc = env.getNull();
+                      if (info.docstring) {
+                          doc = env.create<String>(info.docstring,
+                                                   strlen(info.docstring));
+                      }
                       auto fn = env.create<Function>(
-                          info.docstring, info.requiredArgs, info.impl);
+                          doc, info.requiredArgs, info.impl);
                       env.push(fn);
                   });
 }

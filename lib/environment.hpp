@@ -97,6 +97,8 @@ public:
 
     Context(const Configuration& config = defaultConfig());
 
+    std::vector<ObjectPtr>& immediates() { return immediates_; }
+
     EnvPtr topLevel();
 
     friend class Environment;
