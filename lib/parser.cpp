@@ -234,30 +234,37 @@ BODY:
 
 ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
 {
-    expect<Lexer::Token::SYMBOL>(lexer, "in parse expr");
-    const std::string fnName = lexer.rdbuf();
-    // special forms
-    if (fnName == "def") {
-        return parseDef(lexer);
-    } else if (fnName == "lambda") {
-        return parseLambda(lexer);
-    } else if (fnName == "let") {
-        return parseLet(lexer);
-    } else if (fnName == "if") {
-        return parseIf(lexer);
-    } else if (fnName == "begin") {
-        return parseBegin(lexer);
-    } else if (fnName == "import") {
-        return parseImport(lexer);
-    } else if (fnName == "or") {
-        return parseOr(lexer);
-    } else if (fnName == "and") {
-        return parseAnd(lexer);
-    } else if (fnName == "set") {
-        return parseSet(lexer);
-    }
     auto apply = make_unique<ast::Application>();
-    apply->target_ = fnName;
+    const auto tok = lexer.lex();
+    if (tok == Lexer::Token::SYMBOL) {
+        // special forms
+        const std::string symb = lexer.rdbuf();
+        if (symb == "def") {
+            return parseDef(lexer);
+        } else if (symb == "lambda") {
+            return parseLambda(lexer);
+        } else if (symb == "let") {
+            return parseLet(lexer);
+        } else if (symb == "if") {
+            return parseIf(lexer);
+        } else if (symb == "begin") {
+            return parseBegin(lexer);
+        } else if (symb == "import") {
+            return parseImport(lexer);
+        } else if (symb == "or") {
+            return parseOr(lexer);
+        } else if (symb == "and") {
+            return parseAnd(lexer);
+        } else if (symb == "set") {
+            return parseSet(lexer);
+        } else {
+            apply->toApply_ = parseValue(lexer.rdbuf());
+        }
+    } else if (tok == Lexer::Token::LPAREN) {
+        apply->toApply_ = parseExpr(lexer);
+    } else {
+        throw std::runtime_error("failed to parse expr");
+    }
     while (true) {
         switch (lexer.lex()) {
         case Lexer::Token::LPAREN:

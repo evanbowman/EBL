@@ -98,7 +98,7 @@ ObjectPtr Lambda::execute(Environment& env)
 
 ObjectPtr Application::execute(Environment& env)
 {
-    auto loaded = checkedCast<lisp::Function>(env.load(cachedTargetLoc_));
+    auto loaded = checkedCast<lisp::Function>(toApply_->execute(env));
     Arguments args;
     for (const auto& arg : args_) {
         args.push_back(arg->execute(env));
@@ -241,7 +241,7 @@ void Lambda::init(Environment& env, Scope& scope)
 
 void Application::init(Environment& env, Scope& scope)
 {
-    cachedTargetLoc_ = scope.find(target_);
+    toApply_->init(env, scope);
     for (const auto& arg : args_) {
         arg->init(env, scope);
     }

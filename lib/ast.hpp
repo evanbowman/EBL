@@ -175,8 +175,7 @@ struct Lambda : Expr, Scope {
 
 
 struct Application : Expr {
-    StrVal target_;
-    VarLoc cachedTargetLoc_;
+    Ptr<Statement> toApply_;
     Vector<Ptr<Statement>> args_;
 
     Heap::Ptr<Object> execute(Environment& env) override;
