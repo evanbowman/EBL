@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "environment.hpp"
-#include "extlib/optional.hpp"
 #include "lexer.hpp"
 #include "types.hpp"
+#include "listBuilder.hpp"
 
 #ifdef __GNUC__
 #define unlikely(COND) __builtin_expect(COND, false)
@@ -97,73 +97,6 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
     }
 }
 
-class ListBuilder {
-public:
-    ListBuilder(Environment& env, ObjectPtr first)
-        : env_(env), front_(env, env.create<Pair>(first, env.getNull())),
-          back_(front_.get())
-    {
-    }
-
-    void pushFront(ObjectPtr value)
-    {
-        front_ = env_.create<Pair>(value, front_.get());
-    }
-
-    void pushBack(ObjectPtr value)
-    {
-        auto next = env_.create<Pair>(value, env_.getNull());
-        back_->setCdr(next);
-        back_ = next;
-    }
-
-    ObjectPtr result()
-    {
-        return front_.get();
-    }
-
-private:
-    Environment& env_;
-    Local<Pair> front_;
-    Heap::Ptr<Pair> back_;
-};
-
-// More overhead, but doesn't require an initial element like ListBuilder
-class LazyListBuilder {
-public:
-    LazyListBuilder(Environment& env) : env_(env)
-    {
-    }
-
-    void pushFront(ObjectPtr value)
-    {
-        push(value, [&](ListBuilder& builder) { builder.pushFront(value); });
-    }
-    void pushBack(ObjectPtr value)
-    {
-        push(value, [&](ListBuilder& builder) { builder.pushBack(value); });
-    }
-
-    ObjectPtr result()
-    {
-        if (builder_)
-            return builder_->result();
-        else
-            return env_.getNull();
-    }
-
-private:
-    template <typename F> void push(ObjectPtr value, F&& callback)
-    {
-        if (not builder_)
-            builder_.emplace(env_, value);
-        else
-            callback(*builder_);
-    }
-    Environment& env_;
-    nonstd::optional<ListBuilder> builder_;
-};
-
 struct BuiltinFunctionInfo {
     const char* name;
     const char* docstring;
@@ -191,7 +124,7 @@ static const BuiltinFunctionInfo builtins[] = {
          return env.create<Pair>(args[0], args[1]);
      }},
     {"list",
-     "[args...] -> create a chain of pairs, where each arg in args..."
+     "[...] -> create a chain of pairs, where each arg in ..."
      " supplies the first element of each pair",
      0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
@@ -430,21 +363,16 @@ static const BuiltinFunctionInfo builtins[] = {
                    << " remaining)" << std::endl;
          return env.getNull();
      }},
-    {"print", nullptr, 1,
+    {"print", "[...] -> print each arg in ...", 0,
      [](Environment& env, const Arguments& args) {
-         print(env, args[0], std::cout);
+         for (const auto& arg : args) {
+             print(env, arg, std::cout);
+         }
          return env.getNull();
      }},
-    {"println", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         print(env, args[0], std::cout);
-         std::cout << "\n";
-         return env.getNull();
-     }},
-    // Temporary, until we have support for characters
     {"newline", nullptr, 0,
      [](Environment& env, const Arguments& args) {
-         std::cout << "\n" << std::endl;
+         std::cout << "\n";
          return env.getNull();
      }},
     {"space", nullptr, 0,

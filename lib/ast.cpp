@@ -1,6 +1,7 @@
 #include "ast.hpp"
 #include "lisp.hpp"
 #include <iostream>
+#include "listBuilder.hpp"
 
 
 namespace lisp {
@@ -60,11 +61,10 @@ public:
     {
     }
 
-
     ObjectPtr call(Environment& env, Arguments& args)
     {
         auto derived = env.derive();
-        for (size_t i = 0; i < args.size(); ++i) {
+        for (size_t i = 0; i < impl_->argNames_.size(); ++i) {
             derived->push(args[i]);
         }
         auto up = env.getNull();
@@ -74,7 +74,6 @@ public:
         return up;
     }
 
-
 private:
     const ast::Lambda* impl_;
 };
@@ -82,8 +81,8 @@ private:
 
 ObjectPtr Lambda::execute(Environment& env)
 {
-    auto impl = make_unique<InterpretedFunctionImpl>(this);
     const auto argc = argNames_.size();
+    auto impl = make_unique<InterpretedFunctionImpl>(this);
     return env.create<lisp::Function>(
         [&]() -> ObjectPtr {
             if (not docstring_.empty()) {
@@ -96,6 +95,52 @@ ObjectPtr Lambda::execute(Environment& env)
         argc, std::move(impl));
 }
 
+
+class InterpretedVariadicFunctionImpl : public Function::Impl {
+public:
+    InterpretedVariadicFunctionImpl(ast::VariadicLambda* impl) : impl_(impl)
+    {
+    }
+
+    ObjectPtr call(Environment& env, Arguments& args)
+    {
+        auto derived = env.derive();
+        for (size_t i = 0; i < impl_->argNames_.size() - 1; ++i) {
+            derived->push(args[i]);
+        }
+        LazyListBuilder builder(env);
+        for (size_t i = impl_->argNames_.size() - 1; i < args.size(); ++i) {
+            builder.pushBack(args[i]);
+        }
+        derived->push(builder.result());
+        auto up = env.getNull();
+        for (auto& statement : impl_->statements_) {
+            up = statement->execute(*derived);
+        }
+        return up;
+    }
+    
+private:
+    const ast::VariadicLambda* impl_;
+};
+    
+
+ObjectPtr VariadicLambda::execute(Environment& env)
+{
+    const auto argc = argNames_.size() - 1;
+    auto impl = make_unique<InterpretedVariadicFunctionImpl>(this);
+    return env.create<lisp::Function>(
+        [&]() -> ObjectPtr {
+            if (not docstring_.empty()) {
+                return env.create<lisp::String>(docstring_.c_str(),
+                                                docstring_.length());
+            } else {
+                return env.getNull();
+            }
+        }(),
+        argc, std::move(impl));
+}
+    
 
 ObjectPtr Application::execute(Environment& env)
 {

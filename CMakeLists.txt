@@ -21,6 +21,7 @@ project(lisp)
 
 add_library(lisp
   lib/environment.cpp
+  lib/listBuilder.cpp
   lib/memory.cpp
   lib/parser.cpp
   lib/types.cpp

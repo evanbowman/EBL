@@ -2,6 +2,12 @@
 ;;; A small standard library
 ;;;
 
+(def println
+     (lambda (...)
+       "[...] -> print each arg in ... with print, then write a line break"
+       (apply print ...)
+       (newline)))
+
 (def reverse
      (let ((do-reverse
             (lambda (list result)
@@ -12,15 +18,6 @@
          "[list] -> reversed list"
          (do-reverse list null))))
 
-(def assoc
-     (lambda (list key)
-       "[key list] -> find element associated with key in list"
-       (if (null? list)
-           false
-           (if (equal? (car (car list)) key)
-               (cdr (car list))
-               (assoc (cdr list) key)))))
-
 (def atom?
      (lambda (x)
        "[x] -> false if x is a pair or if x is null"
@@ -28,6 +25,7 @@
 
 (def some
      (lambda (pred list)
+       "[pred list] -> first list element that satisfies pred, otherwise false"
        (if (null? list)
            false
            (if (pred (car list))
@@ -36,8 +34,16 @@
 
 (def every
      (lambda (pred list)
+       "[pred list] -> true if pred is true for all elements, otherwise false"
        (if (null? list)
            true
            (if (not (pred (car list)))
                false
                (every pred (cdr list))))))
+
+(def assoc
+     (lambda (list key)
+       "[key list] -> element associated with key in list, otherwise false"
+       (some (lambda (elem)
+               (equal? (car elem) key))
+             list)))

@@ -128,7 +128,7 @@ ast::Ptr<ast::And> parseAnd(Lexer& lexer)
 
 ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)
 {
-    auto lambda = make_unique<ast::Lambda>();
+    std::vector<std::string> argNames;
     expect<Lexer::Token::LPAREN>(lexer, "in parse lambda");
     while (true) {
         switch (lexer.lex()) {
@@ -136,7 +136,7 @@ ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)
             goto BODY;
 
         case Lexer::Token::SYMBOL:
-            lambda->argNames_.push_back(lexer.rdbuf());
+            argNames.push_back(lexer.rdbuf());
             break;
 
         default:
@@ -144,6 +144,14 @@ ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)
         }
     }
 BODY:
+    auto lambda = [&]() -> ast::Ptr<ast::Lambda> {
+        if (not argNames.empty() and argNames.back() == "...") {
+            return make_unique<ast::VariadicLambda>();
+        }
+        return make_unique<ast::Lambda>();
+    }();
+    lambda->argNames_ = std::move(argNames);
+
     // FIXME: this is kind of nasty
     try {
         lambda->statements_.push_back(parseStatement(lexer));

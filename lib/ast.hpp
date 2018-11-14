@@ -174,6 +174,11 @@ struct Lambda : Expr, Scope {
 };
 
 
+struct VariadicLambda : Lambda {
+    Heap::Ptr<Object> execute(Environment& env) override;
+};
+
+
 struct Application : Expr {
     Ptr<Statement> toApply_;
     Vector<Ptr<Statement>> args_;

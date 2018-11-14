@@ -33,5 +33,5 @@
           (print "*")
           (print " ")))
     (car data-mat))
-   (println ""))
+   (newline))
  (cdr data-mat))
