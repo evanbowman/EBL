@@ -1,6 +1,6 @@
 # EB Lisp Programming Guide
 
-
+This guide is intended for programmers with some previous familiarity with lisp, but who want to learn about the syntax for this specific dialect.
 
 ## Data Types
 
@@ -18,20 +18,14 @@ false
 ```
 
 ### Pair
-One of the most important data types for programming in lisp! You can create a pair with the `cons` function:
+This is the same old pair that we all know and love: 
 ``` scheme
 (cons 1 2) ;; => (1 2)
-```
-A list is merely a chain of pairs:
-``` scheme
+
 (cons 1 (cons 2 (cons 3 (cons 4 null)))) ;; => (1 2 3 4)
-```
-But you can create a list more easily by using the list function:
-``` scheme
+
 (list 1 2 3 4) ;; => (1 2 3 4)
-```
-The first and second elements of a pair can be accessed by the `car` and `cdr` functions, respectively:
-``` scheme
+
 (car (cons 1 2)) ;; => 1
 
 (cdr (cons 1 2)) ;; => 2
@@ -40,21 +34,10 @@ The first and second elements of a pair can be accessed by the `car` and `cdr` f
 ```
 
 ### Lambda
-A lambda is a nameless function. To define a lambda, use the lambda keyword, followed by an argument list, followed by any number of expressions in the function body.
+Lambdas are mostly the same as in other lisp dialects, with a few details worth mentioning:
+* EB Lisp has a single namespace for functions and data (like scheme), so you don't need funcall (like emacs)
+* EB Lisp supports functions with an indefinite number of arguments. To define a variadic function, add an argument called `...` to the end of a lambda's argument list. If you pass extra arguments to your function, they will be available as a list bound to the `...` parameter:
+* EB lisp supports docstrings. Add a docstring by placing a string after the argument list. Retrieve a docstring with the help function.
 ``` scheme
-(lambda ()   ;; No arguments
-  (print 5)) ;; call print with argument 5
- ```
-To call a function, surround the function, followed by the arguments, with parentheses. A function implicitly returns the result of the last expression in the function body:
-``` scheme
-;; Bind a lambda to the variable foo:
-(def foo
-  (lambda (a b)
-    (cons a b)))
-    
-;; Apply foo with two arguments
-(foo 1 2) ;; => (1 2)
-
-;; Call a lambda without binding it to a variable
-((lambda (a b) (+ a b)) 1 2) ;; => 3
- ```
+(help (lambda () "my documentation" (+ 1 2 3))) ;; => "my documenation"
+```
