@@ -189,15 +189,12 @@ struct Application : Expr {
 
 
 struct Let : Expr, Scope {
-    struct Binding : Node {
+    struct Binding {
         StrVal name_;
         Ptr<Statement> value_;
-
-        Heap::Ptr<Object> execute(Environment& env) override;
-        void init(Environment&, Scope&) override;
     };
 
-    Vector<Ptr<Binding>> bindings_;
+    Vector<Binding> bindings_;
     Vector<Ptr<Statement>> statements_;
 
     Heap::Ptr<Object> execute(Environment& env) override;
@@ -222,6 +219,19 @@ struct If : Expr {
     Ptr<Statement> condition_;
     Ptr<Statement> trueBranch_;
     Ptr<Statement> falseBranch_;
+
+    Heap::Ptr<Object> execute(Environment& env) override;
+    void init(Environment&, Scope&) override;
+};
+
+
+struct Cond : Expr {
+    struct Case {
+        Ptr<Statement> condition_;
+        std::vector<Ptr<Statement>> body_;
+    };
+
+    std::vector<Case> cases_;
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;

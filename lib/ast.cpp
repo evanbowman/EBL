@@ -119,11 +119,11 @@ public:
         }
         return up;
     }
-    
+
 private:
     const ast::VariadicLambda* impl_;
 };
-    
+
 
 ObjectPtr VariadicLambda::execute(Environment& env)
 {
@@ -140,7 +140,7 @@ ObjectPtr VariadicLambda::execute(Environment& env)
         }(),
         argc, std::move(impl));
 }
-    
+
 
 ObjectPtr Application::execute(Environment& env)
 {
@@ -153,18 +153,11 @@ ObjectPtr Application::execute(Environment& env)
 }
 
 
-ObjectPtr Let::Binding::execute(Environment& env)
-{
-    env.push(value_->execute(env));
-    return env.getNull();
-}
-
-
 ObjectPtr Let::execute(Environment& env)
 {
     auto derived = env.derive();
     for (const auto& binding : bindings_) {
-        binding->execute(*derived);
+        derived->push(binding.value_->execute(*derived));
     }
     ObjectPtr up = env.getNull();
     for (const auto& st : statements_) {
@@ -194,6 +187,21 @@ ObjectPtr If::execute(Environment& env)
     } else {
         throw std::runtime_error("bad if expression condition");
     }
+}
+
+
+ObjectPtr Cond::execute(Environment& env)
+{
+    for (auto& cCase : cases_) {
+        if (cCase.condition_->execute(env) == env.getBool(true)) {
+            auto up = env.getNull();
+            for (auto& st : cCase.body_) {
+                up = st->execute(env);
+            }
+            return up;
+        }
+    }
+    return env.getNull();
 }
 
 
@@ -294,18 +302,12 @@ void Application::init(Environment& env, Scope& scope)
 }
 
 
-void Let::Binding::init(Environment& env, Scope& scope)
-{
-    scope.insert(name_);
-    value_->init(env, scope);
-}
-
-
 void Let::init(Environment& env, Scope& scope)
 {
     Scope::setParent(&scope);
     for (const auto& binding : bindings_) {
-        binding->init(env, *this);
+        Scope::insert(binding.name_);
+        binding.value_->init(env, static_cast<Scope&>(*this));
     }
     for (const auto& statement : statements_) {
         statement->init(env, *this);
@@ -326,6 +328,17 @@ void If::init(Environment& env, Scope& scope)
     condition_->init(env, scope);
     trueBranch_->init(env, scope);
     falseBranch_->init(env, scope);
+}
+
+
+void Cond::init(Environment& env, Scope& scope)
+{
+    for (auto& cCase : cases_) {
+        cCase.condition_->init(env, scope);
+        for (auto& st : cCase.body_) {
+            st->init(env, scope);
+        }
+    }
 }
 
 

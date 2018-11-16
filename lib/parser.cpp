@@ -202,15 +202,37 @@ ast::Ptr<ast::Import> parseImport(Lexer& lexer)
     return import;
 }
 
-ast::Ptr<ast::Let::Binding> parseLetBinding(Lexer& lexer)
+
+ast::Ptr<ast::Cond> parseCond(Lexer& lexer)
 {
-    expect<Lexer::Token::SYMBOL>(lexer, "in parse binding");
-    auto binding = make_unique<ast::Let::Binding>();
-    binding->name_ = lexer.rdbuf();
-    binding->value_ = parseStatement(lexer);
-    expect<Lexer::Token::RPAREN>(lexer, "in parse binding");
-    return binding;
+    auto cond = make_unique<ast::Cond>();
+    while (true) {
+        auto tok = lexer.lex();
+        if (tok == Lexer::Token::LPAREN) {
+            std::vector<ast::Ptr<ast::Statement>> statements;
+            try {
+                while (true) {
+                    statements.push_back(parseStatement(lexer));
+                }
+            } catch (const UnexpectedClosingParen&) {
+                if (statements.empty()) {
+                    throw std::runtime_error("empty cond case!");
+                }
+                ast::Cond::Case c;
+                c.condition_ = std::move(statements.front());
+                for (size_t i = 1; i < statements.size(); ++i) {
+                    c.body_.push_back(std::move(statements[i]));
+                }
+                cond->cases_.push_back(std::move(c));
+            }
+        } else if (tok == Lexer::Token::RPAREN) {
+            return cond;
+        } else {
+            throw std::runtime_error("unexpected token in cond");
+        }
+    }
 }
+
 
 ast::Ptr<ast::Let> parseLet(Lexer& lexer)
 {
@@ -221,9 +243,15 @@ ast::Ptr<ast::Let> parseLet(Lexer& lexer)
         case Lexer::Token::RPAREN:
             goto BODY;
 
-        case Lexer::Token::LPAREN:
-            let->bindings_.push_back(parseLetBinding(lexer));
+        case Lexer::Token::LPAREN: {
+            expect<Lexer::Token::SYMBOL>(lexer, "in parse binding");
+            ast::Let::Binding binding;
+            binding.name_ = lexer.rdbuf();
+            binding.value_ = parseStatement(lexer);
+            expect<Lexer::Token::RPAREN>(lexer, "in parse binding");
+            let->bindings_.push_back(std::move(binding));
             break;
+        }
 
         default:
             throw std::runtime_error("invalid token in let");
@@ -255,7 +283,9 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
             return parseLet(lexer);
         } else if (symb == "if") {
             return parseIf(lexer);
-        } else if (symb == "begin") {
+        } else if (symb == "cond") {
+            return parseCond(lexer);
+        }else if (symb == "begin") {
             return parseBegin(lexer);
         } else if (symb == "import") {
             return parseImport(lexer);
