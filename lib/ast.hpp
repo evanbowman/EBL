@@ -2,7 +2,6 @@
 
 #include "common.hpp"
 #include "memory.hpp"
-#include <iostream>
 #include <memory>
 #include <ostream>
 #include <string>

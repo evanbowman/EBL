@@ -7,14 +7,14 @@
 namespace lisp {
 
 class Environment;
-    
+
 class ListBuilder {
 public:
     ListBuilder(Environment& env, ObjectPtr first);
     void pushFront(ObjectPtr value);
     void pushBack(ObjectPtr value);
     ObjectPtr result();
-    
+
 private:
     Environment& env_;
     Local<Pair> front_;
@@ -42,4 +42,4 @@ private:
     nonstd::optional<ListBuilder> builder_;
 };
 
-}
+} // namespace lisp

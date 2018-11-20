@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "common.hpp"
+#include "dll.hpp"
 #include "extlib/smallVector.hpp"
 #include "memory.hpp"
 #include "types.hpp"
@@ -49,6 +50,8 @@ public:
     void push(ObjectPtr value);
     void store(VarLoc loc, ObjectPtr value);
     ObjectPtr load(VarLoc loc);
+
+    void openDLL(const std::string& name);
 
     EnvPtr derive();
     EnvPtr parent();
@@ -99,7 +102,10 @@ public:
     Context(const Context&) = delete;
     ~Context();
 
-    std::vector<ObjectPtr>& immediates() { return immediates_; }
+    std::vector<ObjectPtr>& immediates()
+    {
+        return immediates_;
+    }
 
     EnvPtr topLevel();
 
@@ -136,11 +142,7 @@ private:
     Persistent<Boolean> booleans_[2];
     Persistent<Null> nullValue_;
     std::vector<ObjectPtr> immediates_;
-
-    // TODO: Eventually the codebase will execute bytecode instead of doing tree
-    // walking, but for now, previously exec'd trees need to be stored because
-    // some variables in the environment might reference the old ast(s).
-    // TODO: Should new code be merged into the top level of the existing ast?
+    std::vector<DLL> dlls_;
     ast::TopLevel* astRoot_ = nullptr;
 };
 

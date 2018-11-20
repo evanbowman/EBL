@@ -27,7 +27,11 @@ add_library(lisp
   lib/types.cpp
   lib/lexer.cpp
   lib/lisp.cpp
-  lib/ast.cpp)
+  lib/ast.cpp
+  lib/dll.cpp)
+
+target_link_libraries(lisp
+  dl)
 
 
 # A repl.

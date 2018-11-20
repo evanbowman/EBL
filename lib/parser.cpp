@@ -94,7 +94,12 @@ ast::Ptr<ast::If> parseIf(Lexer& lexer)
     auto ifExpr = make_unique<ast::If>();
     ifExpr->condition_ = parseStatement(lexer);
     ifExpr->trueBranch_ = parseStatement(lexer);
-    ifExpr->falseBranch_ = parseStatement(lexer);
+    try {
+        ifExpr->falseBranch_ = parseStatement(lexer);
+    } catch (const UnexpectedClosingParen&) {
+        ifExpr->falseBranch_ = make_unique<ast::Null>();
+        return ifExpr;
+    }
     expect<Lexer::Token::RPAREN>(lexer, "in parse if");
     return ifExpr;
 }
@@ -285,7 +290,7 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
             return parseIf(lexer);
         } else if (symb == "cond") {
             return parseCond(lexer);
-        }else if (symb == "begin") {
+        } else if (symb == "begin") {
             return parseBegin(lexer);
         } else if (symb == "import") {
             return parseImport(lexer);

@@ -165,4 +165,13 @@ ObjectPtr Environment::exec(const std::string& code)
 }
 
 
+void Environment::openDLL(const std::string& name)
+{
+    DLL dll(name.c_str());
+    auto sym = (void (*)(Environment&))dll.sym("__dllMain");
+    sym(*this);
+    context_->dlls_.push_back(std::move(dll));
+}
+
+
 } // namespace lisp

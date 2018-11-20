@@ -208,9 +208,7 @@ private:
 
 class Symbol : public Object {
 public:
-    inline Symbol(TypeId tp, Heap::Ptr<String> str) :
-        Object{tp},
-        str_(str)
+    inline Symbol(TypeId tp, Heap::Ptr<String> str) : Object{tp}, str_(str)
     {
     }
 

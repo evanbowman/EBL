@@ -1,7 +1,7 @@
 #include "ast.hpp"
 #include "lisp.hpp"
-#include <iostream>
 #include "listBuilder.hpp"
+#include <iostream>
 
 
 namespace lisp {
