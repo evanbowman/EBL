@@ -383,5 +383,190 @@ void TopLevel::init(Environment& env, Scope& scope)
 }
 
 
+void Import::store(OutputStream& out) const
+{
+    out << "(import " << name_ << ')';
+}
+
+
+void Integer::store(OutputStream& out) const
+{
+    out << value_;
+}
+
+
+void Double::store(OutputStream& out) const
+{
+    out << value_;
+}
+
+
+void String::store(OutputStream& out) const
+{
+    out << '\"' << value_ << '\"';
+}
+
+
+void Null::store(OutputStream& out) const
+{
+    out << "null";
+}
+
+
+void True::store(OutputStream& out) const
+{
+    out << "true";
+}
+
+
+void False::store(OutputStream& out) const
+{
+    out << "false";
+}
+
+
+void LValue::store(OutputStream& out) const
+{
+    out << name_;
+}
+
+
+void Lambda::store(OutputStream& out) const
+{
+    out << "(lambda (";
+    for (auto& arg : argNames_) {
+        out << arg << ' ';
+    }
+    out << ')';
+    for (auto& st : statements_) {
+        out << ' ';
+        st->store(out);
+    }
+    out << ')';
+}
+
+
+void Application::store(OutputStream& out) const
+{
+    out << '(';
+    toApply_->store(out);
+    for (auto& arg : args_) {
+        out << ' ';
+        arg->store(out);
+    }
+    out << ')';
+}
+
+
+void Let::store(OutputStream& out) const
+{
+    out << "(let (";
+    for (auto& binding : bindings_) {
+        out << '(' << binding.name_ << ' ';
+        binding.value_->store(out);
+        out << ')';
+    }
+    out << ')';
+    for (auto& st : statements_) {
+        out << ' ';
+        st->store(out);
+    }
+    out << ')';
+}
+
+
+void Begin::store(OutputStream& out) const
+{
+    out << "(begin";
+    for (auto& st : statements_) {
+        out << ' ';
+        st->store(out);
+    }
+    out << ')';
+}
+
+
+void TopLevel::store(OutputStream& out) const
+{
+    for (auto& st : statements_) {
+        out << ' ';
+        st->store(out);
+    }
+}
+
+
+void If::store(OutputStream& out) const
+{
+    out << "(if ";
+    condition_->store(out);
+    out << ' ';
+    trueBranch_->store(out);
+    out << ' ';
+    falseBranch_->store(out);
+    out << ')';
+}
+
+
+void Cond::store(OutputStream& out) const
+{
+    out << "(cond";
+    for (auto& c : cases_) {
+        out << '(';
+        c.condition_->store(out);
+        for (auto& st : c.body_) {
+            out << ' ';
+            st->store(out);
+        }
+        out << ')';
+    }
+    out << ')';
+}
+
+
+void Or::store(OutputStream& out) const
+{
+    out << "(or";
+    for (auto& st : statements_) {
+        out << ' ';
+        st->store(out);
+    }
+    out << ')';
+}
+
+
+void And::store(OutputStream& out) const
+{
+    out << "(and";
+    for (auto& st : statements_) {
+        out << ' ';
+        st->store(out);
+    }
+    out << ')';
+}
+
+
+void Def::store(OutputStream& out) const
+{
+    out << "(def " << name_ << ' ';
+    value_->store(out);
+    out << ')';
+}
+
+
+void Set::store(OutputStream& out) const
+{
+    out << "(set " << name_ << ' ';
+    value_->store(out);
+    out << ')';
+}
+
+
+void UserObject::store(OutputStream& out) const
+{
+    out << "\n;; Warning: could not serialize user object\n";
+    out << 0;
+}
+
+
 } // namespace ast
 } // namespace lisp

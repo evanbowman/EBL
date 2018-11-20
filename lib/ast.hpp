@@ -20,8 +20,8 @@ template <typename T> using Ptr = std::unique_ptr<T>;
 template <typename T> using Vector = std::vector<T>;
 using StrVal = std::string;
 using Error = std::runtime_error;
+using OutputStream = std::ostream;
 
-struct TopLevel;
 
 class Scope {
 public:
@@ -70,11 +70,10 @@ struct Node {
     virtual ~Node()
     {
     }
-    inline void format(std::ostream& out, int indent) const
-    {
-        out << StrVal(indent, ' ');
-    }
+
     virtual Heap::Ptr<Object> execute(Environment& env) = 0;
+
+    virtual void store(OutputStream& out) const = 0;
 
     // Resolve the stack addresses for variables accesses, and initialize
     // constants that we'll need while executing the program. It's possible
@@ -100,6 +99,7 @@ struct Import : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -110,6 +110,7 @@ struct Integer : Value {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -120,6 +121,7 @@ struct Double : Value {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -129,6 +131,7 @@ struct String : Value {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -137,6 +140,7 @@ struct Null : Value {
     void init(Environment&, Scope&) override
     {
     }
+    void store(OutputStream& out) const override;
 };
 
 
@@ -145,6 +149,7 @@ struct True : Value {
     void init(Environment&, Scope&) override
     {
     }
+    void store(OutputStream& out) const override;
 };
 
 
@@ -153,6 +158,7 @@ struct False : Value {
     void init(Environment&, Scope&) override
     {
     }
+    void store(OutputStream& out) const override;
 };
 
 
@@ -161,6 +167,7 @@ struct LValue : Value {
     VarLoc cachedVarLoc_;
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -171,6 +178,7 @@ struct Lambda : Expr, Scope {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -185,6 +193,7 @@ struct Application : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -199,6 +208,7 @@ struct Let : Expr, Scope {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -207,11 +217,13 @@ struct Begin : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
 struct TopLevel : Begin, Scope {
     void init(Environment& env, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -222,6 +234,7 @@ struct If : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -235,6 +248,7 @@ struct Cond : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -243,6 +257,7 @@ struct Or : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -251,6 +266,7 @@ struct And : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -260,6 +276,7 @@ struct Def : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -270,6 +287,7 @@ struct Set : Expr {
 
     Heap::Ptr<Object> execute(Environment& env) override;
     void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
 };
 
 
@@ -286,6 +304,7 @@ struct UserObject : Statement {
     void init(Environment&, Scope&) override
     {
     }
+    void store(OutputStream& out) const override;
 };
 
 

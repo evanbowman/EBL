@@ -1,5 +1,7 @@
 #include "environment.hpp"
 #include "parser.hpp"
+#include <fstream>
+#include <iomanip>
 
 
 namespace lisp {
@@ -116,6 +118,15 @@ Context::Context(const Configuration& config)
                          // it's not really necessary, but convenient
                          // for users who want to store stuff in the
                          // environment before having executed scripts.
+}
+
+Context::~Context()
+{
+    if (astRoot_) {
+        std::ofstream out("save.lisp");
+        out << std::fixed << std::setprecision(15);
+        astRoot_->store(out);
+    }
 }
 
 std::shared_ptr<Environment> Context::topLevel()

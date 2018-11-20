@@ -96,6 +96,8 @@ public:
     };
 
     Context(const Configuration& config = defaultConfig());
+    Context(const Context&) = delete;
+    ~Context();
 
     std::vector<ObjectPtr>& immediates() { return immediates_; }
 
