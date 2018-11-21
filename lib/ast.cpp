@@ -2,10 +2,13 @@
 #include "lisp.hpp"
 #include "listBuilder.hpp"
 #include <iostream>
+#include <sstream>
 
 
 namespace lisp {
 namespace ast {
+
+using ExecutionFailure = std::runtime_error;
 
 ObjectPtr Import::execute(Environment& env)
 {
@@ -144,12 +147,20 @@ ObjectPtr VariadicLambda::execute(Environment& env)
 
 ObjectPtr Application::execute(Environment& env)
 {
-    auto loaded = checkedCast<lisp::Function>(toApply_->execute(env));
-    Arguments args;
-    for (const auto& arg : args_) {
-        args.push_back(arg->execute(env));
+    try {
+        auto loaded = checkedCast<lisp::Function>(toApply_->execute(env));
+        Arguments args;
+        for (const auto& arg : args_) {
+            args.push_back(arg->execute(env));
+        }
+        return loaded->call(args);
+    } catch (const std::exception& err) {
+        std::stringstream fmt;
+        fmt << "failed to apply \'";
+        toApply_->store(fmt);
+        fmt << "\', reason: " << err.what();
+        throw ExecutionFailure(fmt.str());
     }
-    return loaded->call(args);
 }
 
 

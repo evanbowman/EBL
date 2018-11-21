@@ -227,8 +227,10 @@ private:
 };
 
 using Arguments = Ogre::SmallVector<ObjectPtr, 3>;
-
 using CFunction = std::function<ObjectPtr(Environment&, const Arguments&)>;
+struct InvalidArgumentError : std::runtime_error {
+    InvalidArgumentError(const char* msg) : std::runtime_error(msg) {}
+};
 
 class Function : public Object {
 public:
@@ -256,7 +258,7 @@ public:
     inline ObjectPtr call(Arguments& params)
     {
         if (params.size() < requiredArgs_) {
-            throw std::runtime_error("not enough params for fn!");
+            throw InvalidArgumentError("too few args");
         }
         return impl_->call(*envPtr_, params);
     }

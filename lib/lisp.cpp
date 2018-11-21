@@ -116,6 +116,10 @@ static const BuiltinFunctionInfo builtins[] = {
          env.getContext()->immediates().push_back(symb);
          return symb;
      }},
+    {"error", "[string] -> raise error string and terminate", 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         throw std::runtime_error(checkedCast<String>(args[0])->value());
+     }},
     {"cons", "[car cdr] -> create a pair from car and cdr", 2,
      [](Environment& env, const Arguments& args) {
          return env.create<Pair>(args[0], args[1]);

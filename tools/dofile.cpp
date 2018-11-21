@@ -28,5 +28,7 @@ int main(int argc, char** argv)
                   << std::endl;
     } catch (const std::exception& ex) {
         std::cout << "Error: " << ex.what() << std::endl;
+        return 1;
     }
+    return 0;
 }

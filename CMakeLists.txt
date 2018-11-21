@@ -48,3 +48,6 @@ add_executable(dofile
 
 target_link_libraries(dofile
   lisp)
+
+add_custom_command(TARGET dofile POST_BUILD
+    COMMAND ./dofile lisp/unit-test.lisp)
