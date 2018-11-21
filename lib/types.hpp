@@ -315,7 +315,7 @@ template <typename... Builtins> struct TypeInfoTable {
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
                         Symbol, Function>
-    typeInfo{};
+    typeInfo;
 
 template <typename T> bool isType(ObjectPtr obj)
 {
