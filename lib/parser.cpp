@@ -34,7 +34,7 @@ ast::Ptr<ast::Value> parseValue(const std::string& name)
     } else {
         auto ret = make_unique<ast::LValue>();
         ret->name_ = name;
-        return ret;
+        return std::move(ret);
     }
 }
 
@@ -57,19 +57,19 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
     case Lexer::Token::INTEGER: {
         auto ret = make_unique<ast::Integer>();
         ret->value_ = std::stoi(lexer.rdbuf());
-        return ret;
+        return std::move(ret);
     }
 
     case Lexer::Token::FLOAT: {
         auto ret = make_unique<ast::Double>();
         ret->value_ = std::stod(lexer.rdbuf());
-        return ret;
+        return std::move(ret);
     }
 
     case Lexer::Token::STRING: {
         auto ret = make_unique<ast::String>();
         ret->value_ = lexer.rdbuf();
-        return ret;
+        return std::move(ret);
     }
 
     default:
