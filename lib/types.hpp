@@ -310,7 +310,8 @@ template <typename... Builtins> struct TypeInfoTable {
                       "TypeId");
         return ::Index<T, Builtins...>::value;
     }
-    TypeInfo table[sizeof...(Builtins)] = {makeInfo<Builtins>()...};
+    constexpr TypeInfoTable() : table{makeInfo<Builtins>()...} {}
+    TypeInfo table[sizeof...(Builtins)];
 };
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
