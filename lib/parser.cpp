@@ -77,16 +77,22 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
     }
 }
 
+void parseStatementList(Lexer& l, std::vector<ast::Ptr<ast::Statement>>& out)
+{
+    try {
+        while (true) {
+            out.push_back(parseStatement(l));
+        }
+    } catch (const UnexpectedClosingParen&) {
+        return;
+    }
+}
+
 ast::Ptr<ast::Begin> parseBegin(Lexer& lexer)
 {
     auto begin = make_unique<ast::Begin>();
-    try {
-        while (true) {
-            begin->statements_.push_back(parseStatement(lexer));
-        }
-    } catch (const UnexpectedClosingParen&) {
-        return begin;
-    }
+    parseStatementList(lexer, begin->statements_);
+    return begin;
 }
 
 ast::Ptr<ast::If> parseIf(Lexer& lexer)
@@ -108,26 +114,16 @@ ast::Ptr<ast::If> parseIf(Lexer& lexer)
 ast::Ptr<ast::Or> parseOr(Lexer& lexer)
 {
     auto _or = make_unique<ast::Or>();
-    try {
-        while (true) {
-            _or->statements_.push_back(parseStatement(lexer));
-        }
-    } catch (const UnexpectedClosingParen&) {
-        return _or;
-    }
+    parseStatementList(lexer, _or->statements_);
+    return _or;
 }
 
 
 ast::Ptr<ast::And> parseAnd(Lexer& lexer)
 {
     auto _and = make_unique<ast::And>();
-    try {
-        while (true) {
-            _and->statements_.push_back(parseStatement(lexer));
-        }
-    } catch (const UnexpectedClosingParen&) {
-        return _and;
-    }
+    parseStatementList(lexer, _and->statements_);
+    return _and;
 }
 
 
@@ -215,21 +211,16 @@ ast::Ptr<ast::Cond> parseCond(Lexer& lexer)
         auto tok = lexer.lex();
         if (tok == Lexer::Token::LPAREN) {
             std::vector<ast::Ptr<ast::Statement>> statements;
-            try {
-                while (true) {
-                    statements.push_back(parseStatement(lexer));
-                }
-            } catch (const UnexpectedClosingParen&) {
-                if (statements.empty()) {
-                    throw std::runtime_error("empty cond case!");
-                }
-                ast::Cond::Case c;
-                c.condition_ = std::move(statements.front());
-                for (size_t i = 1; i < statements.size(); ++i) {
-                    c.body_.push_back(std::move(statements[i]));
-                }
-                cond->cases_.push_back(std::move(c));
+            parseStatementList(lexer, statements);
+            if (statements.empty()) {
+                throw std::runtime_error("empty cond case!");
             }
+            ast::Cond::Case c;
+            c.condition_ = std::move(statements.front());
+            for (size_t i = 1; i < statements.size(); ++i) {
+                c.body_.push_back(std::move(statements[i]));
+            }
+            cond->cases_.push_back(std::move(c));
         } else if (tok == Lexer::Token::RPAREN) {
             return cond;
         } else {
@@ -263,14 +254,8 @@ ast::Ptr<ast::Let> parseLet(Lexer& lexer)
         }
     }
 BODY:
-    // FIXME: this is kind of nasty
-    try {
-        while (true) {
-            let->statements_.push_back(parseStatement(lexer));
-        }
-    } catch (const UnexpectedClosingParen&) {
-        return let;
-    }
+    parseStatementList(lexer, let->statements_);
+    return let;
 }
 
 ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
@@ -358,11 +343,7 @@ ast::Ptr<ast::TopLevel> parse(const std::string& code)
     Lexer lexer(code);
     auto top = make_unique<ast::TopLevel>();
     try {
-        while (true) {
-            top->statements_.push_back(parseStatement(lexer));
-        }
-    } catch (const UnexpectedClosingParen&) {
-        return top;
+        parseStatementList(lexer, top->statements_);
     } catch (const UnexpectedEOF&) {
         return top;
     }

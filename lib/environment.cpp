@@ -6,13 +6,13 @@
 
 namespace lisp {
 
-ObjectPtr Environment::load(const std::string& key)
+ObjectPtr Environment::getGlobal(const std::string& key)
 {
     auto loc = context_->astRoot_->find(key);
     return context_->topLevel_->load(loc);
 }
 
-void Environment::store(const std::string& key, ObjectPtr value)
+void Environment::setGlobal(const std::string& key, ObjectPtr value)
 {
     auto def = make_unique<ast::Def>();
     auto obj = make_unique<ast::UserObject>(value);
@@ -111,7 +111,7 @@ Context::Context(const Configuration& config)
       topLevel_(std::make_shared<Environment>(this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},
-      nullValue_{topLevel_->create<Null>()}
+      nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
 {
     initBuiltins(*topLevel_);
     topLevel_->exec(""); // Creates the empty ast root. Technically
@@ -132,11 +132,6 @@ Context::~Context()
 std::shared_ptr<Environment> Context::topLevel()
 {
     return topLevel_;
-}
-
-const Heap& Environment::getHeap() const
-{
-    return context_->heap_;
 }
 
 Context* Environment::getContext()
@@ -169,8 +164,12 @@ void Environment::openDLL(const std::string& name)
 {
     DLL dll(name.c_str());
     auto sym = (void (*)(Environment&))dll.sym("__dllMain");
-    sym(*this);
-    context_->dlls_.push_back(std::move(dll));
+    if (sym) {
+        sym(*this);
+        context_->dlls_.push_back(std::move(dll));
+    } else {
+        throw std::runtime_error("symbol __dllMain lookup failed");
+    }
 }
 
 

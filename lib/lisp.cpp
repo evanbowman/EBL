@@ -5,10 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "environment.hpp"
 #include "lexer.hpp"
 #include "listBuilder.hpp"
-#include "types.hpp"
+#include "lisp.hpp"
 
 #ifdef __GNUC__
 #define unlikely(COND) __builtin_expect(COND, false)
@@ -88,6 +87,10 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         out << obj.cast<Symbol>()->value()->value();
         break;
 
+    case typeInfo.typeId<RawPointer>():
+        out << obj.cast<RawPointer>()->value();
+        break;
+
     default:
         out << "unknownObject";
         break;
@@ -132,19 +135,29 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) {
          return checkedCast<Pair>(args[0])->getCdr();
      }},
-    {"length", "[list] -> get the length of list", 1,
+    {"length", "[obj] -> get the length of a list or string", 1,
      [](Environment& env, const Arguments& args) {
-         Integer::Rep length = 0;
-         if (not isType<Null>(args[0])) {
-             dolist(args[0], [&](ObjectPtr) { ++length; });
+         switch (args[0]->typeId()) {
+         case typeInfo.typeId<Pair>(): {
+             Integer::Rep length = 0;
+             if (not isType<Null>(args[0])) {
+                 dolist(args[0], [&](ObjectPtr) { ++length; });
+             }
+             return env.create<Integer>(length);
          }
-         return env.create<Integer>(length);
+         case typeInfo.typeId<String>():
+             return env.create<Integer>(
+                 (Integer::Rep)args[0].cast<String>()->value().length());
+         default:
+             throw TypeError(args[0]->typeId(), "invalid type");
+         }
      }},
     {"map", nullptr, 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          if (not isType<Null>(args[1])) {
              auto fn = checkedCast<Function>(args[0]);
-             // TODO: replace vectors with small size optimized containers
+             // TODO: replace vectors with small size optimized
+             // containers
              Arguments paramVec;
              std::vector<Heap::Ptr<Pair>> inputLists;
              for (size_t i = 1; i < args.size(); ++i) {
@@ -230,6 +243,10 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) {
          return env.getBool(isType<Integer>(args[0]));
      }},
+    {"string?", nullptr, 1,
+     [](Environment& env, const Arguments& args) {
+         return env.getBool(isType<String>(args[0]));
+     }},
     {"identical?", nullptr, 2,
      [](Environment& env, const Arguments& args) {
          return env.getBool(args[0] == args[1]);
@@ -266,14 +283,6 @@ static const BuiltinFunctionInfo builtins[] = {
          if (not(doc == env.getNull())) {
              return doc;
          }
-         return env.getNull();
-     }},
-    {"memory-statistics", nullptr, 0,
-     [](Environment& env, const Arguments& args) {
-         std::cout << "heap capacity: " << env.getHeap().capacity()
-                   << ", heap used: " << env.getHeap().size() << " ("
-                   << env.getHeap().capacity() - env.getHeap().size()
-                   << " remaining)" << std::endl;
          return env.getNull();
      }},
     {"print", "[...] -> print each arg in ...", 0,
@@ -466,6 +475,14 @@ static const BuiltinFunctionInfo builtins[] = {
          const auto real = checkedCast<Double>(args[0])->value();
          const auto imag = checkedCast<Double>(args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
+     }},
+    {"string", nullptr, 0,
+     [](Environment& env, const Arguments& args) {
+         std::stringstream builder;
+         for (auto& arg : args) {
+             print(env, arg, builder);
+         }
+         return env.create<String>(builder.str());
      }},
     {"load", "[file] -> load lisp code from a file", 1,
      [](Environment& env, const Arguments& args) {

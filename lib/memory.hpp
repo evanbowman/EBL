@@ -120,9 +120,17 @@ public:
         throw OOM{};
     }
 
-private:
-    friend class GC;
+    uint8_t* begin()
+    {
+        return begin_;
+    }
 
+    uint8_t* end()
+    {
+        return end_;
+    }
+
+private:
     uint8_t* begin_;
     uint8_t* end_;
     size_t capacity_;
@@ -173,19 +181,6 @@ public:
 
     // TODO
     Heap::Ptr<T> value_;
-};
-
-class GC {
-public:
-    void run(Environment& env)
-    {
-        mark(env);
-        compact(env);
-    }
-
-private:
-    void mark(Environment& env);
-    void compact(Environment& env);
 };
 
 } // namespace lisp

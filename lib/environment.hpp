@@ -12,8 +12,10 @@
 #include "common.hpp"
 #include "dll.hpp"
 #include "extlib/smallVector.hpp"
+#include "gc.hpp"
 #include "memory.hpp"
 #include "types.hpp"
+
 
 namespace lisp {
 
@@ -31,9 +33,9 @@ public:
 
     template <typename T, typename... Args> Heap::Ptr<T> create(Args&&... args);
 
-    // Load a variable from the root environment.
-    ObjectPtr load(const std::string& key);
-    void store(const std::string& key, ObjectPtr value);
+    // Load/store a variable in the root environment.
+    ObjectPtr getGlobal(const std::string& key);
+    void setGlobal(const std::string& key, ObjectPtr value);
 
     // For storing and loading intern'd immediates
     ObjectPtr loadI(ImmediateId immediate);
@@ -57,9 +59,13 @@ public:
     EnvPtr parent();
     EnvPtr reference();
 
-    const Heap& getHeap() const;
-
     Context* getContext();
+
+    using Variables = Ogre::SmallVector<ObjectPtr, 6>;
+    Variables& getVars()
+    {
+        return vars_;
+    }
 
 private:
     Environment& getFrame(VarLoc loc);
@@ -111,6 +117,12 @@ public:
 
     friend class Environment;
 
+    using CallStack = std::vector<EnvPtr>;
+    CallStack& callStack()
+    {
+        return callStack_;
+    }
+
 private:
     template <typename T, typename... Args>
     Heap::Ptr<T> create(Environment& env, Args&&... args)
@@ -118,19 +130,19 @@ private:
         auto allocObj = [&] {
             return heap_.alloc<typeInfo.get<T>().size_>().template cast<T>();
         };
-        auto mem = alloc<T>(allocObj);
+        auto mem = alloc<T>(env, allocObj);
         ConstructImpl<T>::construct(mem.get(), env,
                                     std::forward<Args>(args)...);
         return mem;
     }
 
-    template <typename T, typename F> Heap::Ptr<T> alloc(F&& allocImpl)
+    template <typename T, typename F>
+    Heap::Ptr<T> alloc(Environment& env, F&& allocImpl)
     {
         try {
             return allocImpl();
         } catch (const Heap::OOM& oom) {
-            GC gc;
-            gc.run(*topLevel_);
+            collector_->run(env, heap_);
             return allocImpl();
         }
     }
@@ -144,6 +156,11 @@ private:
     std::vector<ObjectPtr> immediates_;
     std::vector<DLL> dlls_;
     ast::TopLevel* astRoot_ = nullptr;
+    std::unique_ptr<GC> collector_;
+
+    // A lambda knows where it was defined, but has no concept of
+    // where it was called, so we do actually need a call stack.
+    std::vector<EnvPtr> callStack_;
 };
 
 template <typename T, typename... Args>

@@ -19,7 +19,7 @@ include_directories(./)
 # The lisp runtime library.
 project(lisp)
 
-add_library(lisp
+add_library(lisp SHARED
   lib/environment.cpp
   lib/listBuilder.cpp
   lib/memory.cpp
@@ -28,7 +28,8 @@ add_library(lisp
   lib/lexer.cpp
   lib/lisp.cpp
   lib/ast.cpp
-  lib/dll.cpp)
+  lib/dll.cpp
+  lib/gc.cpp)
 
 target_link_libraries(lisp
   dl)
@@ -49,5 +50,11 @@ add_executable(dofile
 target_link_libraries(dofile
   lisp)
 
+# Run the unit tests
 add_custom_command(TARGET dofile POST_BUILD
-    COMMAND ./dofile lisp/unit-test.lisp)
+  COMMAND ./dofile lisp/unit-test.lisp)
+
+
+# Build extensions
+add_library(test SHARED dll/test.cpp)
+target_link_libraries(test lisp)

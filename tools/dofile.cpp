@@ -1,4 +1,3 @@
-#include "lib/parser.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -27,7 +26,7 @@ int main(int argc, char** argv)
                   << duration_cast<seconds>(stop - start).count() << "s)"
                   << std::endl;
     } catch (const std::exception& ex) {
-        std::cout << "Error: " << ex.what() << std::endl;
+        std::cout << "Error:\n" << ex.what() << std::endl;
         return 1;
     }
     return 0;

@@ -1,14 +1,7 @@
 #include "memory.hpp"
+#include "environment.hpp"
 
 namespace lisp {
 
-void GC::mark(Environment& env)
-{
-    // TODO
-}
-
-void GC::compact(Environment& env)
-{
-}
 
 } // namespace lisp

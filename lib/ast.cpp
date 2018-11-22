@@ -1,6 +1,7 @@
 #include "ast.hpp"
 #include "lisp.hpp"
 #include "listBuilder.hpp"
+#include "utility.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -66,15 +67,20 @@ public:
 
     ObjectPtr call(Environment& env, Arguments& args)
     {
-        auto derived = env.derive();
-        for (size_t i = 0; i < impl_->argNames_.size(); ++i) {
-            derived->push(args[i]);
-        }
-        auto up = env.getNull();
-        for (auto& statement : impl_->statements_) {
-            up = statement->execute(*derived);
-        }
-        return up;
+        auto& callStack = env.getContext()->callStack();
+        callStack.push_back(env.derive());
+        return dynamicWind(
+            [&] {
+                for (size_t i = 0; i < impl_->argNames_.size(); ++i) {
+                    callStack.back()->push(args[i]);
+                }
+                auto up = env.getNull();
+                for (auto& statement : impl_->statements_) {
+                    up = statement->execute(*callStack.back());
+                }
+                return up;
+            },
+            [&] { callStack.pop_back(); });
     }
 
 private:
@@ -107,20 +113,26 @@ public:
 
     ObjectPtr call(Environment& env, Arguments& args)
     {
-        auto derived = env.derive();
-        for (size_t i = 0; i < impl_->argNames_.size() - 1; ++i) {
-            derived->push(args[i]);
-        }
-        LazyListBuilder builder(env);
-        for (size_t i = impl_->argNames_.size() - 1; i < args.size(); ++i) {
-            builder.pushBack(args[i]);
-        }
-        derived->push(builder.result());
-        auto up = env.getNull();
-        for (auto& statement : impl_->statements_) {
-            up = statement->execute(*derived);
-        }
-        return up;
+        auto& callStack = env.getContext()->callStack();
+        callStack.push_back(env.derive());
+        return dynamicWind(
+            [&] {
+                for (size_t i = 0; i < impl_->argNames_.size() - 1; ++i) {
+                    callStack.back()->push(args[i]);
+                }
+                LazyListBuilder builder(env);
+                for (size_t i = impl_->argNames_.size() - 1; i < args.size();
+                     ++i) {
+                    builder.pushBack(args[i]);
+                }
+                callStack.back()->push(builder.result());
+                auto up = env.getNull();
+                for (auto& statement : impl_->statements_) {
+                    up = statement->execute(*callStack.back());
+                }
+                return up;
+            },
+            [&] { callStack.pop_back(); });
     }
 
 private:
@@ -158,7 +170,7 @@ ObjectPtr Application::execute(Environment& env)
         std::stringstream fmt;
         fmt << "failed to apply \'";
         toApply_->store(fmt);
-        fmt << "\', reason: " << err.what();
+        fmt << "\', reason:\n" << err.what();
         throw ExecutionFailure(fmt.str());
     }
 }
@@ -166,15 +178,29 @@ ObjectPtr Application::execute(Environment& env)
 
 ObjectPtr Let::execute(Environment& env)
 {
-    auto derived = env.derive();
-    for (const auto& binding : bindings_) {
-        derived->push(binding.value_->execute(*derived));
-    }
-    ObjectPtr up = env.getNull();
-    for (const auto& st : statements_) {
-        up = st->execute(*derived);
-    }
-    return up;
+    auto& callStack = env.getContext()->callStack();
+    callStack.push_back(env.derive());
+    return dynamicWind(
+        [&] {
+            for (const auto& binding : bindings_) {
+                callStack.back()->push(
+                    binding.value_->execute(*callStack.back()));
+            }
+            ObjectPtr up = env.getNull();
+            for (const auto& st : statements_) {
+                up = st->execute(*callStack.back());
+            }
+            return up;
+        },
+        [&] { callStack.pop_back(); });
+}
+
+
+ObjectPtr TopLevel::execute(Environment& env)
+{
+    auto& callStack = env.getContext()->callStack();
+    callStack.push_back(env.reference());
+    return Begin::execute(*callStack.back());
 }
 
 
@@ -318,7 +344,7 @@ void Let::init(Environment& env, Scope& scope)
     Scope::setParent(&scope);
     for (const auto& binding : bindings_) {
         Scope::insert(binding.name_);
-        binding.value_->init(env, static_cast<Scope&>(*this));
+        binding.value_->init(env, *this);
     }
     for (const auto& statement : statements_) {
         statement->init(env, *this);

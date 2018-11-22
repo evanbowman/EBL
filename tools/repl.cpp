@@ -8,11 +8,11 @@ int main()
     Context context;
     std::string input;
     auto env = context.topLevel();
-    env->store("quit", env->create<Function>(env->getNull(), size_t(0),
-                                             [](Environment& env, const Arguments&) {
-                                                 exit(0);
-                                                 return env.getNull();
-                                             }));
+    env->setGlobal("quit", env->create<Function>(env->getNull(), size_t(0),
+                                                 [](Environment& env, const Arguments&) {
+                                                     exit(0);
+                                                     return env.getNull();
+                                                 }));
     Arguments printArgv;
     while (true) {
         std::cout << "> ";
@@ -20,7 +20,7 @@ int main()
         if (not input.empty()) {
             try {
                 printArgv.push_back(env->exec(input));
-                checkedCast<Function>(env->load("print"))->call(printArgv);
+                checkedCast<Function>(env->getGlobal("print"))->call(printArgv);
                 std::cout << std::endl;
                 printArgv.clear();
             } catch (const std::exception& ex) {

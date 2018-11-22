@@ -223,6 +223,7 @@ struct Begin : Expr {
 struct TopLevel : Begin, Scope {
     void init(Environment& env, Scope&) override;
     void store(OutputStream& out) const override;
+    Heap::Ptr<Object> execute(Environment& env) override;
 };
 
 

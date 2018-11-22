@@ -20,3 +20,23 @@ std::unique_ptr<T> make_unique(Args&&... args)
 {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
+
+template <typename F> struct OnUnwind {
+    OnUnwind(F&& proc) : proc_(std::forward<F>(proc))
+    {
+    }
+    ~OnUnwind()
+    {
+        proc_();
+    }
+
+private:
+    F proc_;
+};
+
+template <typename Body, typename After>
+auto dynamicWind(Body&& body, After&& after) -> decltype(body())
+{
+    OnUnwind<After> _(std::forward<After>(after));
+    return body();
+}

@@ -22,20 +22,32 @@ using EnvPtr = std::shared_ptr<Environment>;
 using TypeId = uint8_t;
 
 class Object {
+private:
+    struct Header {
+        const TypeId typeInfoIndex;
+        uint8_t marked : 1;
+    } header_;
+
 public:
-    inline Object(TypeId id) : header_{id, Header::Flags::None}
+    inline Object(TypeId id) : header_{id, 0}
     {
     }
     inline TypeId typeId() const
     {
         return header_.typeInfoIndex;
     }
-
-private:
-    struct Header {
-        const TypeId typeInfoIndex;
-        enum Flags : uint8_t { None = 0, Marked = 1 << 0 } gcFlags_;
-    } header_;
+    inline void mark()
+    {
+        header_.marked = true;
+    }
+    inline void unmark()
+    {
+        header_.marked = false;
+    }
+    inline bool marked()
+    {
+        return header_.marked;
+    }
 };
 
 using ObjectPtr = Heap::Ptr<Object>;
@@ -192,6 +204,11 @@ public:
     {
     }
 
+    inline String(TypeId tp, std::string&& str)
+        : Object{tp}, data_(std::move(str))
+    {
+    }
+
     static constexpr const char* name()
     {
         return "<String>";
@@ -203,7 +220,7 @@ public:
     }
 
 private:
-    std::string data_;
+    const std::string data_;
 };
 
 class Symbol : public Object {
@@ -226,10 +243,32 @@ private:
     Heap::Ptr<String> str_;
 };
 
+class RawPointer : public Object {
+public:
+    inline RawPointer(TypeId tp, void* p) : Object{tp}, value_(p)
+    {
+    }
+
+    static constexpr const char* name()
+    {
+        return "<RawPointer>";
+    }
+
+    void* value() const
+    {
+        return value_;
+    }
+
+private:
+    void* value_;
+};
+
 using Arguments = Ogre::SmallVector<ObjectPtr, 3>;
 using CFunction = std::function<ObjectPtr(Environment&, const Arguments&)>;
 struct InvalidArgumentError : std::runtime_error {
-    InvalidArgumentError(const char* msg) : std::runtime_error(msg) {}
+    InvalidArgumentError(const char* msg) : std::runtime_error(msg)
+    {
+    }
 };
 
 class Function : public Object {
@@ -277,6 +316,11 @@ public:
         return requiredArgs_;
     }
 
+    inline EnvPtr definitionEnvironment()
+    {
+        return envPtr_;
+    }
+
 private:
     ObjectPtr docstring_;
     size_t requiredArgs_;
@@ -310,12 +354,14 @@ template <typename... Builtins> struct TypeInfoTable {
                       "TypeId");
         return ::Index<T, Builtins...>::value;
     }
-    constexpr TypeInfoTable() : table{makeInfo<Builtins>()...} {}
+    constexpr TypeInfoTable() : table{makeInfo<Builtins>()...}
+    {
+    }
     TypeInfo table[sizeof...(Builtins)];
 };
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
-                        Symbol, Function>
+                        Symbol, RawPointer, Function>
     typeInfo;
 
 template <typename T> bool isType(ObjectPtr obj)

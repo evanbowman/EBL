@@ -1,5 +1,6 @@
 #include "dll.hpp"
 #include <stdexcept>
+#include <string>
 #if defined(__linux__) or defined(__APPLE__)
 #define __UNIX__
 #endif
@@ -15,7 +16,7 @@ DLL::DLL(const char* name)
 #ifdef __UNIX__
     handle_ = dlopen(name, RTLD_LAZY);
     if (not handle_) {
-        throw std::runtime_error("failed to load DLL");
+        throw std::runtime_error("failed to load DLL " + std::string(name));
     }
 #else
     throw std::runtime_error("DLLs unimplemented for your platform");
@@ -31,10 +32,29 @@ void* DLL::sym(const char* name)
 }
 
 
+DLL::DLL(DLL&& from) noexcept
+{
+    this->handle_ = from.handle_;
+    from.handle_ = nullptr;
+}
+
+
+DLL& DLL::operator=(DLL&& from) noexcept
+{
+    this->handle_ = from.handle_;
+    from.handle_ = nullptr;
+    return *this;
+}
+
+
 DLL::~DLL()
 {
 #ifdef __UNIX__
-    dlclose(handle_);
+    if (handle_) {
+        dlclose(handle_);
+        handle_ = nullptr;
+        puts("closing handle");
+    }
 #endif
 }
 
