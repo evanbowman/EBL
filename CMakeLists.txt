@@ -56,5 +56,5 @@ add_custom_command(TARGET dofile POST_BUILD
 
 
 # Build extensions
-add_library(test SHARED dll/test.cpp)
-target_link_libraries(test lisp)
+# add_library(test SHARED dll/test.cpp)
+# target_link_libraries(test lisp)

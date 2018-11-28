@@ -184,6 +184,16 @@ ast::Ptr<ast::Def> parseDef(Lexer& lexer)
     return def;
 }
 
+ast::Ptr<ast::Def> parseDefn(Lexer& lexer)
+{
+    expect<Lexer::Token::SYMBOL>(lexer, "in parse defn");
+    auto def = make_unique<ast::Def>();
+    def->name_ = lexer.rdbuf();
+    def->value_ = parseLambda(lexer);
+    // NOTE: lambda parsing completed the closing paren.
+    return def;
+}
+
 ast::Ptr<ast::Set> parseSet(Lexer& lexer)
 {
     expect<Lexer::Token::SYMBOL>(lexer, "in parse set");
@@ -267,6 +277,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         const std::string symb = lexer.rdbuf();
         if (symb == "def") {
             return parseDef(lexer);
+        } else if (symb == "defn") {
+            return parseDefn(lexer);
         } else if (symb == "lambda") {
             return parseLambda(lexer);
         } else if (symb == "let") {

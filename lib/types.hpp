@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <complex>
 #include <functional>
 #include <limits>
@@ -20,6 +21,7 @@ class Environment;
 using EnvPtr = std::shared_ptr<Environment>;
 
 using TypeId = uint8_t;
+
 
 class Object {
 private:
@@ -50,15 +52,29 @@ public:
     }
 };
 
+
 using ObjectPtr = Heap::Ptr<Object>;
+
 
 struct EqualTo {
     bool operator()(ObjectPtr lhs, ObjectPtr rhs) const;
 };
 
+
 struct Hash {
     size_t operator()(ObjectPtr obj) const noexcept;
 };
+
+
+struct TypeError : std::runtime_error {
+    TypeError(TypeId t, const std::string& reason);
+};
+
+
+struct ConversionError : TypeError {
+    ConversionError(TypeId from, TypeId to);
+};
+
 
 class Null : public Object {
 public:
@@ -70,6 +86,7 @@ public:
         return "<Null>";
     }
 };
+
 
 class Pair : public Object {
 public:
@@ -106,6 +123,7 @@ private:
     ObjectPtr cdr_;
 };
 
+
 class Boolean : public Object {
 public:
     inline Boolean(TypeId tp, bool value) : Object{tp}, value_(value)
@@ -131,11 +149,13 @@ private:
     bool value_;
 };
 
+
 class Integer : public Object {
 public:
     using Rep = int32_t;
+    using Input = Rep;
 
-    inline Integer(TypeId tp, Rep value) : Object{tp}, value_(value)
+    inline Integer(TypeId tp, Input value) : Object{tp}, value_(value)
     {
     }
 
@@ -153,11 +173,13 @@ private:
     Rep value_;
 };
 
+
 class Double : public Object {
 public:
     using Rep = double;
+    using Input = Rep;
 
-    inline Double(TypeId tp, Rep value) : Object{tp}, value_(value)
+    inline Double(TypeId tp, Input value) : Object{tp}, value_(value)
     {
     }
 
@@ -175,11 +197,13 @@ private:
     Rep value_;
 };
 
+
 class Complex : public Object {
 public:
     using Rep = std::complex<double>;
+    using Input = Rep;
 
-    inline Complex(TypeId tp, Rep value) : Object{tp}, value_(value)
+    inline Complex(TypeId tp, Input value) : Object{tp}, value_(value)
     {
     }
 
@@ -197,31 +221,67 @@ private:
     Rep value_;
 };
 
-class String : public Object {
+
+class Character : public Object {
 public:
-    inline String(TypeId tp, const char* data, size_t length)
-        : Object{tp}, data_(data, length)
+    using Rep = std::array<char, 4>;
+    using Input = Rep;
+
+    inline Character(TypeId tp, const Input& value) : Object{tp}, value_(value)
     {
     }
 
-    inline String(TypeId tp, std::string&& str)
-        : Object{tp}, data_(std::move(str))
+    static constexpr const char* name()
     {
+        return "<Character>";
     }
+
+    inline const Rep& value() const
+    {
+        return value_;
+    }
+
+private:
+    Rep value_;
+};
+
+
+class String : public Object {
+public:
+    using Input = std::string;
+
+    using Rep = String;
 
     static constexpr const char* name()
     {
         return "<String>";
     }
 
-    inline const std::string& value() const
+    inline const String& value() const
     {
-        return data_;
+        return *this;
     }
 
+    enum class Encoding { binary, utf8 };
+
+    String(TypeId tp, const char* data, size_t length,
+           Encoding enc = Encoding::utf8);
+    String(TypeId tp, const Input& str, Encoding enc = Encoding::utf8);
+
+    Heap::Ptr<Character> operator[](size_t index) const;
+
+    size_t length() const;
+
+    std::string toAscii() const;
+
+    bool operator==(const Input& other) const;
+    bool operator==(const String& other) const;
+
 private:
-    const std::string data_;
+    void initialize(const char* data, size_t len, Encoding enc);
+    Heap storage_;
 };
+
 
 class Symbol : public Object {
 public:
@@ -243,6 +303,7 @@ private:
     Heap::Ptr<String> str_;
 };
 
+
 class RawPointer : public Object {
 public:
     inline RawPointer(TypeId tp, void* p) : Object{tp}, value_(p)
@@ -263,6 +324,7 @@ private:
     void* value_;
 };
 
+
 using Arguments = Ogre::SmallVector<ObjectPtr, 3>;
 using CFunction = std::function<ObjectPtr(Environment&, const Arguments&)>;
 struct InvalidArgumentError : std::runtime_error {
@@ -271,9 +333,9 @@ struct InvalidArgumentError : std::runtime_error {
     }
 };
 
+
 class Function : public Object {
 public:
-    // TODO: a variant + enum might be faster, time it and see.
     class Impl {
     public:
         virtual ~Impl()
@@ -302,10 +364,6 @@ public:
         return impl_->call(*envPtr_, params);
     }
 
-    void memoize();
-    void unmemoize();
-    bool isMemoized() const;
-
     inline ObjectPtr getDocstring()
     {
         return docstring_;
@@ -328,15 +386,18 @@ private:
     EnvPtr envPtr_;
 };
 
+
 struct TypeInfo {
     size_t size_;
     const char* name_;
 };
 
+
 template <typename T> constexpr TypeInfo makeInfo()
 {
     return {sizeof(T), T::name()};
 }
+
 
 template <typename... Builtins> struct TypeInfoTable {
     template <typename T> constexpr const TypeInfo& get() const
@@ -360,29 +421,17 @@ template <typename... Builtins> struct TypeInfoTable {
     TypeInfo table[sizeof...(Builtins)];
 };
 
+
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
-                        Symbol, RawPointer, Function>
+                        Character, Symbol, RawPointer, Function>
     typeInfo;
+
 
 template <typename T> bool isType(ObjectPtr obj)
 {
     return typeInfo.typeId<T>() == obj->typeId();
 }
 
-struct TypeError : std::runtime_error {
-    TypeError(TypeId t, const std::string& reason)
-        : std::runtime_error(std::string("for type ") + typeInfo[t].name_ +
-                             ": " + reason)
-    {
-    }
-};
-
-struct ConversionError : TypeError {
-    ConversionError(TypeId from, TypeId to)
-        : TypeError(from, std::string("invalid cast to ") + typeInfo[to].name_)
-    {
-    }
-};
 
 template <typename T> Heap::Ptr<T> checkedCast(ObjectPtr obj)
 {
@@ -391,5 +440,8 @@ template <typename T> Heap::Ptr<T> checkedCast(ObjectPtr obj)
     }
     throw ConversionError{obj->typeId(), typeInfo.typeId<T>()};
 }
+
+std::ostream& operator<<(std::ostream& out, const String& str);
+std::ostream& operator<<(std::ostream& out, const Character& c);
 
 } // namespace lisp

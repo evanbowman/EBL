@@ -1,7 +1,9 @@
 #include "environment.hpp"
 #include "parser.hpp"
+#include <chrono>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 
 
 namespace lisp {
@@ -51,24 +53,6 @@ ObjectPtr Environment::load(VarLoc loc)
 void Environment::store(VarLoc loc, ObjectPtr value)
 {
     getFrame(loc).vars_[loc.offset_] = value;
-}
-
-ObjectPtr Environment::loadI(ImmediateId immediate)
-{
-    return context_->immediates_[immediate];
-}
-
-ImmediateId Environment::storeI(ObjectPtr value)
-{
-    const auto ret = context_->immediates_.size();
-    EqualTo eq;
-    for (size_t i = 0; i < context_->immediates_.size(); ++i) {
-        if (eq(context_->immediates_[i], value)) {
-            return i;
-        }
-    }
-    context_->immediates_.push_back(value);
-    return ret;
 }
 
 ObjectPtr Environment::getNull()
@@ -132,6 +116,11 @@ Context::~Context()
 std::shared_ptr<Environment> Context::topLevel()
 {
     return topLevel_;
+}
+
+ObjectPtr Context::loadI(ImmediateId immediate)
+{
+    return immediates_[immediate];
 }
 
 Context* Environment::getContext()

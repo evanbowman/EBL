@@ -1,8 +1,8 @@
 #include "gc.hpp"
 #include "environment.hpp"
 #include "memory.hpp"
-#include <iostream>
 #include <deque>
+#include <iostream>
 
 namespace lisp {
 
@@ -54,10 +54,8 @@ void MarkCompact::compact(Environment& env, Heap& heap)
     while (index < heap.size()) {
         auto current = (Object*)(mem + index);
         if (current->marked()) {
-            std::cout << "live object "
-                      << typeInfo[current->typeId()].name_
-                      << " @ " << current
-                      << std::endl;
+            std::cout << "live object " << typeInfo[current->typeId()].name_
+                      << " @ " << current << std::endl;
         } else {
             ++collectCount;
         }

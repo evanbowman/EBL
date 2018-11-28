@@ -1,7 +1,9 @@
 # EB LISP
 
-A lisp interpreter. Lexically scoped, with proper closures, and easily embeddable. See repl.cpp in tools/ for an example of embedding the interpreter in a C++ application.
+## Introduction
+A lisp dialect, runs standalone, or can be easily embedded in C++ applications. Some notable features listed below:
 
+#### Lexical closures
 ``` scheme
 (def closure-test
      (let ((a 1))
@@ -11,6 +13,23 @@ A lisp interpreter. Lexically scoped, with proper closures, and easily embeddabl
 
 (println (closure-test 3))  ;; 4
 (println (closure-test 38)) ;; 42
+```
+
+#### Builtin unicode
+```scheme
+(length "안녕 세상") ;; 5
+```
+
+#### Variadic functions
+```scheme
+;; Extra args are passed in a list, bound to the ... variable
+(defn example* (factor ...)
+  (if (not (null? ...))
+      (begin
+        (print (* factor (car ...)) " ")
+        (apply example* (cdr ...)))))
+
+(example* 10 1 2 3 4 5) ;; 10 20 30 40 50
 ```
 
 ## Example

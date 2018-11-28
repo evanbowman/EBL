@@ -37,10 +37,6 @@ public:
     ObjectPtr getGlobal(const std::string& key);
     void setGlobal(const std::string& key, ObjectPtr value);
 
-    // For storing and loading intern'd immediates
-    ObjectPtr loadI(ImmediateId immediate);
-    ImmediateId storeI(ObjectPtr value);
-
     // Compile and execute lisp code
     ObjectPtr exec(const std::string& code);
 
@@ -111,6 +107,22 @@ public:
     std::vector<ObjectPtr>& immediates()
     {
         return immediates_;
+    }
+
+    // For storing and loading intern'd immediates
+    ObjectPtr loadI(ImmediateId immediate);
+    template <typename T> ImmediateId storeI(const typename T::Input& val)
+    {
+        const auto ret = immediates_.size();
+        for (size_t i = 0; i < immediates_.size(); ++i) {
+            if (isType<T>(immediates_[i])) {
+                if (immediates_[i].cast<T>()->value() == val) {
+                    return i;
+                }
+            }
+        }
+        immediates_.push_back(topLevel_->create<T>(val));
+        return ret;
     }
 
     EnvPtr topLevel();

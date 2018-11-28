@@ -19,19 +19,19 @@ ObjectPtr Import::execute(Environment& env)
 
 ObjectPtr Integer::execute(Environment& env)
 {
-    return env.loadI(cachedVal_);
+    return env.getContext()->loadI(cachedVal_);
 }
 
 
 ObjectPtr Double::execute(Environment& env)
 {
-    return env.loadI(cachedVal_);
+    return env.getContext()->loadI(cachedVal_);
 }
 
 
 ObjectPtr String::execute(Environment& env)
 {
-    return env.loadI(cachedVal_);
+    return env.getContext()->loadI(cachedVal_);
 }
 
 
@@ -295,20 +295,19 @@ void Import::init(Environment& env, Scope& scope)
 
 void String::init(Environment& env, Scope& scope)
 {
-    cachedVal_ =
-        env.storeI(env.create<lisp::String>(value_.c_str(), value_.length()));
+    cachedVal_ = env.getContext()->storeI<lisp::String>(value_);
 }
 
 
 void Integer::init(Environment& env, Scope& scope)
 {
-    cachedVal_ = env.storeI(env.create<lisp::Integer>(value_));
+    cachedVal_ = env.getContext()->storeI<lisp::Integer>(value_);
 }
 
 
 void Double::init(Environment& env, Scope& scope)
 {
-    cachedVal_ = env.storeI(env.create<lisp::Double>(value_));
+    cachedVal_ = env.getContext()->storeI<lisp::Double>(value_);
 }
 
 

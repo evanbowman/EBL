@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "lexer.hpp"
-#include "listBuilder.hpp"
 #include "lisp.hpp"
+#include "listBuilder.hpp"
 
 #ifdef __GNUC__
 #define unlikely(COND) __builtin_expect(COND, false)
@@ -69,9 +69,9 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
 
     case typeInfo.typeId<String>():
         if (showQuotes) {
-            out << '"' << obj.cast<String>()->value() << '"';
+            out << '"' << *obj.cast<String>() << '"';
         } else {
-            out << obj.cast<String>()->value();
+            out << *obj.cast<String>();
         }
         break;
 
@@ -83,12 +83,16 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         out << obj.cast<Complex>()->value();
         break;
 
-    case typeInfo.typeId<Symbol>():
-        out << obj.cast<Symbol>()->value()->value();
-        break;
+    case typeInfo.typeId<Symbol>(): {
+        out << *obj.cast<Symbol>()->value();
+    } break;
 
     case typeInfo.typeId<RawPointer>():
         out << obj.cast<RawPointer>()->value();
+        break;
+
+    case typeInfo.typeId<Character>():
+        out << *obj.cast<Character>();
         break;
 
     default:
@@ -121,7 +125,8 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"error", "[string] -> raise error string and terminate", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
-         throw std::runtime_error(checkedCast<String>(args[0])->value());
+         throw std::runtime_error(
+             checkedCast<String>(args[0])->value().toAscii());
      }},
     {"cons", "[car cdr] -> create a pair from car and cdr", 2,
      [](Environment& env, const Arguments& args) {
@@ -476,17 +481,23 @@ static const BuiltinFunctionInfo builtins[] = {
          const auto imag = checkedCast<Double>(args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
      }},
-    {"string", nullptr, 0,
+    {"string-ref", "[str index] -> character at index in str", 2,
      [](Environment& env, const Arguments& args) {
-         std::stringstream builder;
-         for (auto& arg : args) {
-             print(env, arg, builder);
-         }
-         return env.create<String>(builder.str());
+         return (*checkedCast<String>(
+             args[0]))[checkedCast<Integer>(args[1])->value()];
      }},
+    // {"string", nullptr, 0,
+    //  [](Environment& env, const Arguments& args) {
+    //      std::stringstream builder;
+    //      for (auto& arg : args) {
+    //          print(env, arg, builder);
+    //      }
+    //      return env.create<String>(builder.str());
+    //  }},
     {"load", "[file] -> load lisp code from a file", 1,
      [](Environment& env, const Arguments& args) {
-         std::ifstream ifstream(checkedCast<String>(args[0])->value());
+         std::ifstream ifstream(
+             checkedCast<String>(args[0])->value().toAscii());
          std::stringstream buffer;
          buffer << ifstream.rdbuf();
          return env.exec(buffer.str());
@@ -499,7 +510,7 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"open-dll", "[dll] -> run dll in current environment", 1,
      [](Environment& env, const Arguments& args) {
-         env.openDLL(checkedCast<String>(args[0])->value());
+         env.openDLL(checkedCast<String>(args[0])->value().toAscii());
          return env.getNull();
      }}};
 

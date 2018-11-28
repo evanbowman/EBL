@@ -12,97 +12,17 @@ class Environment;
 
 class Heap {
 public:
-    Heap(size_t capacity) : capacity_(capacity)
-    {
-        begin_ = (uint8_t*)malloc(capacity);
-        end_ = begin_;
-    }
-
+    Heap(size_t capacity);
+    Heap();
     Heap(const Heap&) = delete;
+    ~Heap();
 
-    ~Heap()
-    {
-        free(begin_);
-    }
+    void init(size_t capacity);
 
     template <typename T> class Ptr;
-
-    class GenericPtr {
-    public:
-        using HandleType = uint8_t*;
-
-        template <typename T> Ptr<T> cast() const
-        {
-            return {handle_};
-        }
-
-        HandleType handle() const
-        {
-            return handle_;
-        }
-
-        bool operator==(const GenericPtr& other) const
-        {
-            return handle_ == other.handle_;
-        }
-
-    protected:
-        friend class Heap;
-
-        GenericPtr(HandleType handle) : handle_(handle)
-        {
-        }
-
-    private:
-        uint8_t* handle_;
-    };
-
+    class GenericPtr;
     template <typename T> class Local;
-
     template <typename T> class Persistent;
-
-    template <typename T> class Ptr : public GenericPtr {
-    public:
-        template <typename U> Ptr(Ptr<U> other) : GenericPtr{other.handle()}
-        {
-            static_assert(std::is_base_of<T, U>::value, "bad upcast");
-        }
-
-        Ptr(Local<T> local);
-
-        Ptr(Persistent<T> persistent);
-
-        T* operator*() const
-        {
-            return reinterpret_cast<T*>(handle());
-        }
-        T* operator->() const
-        {
-            return reinterpret_cast<T*>(handle());
-        }
-
-        T* get()
-        {
-            return reinterpret_cast<T*>(handle());
-        }
-
-    protected:
-        friend class GenericPtr;
-
-        Ptr(HandleType handle) : GenericPtr(handle)
-        {
-        }
-    };
-
-    size_t size() const
-    {
-        return end_ - begin_;
-    }
-
-    size_t capacity() const
-    {
-        return capacity_;
-    }
 
     struct OOM : public std::runtime_error {
         OOM() : std::runtime_error("heap exhausted")
@@ -110,30 +30,82 @@ public:
         }
     };
 
-    template <size_t size> GenericPtr alloc()
-    {
-        if (this->size() + size < capacity_) {
-            auto result = end_;
-            end_ += size;
-            return {result};
-        }
-        throw OOM{};
-    }
+    template <size_t Size> GenericPtr alloc();
 
-    uint8_t* begin()
-    {
-        return begin_;
-    }
+    template <typename T> Heap::Ptr<T> arrayElemAt(size_t index) const;
 
-    uint8_t* end()
-    {
-        return end_;
-    }
+    size_t size() const;
+    size_t capacity() const;
+    uint8_t* begin() const;
+    uint8_t* end() const;
 
 private:
     uint8_t* begin_;
     uint8_t* end_;
     size_t capacity_;
+};
+
+class Heap::GenericPtr {
+public:
+    using HandleType = uint8_t*;
+
+    template <typename T> Ptr<T> cast() const
+    {
+        return {handle_};
+    }
+
+    HandleType handle() const
+    {
+        return handle_;
+    }
+
+    bool operator==(const GenericPtr& other) const
+    {
+        return handle_ == other.handle_;
+    }
+
+protected:
+    friend class Heap;
+
+    GenericPtr(HandleType handle) : handle_(handle)
+    {
+    }
+
+private:
+    uint8_t* handle_;
+};
+
+template <typename T> class Heap::Ptr : public GenericPtr {
+public:
+    template <typename U> Ptr(Ptr<U> other) : GenericPtr{other.handle()}
+    {
+        static_assert(std::is_base_of<T, U>::value, "bad upcast");
+    }
+
+    Ptr(Local<T> local);
+
+    Ptr(Persistent<T> persistent);
+
+    T& operator*() const
+    {
+        return *reinterpret_cast<T*>(handle());
+    }
+    T* operator->() const
+    {
+        return reinterpret_cast<T*>(handle());
+    }
+
+    T* get()
+    {
+        return reinterpret_cast<T*>(handle());
+    }
+
+protected:
+    friend class GenericPtr;
+
+    Ptr(HandleType handle) : GenericPtr(handle)
+    {
+    }
 };
 
 template <typename T> class Local {
@@ -182,5 +154,20 @@ public:
     // TODO
     Heap::Ptr<T> value_;
 };
+
+template <size_t Size> Heap::GenericPtr Heap::alloc()
+{
+    if (this->size() + Size <= capacity_) {
+        auto result = end_;
+        end_ += Size;
+        return {result};
+    }
+    throw OOM{};
+}
+
+template <typename T> Heap::Ptr<T> Heap::arrayElemAt(size_t index) const
+{
+    return GenericPtr((uint8_t*)(((T*)begin()) + index)).cast<T>();
+}
 
 } // namespace lisp
