@@ -32,6 +32,7 @@ A lisp dialect, runs standalone, or can be easily embedded in C++ applications. 
               (शामिल मूल्य (cdr सूची))))))
 
 (शामिल 1 (list 2 3 4 1 5)) ;; true
+(help शामिल) ;; सूची में मूल्य पाएं
 ```
 
 #### Variadic functions
