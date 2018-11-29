@@ -250,8 +250,6 @@ class String : public Object {
 public:
     using Input = std::string;
 
-    using Rep = String;
-
     static constexpr const char* name()
     {
         return "<String>";

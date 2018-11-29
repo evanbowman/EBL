@@ -107,6 +107,8 @@ void foreachUtf8Glyph(F&& callback, const char* data, size_t len)
             callback(Character::Rep{data[index], data[index + 1],
                                     data[index + 2], data[index + 3]});
             index += 4;
+        } else {
+            throw std::runtime_error("failed to parse unicode string");
         }
     }
 }

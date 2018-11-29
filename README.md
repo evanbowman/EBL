@@ -17,22 +17,10 @@ A lisp dialect, runs standalone, or can be easily embedded in C++ applications. 
 
 #### Builtin unicode
 ```scheme
-(length "안녕 세상") ;; 5
+(def 범위 length)
 
-;; You can get crazy with this, but better to write your code in english :)
-(defn शामिल (मूल्य सूची)
-  "सूची में मूल्य पाएं"
-  (if (null? सूची)
-      false
-      (if (not (pair? (car सूची)))
-          (if (equal? मूल्य (car सूची))
-              true
-              (शामिल मूल्य (cdr सूची)))
-          (or (शामिल मूल्य (car सूची))
-              (शामिल मूल्य (cdr सूची))))))
+(범위 "여보세요 세계") ;; 7
 
-(शामिल 1 (list 2 3 4 1 5)) ;; true
-(help शामिल) ;; सूची में मूल्य पाएं
 ```
 
 #### Variadic functions
