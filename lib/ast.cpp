@@ -9,11 +9,37 @@
 namespace lisp {
 namespace ast {
 
+// FIXME: shouldn't be global... but where to put it?
+static thread_local Vector<StrVal*> namespacePath;
+
+VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
+                   FrameDist traversed) const
+{
+    for (StackLoc i = 0; i < varNames_.size(); ++i) {
+        for (auto& pattern : varNamePatterns) {
+            if (varNames_[i] == pattern) {
+                return {traversed, i};
+            }
+        }
+    }
+    if (parent_) {
+        return parent_->find(varNamePatterns, traversed + 1);
+    } else {
+        throw Error("variable " + varNamePatterns.back() +
+                    " is not visible in the current environment");
+    }
+}
+
 using ExecutionFailure = std::runtime_error;
 
-ObjectPtr Import::execute(Environment& env)
+ObjectPtr Namespace::execute(Environment& env)
 {
-    return env.getNull();
+    // TODO...
+    auto up = env.getNull();
+    for (auto& statement : statements_) {
+        up = statement->execute(env);
+    }
+    return up;
 }
 
 
@@ -287,9 +313,13 @@ ObjectPtr UserObject::execute(Environment& env)
 }
 
 
-void Import::init(Environment& env, Scope& scope)
+void Namespace::init(Environment& env, Scope& scope)
 {
-    std::cout << "importing " << name_ << std::endl;
+    namespacePath.push_back(&name_);
+    for (auto& statement : statements_) {
+        statement->init(env, scope);
+    }
+    namespacePath.pop_back();
 }
 
 
@@ -310,10 +340,39 @@ void Double::init(Environment& env, Scope& scope)
     cachedVal_ = env.getContext()->storeI<lisp::Double>(value_);
 }
 
+// This is a potential area for improvement. In order to look up a variable, we
+// need to generate paths based on all the ascending namespaces where the
+// variable might exist, otherwise, code that refrences variables within a
+// namespace would need to use the full qualified path.
+static Vector<StrVal> makeNsPatterns(const StrVal& varName)
+{
+    Vector<StrVal> patterns;
+    StrVal builder;
+    for (int i = namespacePath.size() - 1; i > -1; --i) {
+        builder.clear();
+        for (int j = 0; j < i + 1; ++j) {
+            builder += *namespacePath[j];
+            builder += "::";
+        }
+        builder += varName;
+        patterns.push_back(builder);
+    }
+    patterns.push_back(varName);
+    return patterns;
+}
+
+static void validateIdentifier(const StrVal& name)
+{
+    if (name.find("::") not_eq StrVal::npos) {
+        throw std::runtime_error(
+            "identifiers may not contain a scope operator \'::\'");
+    }
+}
 
 void LValue::init(Environment& env, Scope& scope)
 {
-    cachedVarLoc_ = scope.find(name_);
+    const auto patterns = makeNsPatterns(name_);
+    cachedVarLoc_ = scope.find(patterns);
 }
 
 
@@ -321,6 +380,7 @@ void Lambda::init(Environment& env, Scope& scope)
 {
     Scope::setParent(&scope);
     for (const auto& argName : argNames_) {
+        validateIdentifier(argName);
         Scope::insert(argName);
     }
     for (const auto& statement : statements_) {
@@ -396,14 +456,22 @@ void And::init(Environment& env, Scope& scope)
 
 void Def::init(Environment& env, Scope& scope)
 {
-    scope.insert(name_);
+    validateIdentifier(name_);
+    StrVal fullName;
+    for (auto name : namespacePath) {
+        fullName += *name;
+        fullName += "::";
+    }
+    fullName += name_;
+    scope.insert(fullName);
     value_->init(env, scope);
 }
 
 
 void Set::init(Environment& env, Scope& scope)
 {
-    cachedVarLoc_ = scope.find(name_);
+    const auto patterns = makeNsPatterns(name_);
+    cachedVarLoc_ = scope.find(patterns);
     value_->init(env, scope);
 }
 
@@ -419,9 +487,15 @@ void TopLevel::init(Environment& env, Scope& scope)
 }
 
 
-void Import::store(OutputStream& out) const
+void Namespace::store(OutputStream& out) const
 {
-    out << "(import " << name_ << ')';
+    // TODO...
+    out << "(namespace " << name_; //')';
+    for (auto& statement : statements_) {
+        out << ' ';
+        statement->store(out);
+    }
+    out << ')';
 }
 
 
@@ -498,6 +572,7 @@ void Let::store(OutputStream& out) const
 {
     out << "(let (";
     for (auto& binding : bindings_) {
+        validateIdentifier(binding.name_);
         out << '(' << binding.name_ << ' ';
         binding.value_->store(out);
         out << ')';

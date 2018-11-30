@@ -494,7 +494,7 @@ static const BuiltinFunctionInfo builtins[] = {
     //      }
     //      return env.create<String>(builder.str());
     //  }},
-    {"load", "[file] -> load lisp code from a file", 1,
+    {"load", "[file-path] -> load lisp code from file-path", 1,
      [](Environment& env, const Arguments& args) {
          std::ifstream ifstream(
              checkedCast<String>(args[0])->value().toAscii());

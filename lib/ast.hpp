@@ -44,20 +44,8 @@ public:
     }
 
 
-    VarLoc find(const std::string& varName, FrameDist traversed = 0) const
-    {
-        for (StackLoc i = 0; i < varNames_.size(); ++i) {
-            if (varNames_[i] == varName) {
-                return {traversed, i};
-            }
-        }
-        if (parent_) {
-            return parent_->find(varName, traversed + 1);
-        } else {
-            throw Error("variable " + varName +
-                        " is not visible in the current environment");
-        }
-    }
+    VarLoc find(const Vector<StrVal>& varNamePatterns,
+                FrameDist traversed = 0) const;
 
 private:
     Scope* parent_ = nullptr;
@@ -90,15 +78,6 @@ struct Expr : Statement {
 
 
 struct Value : Statement {
-};
-
-
-struct Import : Expr {
-    StrVal name_;
-
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
 };
 
 
@@ -157,6 +136,16 @@ struct False : Value {
     void init(Environment&, Scope&) override
     {
     }
+    void store(OutputStream& out) const override;
+};
+
+
+struct Namespace : Expr {
+    StrVal name_;
+    Vector<Ptr<Statement>> statements_;
+
+    Heap::Ptr<Object> execute(Environment& env) override;
+    void init(Environment&, Scope&) override;
     void store(OutputStream& out) const override;
 };
 

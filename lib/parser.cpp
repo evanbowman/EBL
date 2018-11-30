@@ -204,13 +204,13 @@ ast::Ptr<ast::Set> parseSet(Lexer& lexer)
     return set;
 }
 
-ast::Ptr<ast::Import> parseImport(Lexer& lexer)
+ast::Ptr<ast::Namespace> parseNamespace(Lexer& lexer)
 {
-    expect<Lexer::Token::STRING>(lexer, "in parse import");
-    auto import = make_unique<ast::Import>();
-    import->name_ = lexer.rdbuf();
-    expect<Lexer::Token::RPAREN>(lexer, "in parse import");
-    return import;
+    expect<Lexer::Token::SYMBOL>(lexer, "in parse namespace");
+    auto ns = make_unique<ast::Namespace>();
+    ns->name_ = lexer.rdbuf();
+    parseStatementList(lexer, ns->statements_);
+    return ns;
 }
 
 
@@ -289,8 +289,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
             return parseCond(lexer);
         } else if (symb == "begin") {
             return parseBegin(lexer);
-        } else if (symb == "import") {
-            return parseImport(lexer);
+        } else if (symb == "namespace") {
+            return parseNamespace(lexer);
         } else if (symb == "or") {
             return parseOr(lexer);
         } else if (symb == "and") {

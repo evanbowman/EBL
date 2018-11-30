@@ -10,7 +10,9 @@ namespace lisp {
 
 ObjectPtr Environment::getGlobal(const std::string& key)
 {
-    auto loc = context_->astRoot_->find(key);
+    // FIXME: this is pretty bad...
+    ast::Vector<ast::StrVal> patterns = {key};
+    auto loc = context_->astRoot_->find(patterns);
     return context_->topLevel_->load(loc);
 }
 
@@ -89,6 +91,34 @@ const Context::Configuration& Context::defaultConfig()
     return defaults;
 }
 
+const char* utilities =
+    "(defn list (...)\n"
+    "  \"[...] -> construct a list from args in ...\"\n"
+    "  ...) ;; Well that was easy :)\n"
+    "\n"
+    "(defn println (...)\n"
+    "  \"[...] -> print each arg in ... with print, then write a line break\"\n"
+    "  (apply print ...)\n"
+    "  (newline))\n"
+    "\n"
+    "(defn caar (l) (car (car l)))\n"
+    "(defn cadr (l) (car (cdr l)))\n"
+    "(defn cdar (l) (cdr (car l)))\n"
+    "(defn caddr (l) (car (cdr (cdr l))))\n"
+    "(defn cadddr (l) (car (cdr (cdr (cdr l)))))\n"
+    "(def require\n"
+    "     (let ((loaded null))\n"
+    "       (lambda (fname)\n"
+    "         (def found false)\n"
+    "         (dolist (lambda (l)\n"
+    "                   (if (equal? l fname)\n"
+    "                       (set found true)))\n"
+    "                 loaded)\n"
+    "         (if (not found)\n"
+    "             (begin\n"
+    "               (let ((up (load fname)))\n"
+    "                 (set loaded (cons fname loaded))\n"
+    "                 up))))))\n";
 
 Context::Context(const Configuration& config)
     : heap_(config.heapSize_),
@@ -98,10 +128,7 @@ Context::Context(const Configuration& config)
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
 {
     initBuiltins(*topLevel_);
-    topLevel_->exec(""); // Creates the empty ast root. Technically
-                         // it's not really necessary, but convenient
-                         // for users who want to store stuff in the
-                         // environment before having executed scripts.
+    topLevel_->exec(utilities);
 }
 
 Context::~Context()
