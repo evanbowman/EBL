@@ -343,10 +343,28 @@ static const BuiltinFunctionInfo builtins[] = {
          // FIXME: this isn't as flexible as it should be
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Integer>():
-             return env.create<Integer>(args[0].cast<Integer>()->value() -
-                                        checkedCast<Integer>(args[1])->value());
+             switch (args[1]->typeId()) {
+             case typeInfo.typeId<Integer>():
+                 return env.create<Integer>(args[0].cast<Integer>()->value() -
+                                            args[1].cast<Integer>()->value());
+             case typeInfo.typeId<Double>():
+                 return env.create<Double>(args[0].cast<Integer>()->value() -
+                                           args[1].cast<Double>()->value());
+             default:
+                 throw std::runtime_error("issue during subtraction");
+             }
 
          case typeInfo.typeId<Double>():
+             switch (args[1]->typeId()) {
+             case typeInfo.typeId<Integer>():
+                 return env.create<Double>(args[0].cast<Double>()->value() -
+                                           args[1].cast<Integer>()->value());
+             case typeInfo.typeId<Double>():
+                 return env.create<Double>(args[0].cast<Double>()->value() -
+                                           args[1].cast<Double>()->value());
+             default:
+                 throw std::runtime_error("issue during subtraction");
+             }
              return env.create<Double>(args[0].cast<Double>()->value() -
                                        checkedCast<Double>(args[1])->value());
 

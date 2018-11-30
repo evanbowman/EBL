@@ -23,6 +23,25 @@ A lisp dialect, runs standalone, or can be easily embedded in C++ applications. 
 
 ```
 
+#### Namespaces
+```scheme
+(namespace math
+  (defn clamp (x lower upper)
+    (cond
+     ((< x lower) lower)
+     ((> x upper) upper)
+     (true x)))
+
+  (defn smoothstep (edge0 edge1 x)
+    (let ((clamped (clamp (/ (- x edge0) (- edge1 edge0)) 0.0 1.0)))
+      (* clamped clamped (- 3.0 (* clamped 2.0))))))
+
+(dotimes (lambda (i)
+           ;; Note: use :: delimiter for namespace indexing
+           (println (math::smoothstep 0.0 100.0 (* i 10.0))))
+         10)
+```
+
 #### Variadic functions
 ```scheme
 ;; Extra args are passed in a list, bound to the ... variable
