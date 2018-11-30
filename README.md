@@ -36,10 +36,7 @@ A lisp dialect, runs standalone, or can be easily embedded in C++ applications. 
     (let ((clamped (clamp (/ (- x edge0) (- edge1 edge0)) 0.0 1.0)))
       (* clamped clamped (- 3.0 (* clamped 2.0))))))
 
-(dotimes (lambda (i)
-           ;; Note: use :: delimiter for namespace indexing
-           (println (math::smoothstep 0.0 100.0 (* i 10.0))))
-         10)
+(math::smoothstep 0.0 100.0 25.0) ;; 0.15625
 ```
 
 #### Variadic functions
