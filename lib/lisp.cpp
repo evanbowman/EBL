@@ -512,6 +512,36 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return env.create<String>(builder.str());
      }},
+    {"integer", nullptr, 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         switch (args[0]->typeId()) {
+         case typeInfo.typeId<Integer>():
+             return args[0];
+         case typeInfo.typeId<String>(): {
+             Integer::Rep i = std::stoi(args[0].cast<String>()->toAscii());
+             return env.create<Integer>(i);
+         }
+         case typeInfo.typeId<Double>():
+             return env.create<Integer>(Integer::Rep(args[0].cast<Double>()->value()));
+         default:
+             throw ConversionError(args[0]->typeId(), typeInfo.typeId<Integer>());
+         }
+     }},
+    {"double", nullptr, 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         switch (args[0]->typeId()) {
+         case typeInfo.typeId<Double>():
+             return args[0];
+         case typeInfo.typeId<String>(): {
+             Double::Rep d = std::stod(args[0].cast<String>()->toAscii());
+             return env.create<Double>(d);
+         }
+         case typeInfo.typeId<Integer>():
+             return env.create<Double>(Double::Rep(args[0].cast<Integer>()->value()));
+         default:
+             throw ConversionError(args[0]->typeId(), typeInfo.typeId<Double>());
+         }
+     }},
     {"load", "[file-path] -> load lisp code from file-path", 1,
      [](Environment& env, const Arguments& args) {
          std::ifstream ifstream(
