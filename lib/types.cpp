@@ -1,5 +1,6 @@
 #include "types.hpp"
 #include "lisp.hpp"
+#include "utility.hpp"
 
 #include <map>
 #include <memory>
@@ -84,35 +85,6 @@ String::String(TypeId tp, const Input& str, Encoding enc) : Object{tp}
     initialize(str.c_str(), str.length(), enc);
 }
 
-// TODO: replace this function with an iterator or array adaptor
-template <typename F>
-void foreachUtf8Glyph(F&& callback, const char* data, size_t len)
-{
-    size_t index = 0;
-    while (index < len) {
-        const std::bitset<8> parsed(data[index]);
-        if (parsed[7] == 0) {
-            callback(Character::Rep{data[index], 0, 0, 0});
-            index += 1;
-        } else if (parsed[7] == 1 and parsed[6] == 1 and parsed[5] == 0) {
-            callback(Character::Rep{data[index], data[index + 1], 0, 0});
-            index += 2;
-        } else if (parsed[7] == 1 and parsed[6] == 1 and parsed[5] == 1 and
-                   parsed[4] == 0) {
-            callback(Character::Rep{data[index], data[index + 1],
-                                    data[index + 2], 0});
-            index += 3;
-        } else if (parsed[7] == 1 and parsed[6] == 1 and parsed[5] == 1 and
-                   parsed[4] == 1 and parsed[3] == 0) {
-            callback(Character::Rep{data[index], data[index + 1],
-                                    data[index + 2], data[index + 3]});
-            index += 4;
-        } else {
-            throw std::runtime_error("failed to parse unicode string");
-        }
-    }
-}
-
 void String::initialize(const char* data, size_t len, Encoding enc)
 {
     switch (enc) {
@@ -126,10 +98,7 @@ void String::initialize(const char* data, size_t len, Encoding enc)
     } break;
 
     case Encoding::utf8: {
-        size_t count = 0;
-        foreachUtf8Glyph([&count](const Character::Rep&) { count += 1; }, data,
-                         len);
-        storage_.init(count * sizeof(Character));
+        storage_.init(utf8Len(data, len) * sizeof(Character));
         foreachUtf8Glyph(
             [&](const Character::Rep& val) {
                 auto charMem = storage_.alloc<sizeof(Character)>();

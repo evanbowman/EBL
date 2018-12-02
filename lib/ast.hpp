@@ -6,6 +6,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include "utility.hpp"
 
 namespace lisp {
 
@@ -94,6 +95,17 @@ struct Integer : Value {
 
 struct Double : Value {
     using Rep = double;
+    Rep value_;
+    ImmediateId cachedVal_;
+
+    Heap::Ptr<Object> execute(Environment& env) override;
+    void init(Environment&, Scope&) override;
+    void store(OutputStream& out) const override;
+};
+
+
+struct Character : Value {
+    using Rep = WideChar;
     Rep value_;
     ImmediateId cachedVal_;
 

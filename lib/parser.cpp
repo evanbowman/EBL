@@ -72,6 +72,18 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
         return std::move(ret);
     }
 
+    case Lexer::Token::CHAR: {
+        auto ret = make_unique<ast::Character>();
+        if (utf8Len(lexer.rdbuf().c_str(), lexer.rdbuf().length()) not_eq 1) {
+            throw std::runtime_error("char literal " + lexer.rdbuf() +
+                                     " contains multiple glyphs!");
+        }
+        for (size_t i = 0; i < lexer.rdbuf().length(); ++i) {
+            ret->value_[i] = lexer.rdbuf()[i];
+        }
+        return ret;
+    }
+
     default:
         throw std::runtime_error("invalid token in statement");
     }
@@ -338,6 +350,19 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         case Lexer::Token::STRING: {
             auto param = make_unique<ast::String>();
             param->value_ = lexer.rdbuf();
+            apply->args_.push_back(std::move(param));
+            break;
+        }
+
+        case Lexer::Token::CHAR: {
+            auto param = make_unique<ast::Character>();
+            if (utf8Len(lexer.rdbuf().c_str(), lexer.rdbuf().length()) not_eq 1) {
+                throw std::runtime_error("char literal " + lexer.rdbuf() +
+                                         " contains multiple glyphs!");
+            }
+            for (size_t i = 0; i < lexer.rdbuf().length(); ++i) {
+                param->value_[i] = lexer.rdbuf()[i];
+            }
             apply->args_.push_back(std::move(param));
             break;
         }

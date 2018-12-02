@@ -15,6 +15,7 @@ public:
         INTEGER,
         FLOAT,
         STRING,
+        CHAR,
     };
 
     Lexer(const std::string& input) : position_(0), input_(input)

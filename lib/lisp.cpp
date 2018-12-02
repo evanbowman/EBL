@@ -504,14 +504,14 @@ static const BuiltinFunctionInfo builtins[] = {
          return (*checkedCast<String>(
              args[0]))[checkedCast<Integer>(args[1])->value()];
      }},
-    // {"string", nullptr, 0,
-    //  [](Environment& env, const Arguments& args) {
-    //      std::stringstream builder;
-    //      for (auto& arg : args) {
-    //          print(env, arg, builder);
-    //      }
-    //      return env.create<String>(builder.str());
-    //  }},
+    {"string", nullptr, 0,
+     [](Environment& env, const Arguments& args) {
+         std::stringstream builder;
+         for (auto& arg : args) {
+             print(env, arg, builder);
+         }
+         return env.create<String>(builder.str());
+     }},
     {"load", "[file-path] -> load lisp code from file-path", 1,
      [](Environment& env, const Arguments& args) {
          std::ifstream ifstream(

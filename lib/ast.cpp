@@ -55,6 +55,12 @@ ObjectPtr Double::execute(Environment& env)
 }
 
 
+ObjectPtr Character::execute(Environment& env)
+{
+    return env.getContext()->loadI(cachedVal_);
+}
+
+
 ObjectPtr String::execute(Environment& env)
 {
     return env.getContext()->loadI(cachedVal_);
@@ -323,6 +329,12 @@ void Namespace::init(Environment& env, Scope& scope)
 }
 
 
+void Character::init(Environment& env, Scope& scope)
+{
+    cachedVal_ = env.getContext()->storeI<lisp::Character>(value_);
+}
+
+
 void String::init(Environment& env, Scope& scope)
 {
     cachedVal_ = env.getContext()->storeI<lisp::String>(value_);
@@ -508,6 +520,18 @@ void Integer::store(OutputStream& out) const
 void Double::store(OutputStream& out) const
 {
     out << value_;
+}
+
+
+void Character::store(OutputStream& out) const
+{
+    out << '\\';
+    for (char c : value_) {
+        if (not c) {
+            break;
+        }
+        out << c;
+    }
 }
 
 

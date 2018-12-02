@@ -1,5 +1,4 @@
 #include "lexer.hpp"
-#include <iostream>
 
 namespace lisp {
 Lexer::Token Lexer::lex()
@@ -56,6 +55,14 @@ Lexer::Token Lexer::lex()
                 }
             }
             return Token::INTEGER;
+        }
+        case '\\': {
+            inputBuffer_.clear();
+            ++position_;
+            for (; checkTermCond(); ++position_) {
+                inputBuffer_.push_back(current());
+            }
+            return Token::CHAR;
         }
         case '\"': {
             inputBuffer_.clear();
