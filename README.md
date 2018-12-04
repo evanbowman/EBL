@@ -52,19 +52,6 @@ If you create a variable called `...`, extra arguments will be passed as a list 
 (example* 10 1 2 3 4 5) ;; 10 20 30 40 50
 ```
 
-#### Docstrings
-
-This lisp dialect supports docstrings, and they're first class strings:
-```scheme
-(def foo
-  (lambda (n)
-    "[n] -> print n"
-    (print n)))
-
-(help foo) ;; [n] -> print n
-(string-ref (help foo) 2) ;; ]
-```
-
 ## Non-trivial example:
 Here's something a little more advanced, mandelbrot sets:
 
