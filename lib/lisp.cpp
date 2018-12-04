@@ -181,26 +181,23 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return env.getNull();
      }},
-    {"null?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Null>(args[0]));
-     }},
-    {"pair?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Pair>(args[0]));
-     }},
-    {"bool?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Boolean>(args[0]));
-     }},
-    {"integer?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<Integer>(args[0]));
-     }},
-    {"string?", nullptr, 1,
-     [](Environment& env, const Arguments& args) {
-         return env.getBool(isType<String>(args[0]));
-     }},
+#define LISP_TYPE_PROC(NAME, T)                                                \
+    {                                                                          \
+        NAME, nullptr, 1, [](Environment& env, const Arguments& args) {        \
+            return env.getBool(isType<T>(args[0]));                            \
+        }                                                                      \
+    }
+    LISP_TYPE_PROC("null?", Null),
+    LISP_TYPE_PROC("pair?", Pair),
+    LISP_TYPE_PROC("boolean?", Boolean),
+    LISP_TYPE_PROC("integer?", Integer),
+    LISP_TYPE_PROC("double?", Double),
+    LISP_TYPE_PROC("complex?", Complex),
+    LISP_TYPE_PROC("string?", String),
+    LISP_TYPE_PROC("character?", Character),
+    LISP_TYPE_PROC("symbol?", Symbol),
+    LISP_TYPE_PROC("pointer?", RawPointer),
+    LISP_TYPE_PROC("function?", Function),
     {"identical?", nullptr, 2,
      [](Environment& env, const Arguments& args) {
          return env.getBool(args[0] == args[1]);
@@ -246,17 +243,12 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return env.getNull();
      }},
-    {"newline", nullptr, 0,
+    {"newline", "[] -> write a newline to standard out", 0,
      [](Environment& env, const Arguments& args) {
          std::cout << "\n";
          return env.getNull();
      }},
-    {"space", nullptr, 0,
-     [](Environment& env, const Arguments& args) {
-         std::cout << " " << std::endl;
-         return env.getNull();
-     }},
-    {"+", nullptr, 0,
+    {"+", "[...] -> the result of adding each arg in ...", 0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          Integer::Rep iSum = 0;
          Complex::Rep cSum;
@@ -324,7 +316,7 @@ static const BuiltinFunctionInfo builtins[] = {
              throw TypeError(args[0]->typeId(), "not a number");
          }
      }},
-    {"*", nullptr, 0,
+    {"*", "[...] -> the result of multiplying each arg in ...", 0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          Integer::Rep iProd = 1;
          Double::Rep dProd = 1.0;
@@ -411,7 +403,7 @@ static const BuiltinFunctionInfo builtins[] = {
              throw TypeError(args[0]->typeId(), "not a number");
          }
      }},
-    {"abs", nullptr, 1,
+    {"abs", "[number] -> absolute value of number", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          auto inp = args[0];
          switch (inp->typeId()) {
@@ -442,7 +434,7 @@ static const BuiltinFunctionInfo builtins[] = {
              throw TypeError(inp->typeId(), "not a number");
          }
      }},
-    {"complex", nullptr, 2,
+    {"complex", "[real imag] -> complex number from real + (b x imag)", 2,
      [](Environment& env, const Arguments& args) {
          const auto real = checkedCast<Double>(args[0])->value();
          const auto imag = checkedCast<Double>(args[1])->value();
@@ -453,7 +445,7 @@ static const BuiltinFunctionInfo builtins[] = {
          return (*checkedCast<String>(
              args[0]))[checkedCast<Integer>(args[1])->value()];
      }},
-    {"string", nullptr, 0,
+    {"string", "[...] -> string constructed from all the args", 0,
      [](Environment& env, const Arguments& args) {
          std::stringstream builder;
          for (auto& arg : args) {
@@ -461,7 +453,7 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return env.create<String>(builder.str());
      }},
-    {"integer", nullptr, 1,
+    {"integer", "[string-or-double] -> integer conversion of the input", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Integer>():
@@ -478,7 +470,7 @@ static const BuiltinFunctionInfo builtins[] = {
                                    typeInfo.typeId<Integer>());
          }
      }},
-    {"double", nullptr, 1,
+    {"double", "[integer-or-string] -> double precision float", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Double>():
