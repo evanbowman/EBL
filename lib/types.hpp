@@ -3,6 +3,7 @@
 #include <array>
 #include <complex>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <new>
@@ -18,6 +19,7 @@
 namespace lisp {
 
 class Environment;
+class Context;
 using EnvPtr = std::shared_ptr<Environment>;
 
 using TypeId = uint8_t;
@@ -46,9 +48,34 @@ public:
     {
         header_.marked = false;
     }
-    inline bool marked()
+    inline bool marked() const
     {
         return header_.marked;
+    }
+};
+
+
+template <typename T> class ObjectTemplate : public Object {
+public:
+    ObjectTemplate();
+
+    static void finalize(Object* obj)
+    {
+        reinterpret_cast<T*>(obj)->~T();
+    }
+
+    static void relocate(Object* obj, uint8_t* dest)
+    {
+        // std::cout << "move " << obj << " to " << (void*)dest << std::endl;
+        // NOTE: due to potentially overlapping memory, we need to first move
+        // the object to a temporary buffer, destruct the original, then move
+        // the buffer contents to the final location, and then destruct the
+        // object in the buffer.
+        thread_local std::array<uint8_t, sizeof(T)> buffer;
+        new ((T*)buffer.data()) T(std::move(*reinterpret_cast<T*>(obj)));
+        ((T*)obj)->~T();
+        new ((T*)dest) T(std::move(*reinterpret_cast<T*>(buffer.data())));
+        ((T*)buffer.data())->~T();
     }
 };
 
@@ -76,11 +103,8 @@ struct ConversionError : TypeError {
 };
 
 
-class Null : public Object {
+class Null : public ObjectTemplate<Null> {
 public:
-    inline Null(TypeId tp) : Object{tp}
-    {
-    }
     static constexpr const char* name()
     {
         return "<Null>";
@@ -88,10 +112,9 @@ public:
 };
 
 
-class Pair : public Object {
+class Pair : public ObjectTemplate<Pair> {
 public:
-    inline Pair(TypeId tp, ObjectPtr car, ObjectPtr cdr)
-        : Object{tp}, car_(car), cdr_(cdr)
+    inline Pair(ObjectPtr car, ObjectPtr cdr) : car_(car), cdr_(cdr)
     {
     }
 
@@ -104,6 +127,7 @@ public:
     {
         return car_;
     }
+
     inline ObjectPtr getCdr() const
     {
         return cdr_;
@@ -113,6 +137,7 @@ public:
     {
         car_ = value;
     }
+
     inline void setCdr(ObjectPtr value)
     {
         cdr_ = value;
@@ -124,9 +149,9 @@ private:
 };
 
 
-class Boolean : public Object {
+class Boolean : public ObjectTemplate<Boolean> {
 public:
-    inline Boolean(TypeId tp, bool value) : Object{tp}, value_(value)
+    inline Boolean(bool value) : value_(value)
     {
     }
 
@@ -150,12 +175,12 @@ private:
 };
 
 
-class Integer : public Object {
+class Integer : public ObjectTemplate<Integer> {
 public:
     using Rep = int32_t;
     using Input = Rep;
 
-    inline Integer(TypeId tp, Input value) : Object{tp}, value_(value)
+    inline Integer(Input value) : value_(value)
     {
     }
 
@@ -174,12 +199,12 @@ private:
 };
 
 
-class Double : public Object {
+class Double : public ObjectTemplate<Double> {
 public:
     using Rep = double;
     using Input = Rep;
 
-    inline Double(TypeId tp, Input value) : Object{tp}, value_(value)
+    inline Double(Input value) : value_(value)
     {
     }
 
@@ -198,12 +223,12 @@ private:
 };
 
 
-class Complex : public Object {
+class Complex : public ObjectTemplate<Complex> {
 public:
     using Rep = std::complex<double>;
     using Input = Rep;
 
-    inline Complex(TypeId tp, Input value) : Object{tp}, value_(value)
+    inline Complex(Input value) : value_(value)
     {
     }
 
@@ -222,12 +247,12 @@ private:
 };
 
 
-class Character : public Object {
+class Character : public ObjectTemplate<Character> {
 public:
     using Rep = std::array<char, 4>;
     using Input = Rep;
 
-    inline Character(TypeId tp, const Input& value) : Object{tp}, value_(value)
+    inline Character(const Input& value) : value_(value)
     {
     }
 
@@ -246,7 +271,7 @@ private:
 };
 
 
-class String : public Object {
+class String : public ObjectTemplate<String> {
 public:
     using Input = std::string;
 
@@ -262,9 +287,8 @@ public:
 
     enum class Encoding { binary, utf8 };
 
-    String(TypeId tp, const char* data, size_t length,
-           Encoding enc = Encoding::utf8);
-    String(TypeId tp, const Input& str, Encoding enc = Encoding::utf8);
+    String(const char* data, size_t length, Encoding enc = Encoding::utf8);
+    String(const Input& str, Encoding enc = Encoding::utf8);
 
     Heap::Ptr<Character> operator[](size_t index) const;
 
@@ -281,9 +305,9 @@ private:
 };
 
 
-class Symbol : public Object {
+class Symbol : public ObjectTemplate<Symbol> {
 public:
-    inline Symbol(TypeId tp, Heap::Ptr<String> str) : Object{tp}, str_(str)
+    inline Symbol(Heap::Ptr<String> str) : str_(str)
     {
     }
 
@@ -297,14 +321,19 @@ public:
         return str_;
     }
 
+    inline void set(Heap::Ptr<String> val)
+    {
+        str_ = val;
+    }
+
 private:
     Heap::Ptr<String> str_;
 };
 
 
-class RawPointer : public Object {
+class RawPointer : public ObjectTemplate<RawPointer> {
 public:
-    inline RawPointer(TypeId tp, void* p) : Object{tp}, value_(p)
+    inline RawPointer(void* p) : value_(p)
     {
     }
 
@@ -323,16 +352,42 @@ private:
 };
 
 
-using Arguments = Ogre::SmallVector<ObjectPtr, 3>;
+// IMPORTANT: You should not associate multiple Arguments with the same
+// environment at the same time, and doing so is undefined behavior. In terms of
+// implementation, Arguments is an adaptor that places the inputs onto the
+// runtime operand stack, and if you push to two different Arguments objects,
+// your inputs may interleave.
+class Arguments {
+public:
+    Arguments(Environment& env);
+    Arguments(const Arguments&) = delete;
+    ~Arguments();
+
+    size_t count() const;
+
+    void push(ObjectPtr arg);
+
+    ObjectPtr operator[](size_t index) const;
+
+    std::vector<ObjectPtr>::iterator begin() const;
+    std::vector<ObjectPtr>::iterator end() const;
+
+private:
+    Context* ctx_;
+    size_t startIdx_;
+    size_t count_;
+};
+
+
 using CFunction = std::function<ObjectPtr(Environment&, const Arguments&)>;
 struct InvalidArgumentError : std::runtime_error {
-    InvalidArgumentError(const char* msg) : std::runtime_error(msg)
+    InvalidArgumentError(const std::string& msg) : std::runtime_error(msg)
     {
     }
 };
 
 
-class Function : public Object {
+class Function : public ObjectTemplate<Function> {
 public:
     class Impl {
     public:
@@ -342,11 +397,11 @@ public:
         virtual ObjectPtr call(Environment& env, Arguments&) = 0;
     };
 
-    Function(TypeId tp, Environment& env, ObjectPtr docstring,
-             size_t requiredArgs, CFunction cFn);
+    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+             CFunction cFn);
 
-    Function(TypeId tp, Environment& env, ObjectPtr docstring,
-             size_t requiredArgs, std::unique_ptr<Impl> impl);
+    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+             std::unique_ptr<Impl> impl);
 
     static constexpr const char* name()
     {
@@ -356,8 +411,10 @@ public:
     // TODO: call function should be defined differently?
     inline ObjectPtr call(Arguments& params)
     {
-        if (params.size() < requiredArgs_) {
-            throw InvalidArgumentError("too few args");
+        if (params.count() < requiredArgs_) {
+            throw InvalidArgumentError("too few args, expected " +
+                                       std::to_string(requiredArgs_) + " got " +
+                                       std::to_string(params.count()));
         }
         return impl_->call(*envPtr_, params);
     }
@@ -365,6 +422,11 @@ public:
     inline ObjectPtr getDocstring()
     {
         return docstring_;
+    }
+
+    inline void setDocstring(ObjectPtr val)
+    {
+        docstring_ = val;
     }
 
     inline size_t argCount()
@@ -388,12 +450,14 @@ private:
 struct TypeInfo {
     size_t size_;
     const char* name_;
+    void (*finalizer)(Object*);
+    void (*relocatePolicy)(Object*, uint8_t*);
 };
 
 
 template <typename T> constexpr TypeInfo makeInfo()
 {
-    return {sizeof(T), T::name()};
+    return TypeInfo{sizeof(T), T::name(), T::finalize, T::relocate};
 }
 
 
@@ -425,7 +489,13 @@ constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
     typeInfo;
 
 
-template <typename T> bool isType(ObjectPtr obj)
+template <typename T>
+ObjectTemplate<T>::ObjectTemplate() : Object{typeInfo.typeId<T>()}
+{
+}
+
+
+template <typename T, typename Ptr> bool isType(Ptr obj)
 {
     return typeInfo.typeId<T>() == obj->typeId();
 }

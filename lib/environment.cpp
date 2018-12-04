@@ -87,7 +87,9 @@ void initBuiltins(Environment& env);
 
 const Context::Configuration& Context::defaultConfig()
 {
-    static const Configuration defaults{100000000};
+    static const Configuration defaults{
+        10000000 // Ten megabyte heap
+    };
     return defaults;
 }
 
@@ -105,20 +107,7 @@ const char* utilities =
     "(defn cadr (l) (car (cdr l)))\n"
     "(defn cdar (l) (cdr (car l)))\n"
     "(defn caddr (l) (car (cdr (cdr l))))\n"
-    "(defn cadddr (l) (car (cdr (cdr (cdr l)))))\n"
-    "(def require\n"
-    "     (let ((loaded null))\n"
-    "       (lambda (fname)\n"
-    "         (def found false)\n"
-    "         (dolist (lambda (l)\n"
-    "                   (if (equal? l fname)\n"
-    "                       (set found true)))\n"
-    "                 loaded)\n"
-    "         (if (not found)\n"
-    "             (begin\n"
-    "               (let ((up (load fname)))\n"
-    "                 (set loaded (cons fname loaded))\n"
-    "                 up))))))\n";
+    "(defn cadddr (l) (car (cdr (cdr (cdr l)))))\n";
 
 Context::Context(const Configuration& config)
     : heap_(config.heapSize_),

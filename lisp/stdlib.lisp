@@ -2,6 +2,13 @@
 ;;; A small standard library
 ;;;
 
+(defn dolist (proc list)
+  (if (null? list)
+      null
+      (begin
+        (proc (car list))
+        (dolist proc (cdr list)))))
+
 (namespace std
   (defn reverse (list)
     "[list] -> reversed list"
@@ -34,7 +41,7 @@
     (some (lambda (elem)
             (equal? (car elem) key))
           list))
-  
+
   (defn identity (x) x)
 
   (defn min (first ...)

@@ -356,7 +356,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
 
         case Lexer::Token::CHAR: {
             auto param = make_unique<ast::Character>();
-            if (utf8Len(lexer.rdbuf().c_str(), lexer.rdbuf().length()) not_eq 1) {
+            if (utf8Len(lexer.rdbuf().c_str(), lexer.rdbuf().length()) not_eq
+                1) {
                 throw std::runtime_error("char literal " + lexer.rdbuf() +
                                          " contains multiple glyphs!");
             }

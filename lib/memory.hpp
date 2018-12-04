@@ -15,6 +15,7 @@ public:
     Heap(size_t capacity);
     Heap();
     Heap(const Heap&) = delete;
+    Heap(Heap&&);
     ~Heap();
 
     void init(size_t capacity);
@@ -33,6 +34,8 @@ public:
     template <size_t Size> GenericPtr alloc();
 
     template <typename T> Heap::Ptr<T> arrayElemAt(size_t index) const;
+
+    void compacted(size_t bytes);
 
     size_t size() const;
     size_t capacity() const;
@@ -64,6 +67,14 @@ public:
         return handle_ == other.handle_;
     }
 
+    // NOTE: overwrite is meant for the GC to use when moving objects
+    // around. If you call this function manually, you could break
+    // things.
+    void overwrite(void* val)
+    {
+        handle_ = (HandleType)val;
+    }
+
 protected:
     friend class Heap;
 
@@ -72,7 +83,7 @@ protected:
     }
 
 private:
-    uint8_t* handle_;
+    HandleType handle_;
 };
 
 template <typename T> class Heap::Ptr : public GenericPtr {

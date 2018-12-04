@@ -1,3 +1,11 @@
+;; temporary...
+(defn dolist (proc list)
+  (if (null? list)
+      null
+      (begin
+        (proc (car list))
+        (dolist proc (cdr list)))))
+
 
 (def iters 500)
 

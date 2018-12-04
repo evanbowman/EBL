@@ -9,7 +9,7 @@
 namespace lisp {
 namespace ast {
 
-// FIXME: shouldn't be global... but where to put it?
+// FIXME: shouldn't be global... maybe put in Context or Environment...
 static thread_local Vector<StrVal*> namespacePath;
 
 VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
@@ -153,7 +153,7 @@ public:
                     callStack.back()->push(args[i]);
                 }
                 LazyListBuilder builder(env);
-                for (size_t i = impl_->argNames_.size() - 1; i < args.size();
+                for (size_t i = impl_->argNames_.size() - 1; i < args.count();
                      ++i) {
                     builder.pushBack(args[i]);
                 }
@@ -192,11 +192,11 @@ ObjectPtr VariadicLambda::execute(Environment& env)
 ObjectPtr Application::execute(Environment& env)
 {
     try {
-        auto loaded = checkedCast<lisp::Function>(toApply_->execute(env));
-        Arguments args;
+        Arguments args(env);
         for (const auto& arg : args_) {
-            args.push_back(arg->execute(env));
+            args.push(arg->execute(env));
         }
+        auto loaded = checkedCast<lisp::Function>(toApply_->execute(env));
         return loaded->call(args);
     } catch (const std::exception& err) {
         std::stringstream fmt;

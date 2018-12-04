@@ -48,17 +48,17 @@ private:
     CFunction fn_;
 };
 
-Function::Function(TypeId tp, Environment& env, ObjectPtr docstring,
-                   size_t requiredArgs, CFunction impl)
-    : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
+Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+                   CFunction impl)
+    : docstring_(docstring), requiredArgs_(requiredArgs),
       impl_(std::unique_ptr<CFunctionImpl>(new CFunctionImpl(impl))),
       envPtr_(env.reference())
 {
 }
 
-Function::Function(TypeId tp, Environment& env, ObjectPtr docstring,
-                   size_t requiredArgs, std::unique_ptr<Impl> impl)
-    : Object{tp}, docstring_(docstring), requiredArgs_(requiredArgs),
+Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+                   std::unique_ptr<Impl> impl)
+    : docstring_(docstring), requiredArgs_(requiredArgs),
       impl_(std::move(impl)), envPtr_(env.reference())
 {
 }
@@ -74,13 +74,12 @@ ConversionError::ConversionError(TypeId from, TypeId to)
 {
 }
 
-String::String(TypeId tp, const char* data, size_t length, Encoding enc)
-    : Object{tp}
+String::String(const char* data, size_t length, Encoding enc)
 {
     initialize(data, length, enc);
 }
 
-String::String(TypeId tp, const Input& str, Encoding enc) : Object{tp}
+String::String(const Input& str, Encoding enc)
 {
     initialize(str.c_str(), str.length(), enc);
 }
@@ -92,8 +91,7 @@ void String::initialize(const char* data, size_t len, Encoding enc)
         storage_.init(len * sizeof(Character));
         for (size_t i = 0; i < len; ++i) {
             auto charMem = storage_.alloc<sizeof(Character)>();
-            new (charMem.cast<Character>().get())
-                Character(typeInfo.typeId<Character>(), {data[i], 0, 0, 0});
+            new (charMem.cast<Character>().get()) Character({data[i], 0, 0, 0});
         }
     } break;
 
@@ -102,8 +100,7 @@ void String::initialize(const char* data, size_t len, Encoding enc)
         foreachUtf8Glyph(
             [&](const Character::Rep& val) {
                 auto charMem = storage_.alloc<sizeof(Character)>();
-                new (charMem.cast<Character>().get())
-                    Character(typeInfo.typeId<Character>(), val);
+                new (charMem.cast<Character>().get()) Character(val);
             },
             data, len);
     } break;
@@ -189,6 +186,46 @@ std::ostream& operator<<(std::ostream& out, const Character& c)
         out << cp;
     }
     return out;
+}
+
+Arguments::Arguments(Environment& env)
+    : ctx_(env.getContext()),
+      startIdx_(env.getContext()->operandStack().size()), count_(0)
+{
+}
+
+Arguments::~Arguments()
+{
+    auto& opStack = ctx_->operandStack();
+    for (size_t i = 0; i < count_; ++i) {
+        opStack.pop_back();
+    }
+}
+
+void Arguments::push(ObjectPtr arg)
+{
+    ctx_->operandStack().push_back(arg);
+    ++count_;
+}
+
+std::vector<ObjectPtr>::iterator Arguments::begin() const
+{
+    return ctx_->operandStack().begin() + startIdx_;
+}
+
+std::vector<ObjectPtr>::iterator Arguments::end() const
+{
+    return begin() + count_;
+}
+
+ObjectPtr Arguments::operator[](size_t index) const
+{
+    return ctx_->operandStack()[startIdx_ + index];
+}
+
+size_t Arguments::count() const
+{
+    return count_;
 }
 
 } // namespace lisp

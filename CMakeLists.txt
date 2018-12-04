@@ -17,9 +17,9 @@ include_directories(./)
 
 
 # The lisp runtime library.
-project(lisp)
+project(ebl-lisp)
 
-add_library(lisp SHARED
+add_library(ebl-lisp SHARED
   lib/environment.cpp
   lib/listBuilder.cpp
   lib/memory.cpp
@@ -31,28 +31,28 @@ add_library(lisp SHARED
   lib/dll.cpp
   lib/gc.cpp)
 
-target_link_libraries(lisp
+target_link_libraries(ebl-lisp
   dl)
 
 
 # A repl.
-add_executable(repl
+add_executable(ebl-repl
   tools/repl.cpp)
 
-target_link_libraries(repl
-  lisp)
+target_link_libraries(ebl-repl
+  ebl-lisp)
 
 
 # Execute a script file.
-add_executable(dofile
+add_executable(ebl-dofile
   tools/dofile.cpp)
 
-target_link_libraries(dofile
-  lisp)
+target_link_libraries(ebl-dofile
+  ebl-lisp)
 
 # Run the unit tests
-add_custom_command(TARGET dofile POST_BUILD
-  COMMAND ./dofile lisp/unit-test.lisp)
+add_custom_command(TARGET ebl-dofile POST_BUILD
+  COMMAND ./ebl-dofile lisp/unit-test.lisp)
 
 
 # Build extensions

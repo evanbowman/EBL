@@ -13,16 +13,15 @@ int main()
                                                      exit(0);
                                                      return env.getNull();
                                                  }));
-    Arguments printArgv;
     while (true) {
         std::cout << "> ";
         std::getline(std::cin, input);
         if (not input.empty()) {
             try {
-                printArgv.push_back(env->exec(input));
+                Arguments printArgv(*env);
+                printArgv.push(env->exec(input));
                 checkedCast<Function>(env->getGlobal("print"))->call(printArgv);
                 std::cout << std::endl;
-                printArgv.clear();
             } catch (const std::exception& ex) {
                 std::cout << "Error: " << ex.what() << std::endl;
             }

@@ -17,6 +17,10 @@
 
 namespace lisp {
 
+// FIXME: dolist isn't memory safe right now. Anything that causes an
+// allocation of lisp objects could trigger the GC, and possibly move
+// the list out from under our feet! So until it's fixed, don't use
+// Environment::create or call any lisp functions from here.
 template <typename Proc> void dolist(ObjectPtr list, Proc&& proc)
 {
     Heap::Ptr<Pair> current = checkedCast<Pair>(list);
@@ -123,6 +127,11 @@ static const BuiltinFunctionInfo builtins[] = {
          env.getContext()->immediates().push_back(symb);
          return symb;
      }},
+    {"collect-garbage", "[] -> run the gc", 0,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         env.getContext()->runGC(env);
+         return env.getNull();
+     }},
     {"error", "[string] -> raise error string and terminate", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          throw std::runtime_error(
@@ -157,78 +166,18 @@ static const BuiltinFunctionInfo builtins[] = {
              throw TypeError(args[0]->typeId(), "invalid type");
          }
      }},
-    {"map", nullptr, 2,
-     [](Environment& env, const Arguments& args) -> ObjectPtr {
-         if (not isType<Null>(args[1])) {
-             auto fn = checkedCast<Function>(args[0]);
-             // TODO: replace vectors with small size optimized
-             // containers
-             Arguments paramVec;
-             std::vector<Heap::Ptr<Pair>> inputLists;
-             for (size_t i = 1; i < args.size(); ++i) {
-                 inputLists.push_back(checkedCast<Pair>(args[i]));
-                 paramVec.push_back(inputLists.back()->getCar());
-             }
-             auto keepGoing = [&] {
-                 for (auto lst : inputLists) {
-                     if (isType<Null>(lst->getCdr())) {
-                         return false;
-                     }
-                 }
-                 return true;
-             };
-             ListBuilder builder(env, fn->call(paramVec));
-             while (keepGoing()) {
-                 paramVec.clear();
-                 for (auto& lst : inputLists) {
-                     lst = checkedCast<Pair>(lst->getCdr());
-                     paramVec.push_back(lst->getCar());
-                 }
-                 builder.pushBack(fn->call(paramVec));
-             }
-             return builder.result();
-         }
-         return env.getNull();
-     }},
-    {"filter", nullptr, 2,
-     [](Environment& env, const Arguments& args) {
-         LazyListBuilder builder(env);
-         auto pred = checkedCast<Function>(args[0]);
-         if (not isType<Null>(args[1])) {
-             Arguments params;
-             dolist(args[1], [&](ObjectPtr element) {
-                 params.push_back(element);
-                 if (pred->call(params) == env.getBool(true)) {
-                     builder.pushBack(element);
-                 }
-                 params.clear();
-             });
-         }
-         return builder.result();
-     }},
-    {"dolist", "[fn list] -> call fn on each element of list", 2,
-     [](Environment& env, const Arguments& args) {
-         auto pred = checkedCast<Function>(args[0]);
-         if (not isType<Null>(args[1])) {
-             Arguments params;
-             dolist(args[1], [&](ObjectPtr element) {
-                 params.push_back(element);
-                 pred->call(params);
-                 params.clear();
-             });
-         }
-         return env.getNull();
-     }},
     {"dotimes", "[fn n] -> call fn n times, passing each n as an arg", 2,
      [](Environment& env, const Arguments& args) {
-         auto pred = checkedCast<Function>(args[0]);
+         if (not isType<Function>(args[0])) {
+             throw ConversionError(args[0]->typeId(),
+                                   typeInfo.typeId<Function>());
+         }
          const auto times = checkedCast<Integer>(args[1])->value();
-         Arguments params;
          for (Integer::Rep i = 0; i < times; ++i) {
+             Arguments params(env);
              auto iObj = env.create<Integer>(i);
-             params.push_back(iObj);
-             pred->call(params);
-             params.clear();
+             params.push(iObj);
+             args[0].cast<Function>()->call(params);
          }
          return env.getNull();
      }},
@@ -274,9 +223,9 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"apply", nullptr, 2,
      [](Environment& env, const Arguments& args) {
-         Arguments params;
+         Arguments params(env);
          if (not isType<Null>(args[1])) {
-             dolist(args[1], [&](ObjectPtr elem) { params.push_back(elem); });
+             dolist(args[1], [&](ObjectPtr elem) { params.push(elem); });
          }
          auto fn = checkedCast<Function>(args[0]);
          return fn->call(params);
@@ -312,7 +261,7 @@ static const BuiltinFunctionInfo builtins[] = {
          Integer::Rep iSum = 0;
          Complex::Rep cSum;
          Double::Rep dSum = 0.0;
-         for (size_t i = 0; i < args.size(); ++i) {
+         for (size_t i = 0; i < args.count(); ++i) {
              switch (args[i]->typeId()) {
              case typeInfo.typeId<Integer>():
                  iSum += args[i].cast<Integer>()->value();
@@ -380,7 +329,7 @@ static const BuiltinFunctionInfo builtins[] = {
          Integer::Rep iProd = 1;
          Double::Rep dProd = 1.0;
          Complex::Rep cProd(1.0);
-         for (size_t i = 0; i < args.size(); ++i) {
+         for (size_t i = 0; i < args.count(); ++i) {
              switch (args[i]->typeId()) {
              case typeInfo.typeId<Integer>():
                  iProd *= args[i].cast<Integer>()->value();
@@ -522,9 +471,11 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.create<Integer>(i);
          }
          case typeInfo.typeId<Double>():
-             return env.create<Integer>(Integer::Rep(args[0].cast<Double>()->value()));
+             return env.create<Integer>(
+                 Integer::Rep(args[0].cast<Double>()->value()));
          default:
-             throw ConversionError(args[0]->typeId(), typeInfo.typeId<Integer>());
+             throw ConversionError(args[0]->typeId(),
+                                   typeInfo.typeId<Integer>());
          }
      }},
     {"double", nullptr, 1,
@@ -537,9 +488,11 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.create<Double>(d);
          }
          case typeInfo.typeId<Integer>():
-             return env.create<Double>(Double::Rep(args[0].cast<Integer>()->value()));
+             return env.create<Double>(
+                 Double::Rep(args[0].cast<Integer>()->value()));
          default:
-             throw ConversionError(args[0]->typeId(), typeInfo.typeId<Double>());
+             throw ConversionError(args[0]->typeId(),
+                                   typeInfo.typeId<Double>());
          }
      }},
     {"load", "[file-path] -> load lisp code from file-path", 1,

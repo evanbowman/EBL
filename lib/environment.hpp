@@ -75,7 +75,7 @@ template <typename T> struct ConstructImpl {
     template <typename... Args>
     static void construct(T* mem, Environment& env, Args&&... args)
     {
-        new (mem) T{typeInfo.typeId<T>(), std::forward<Args>(args)...};
+        new (mem) T{std::forward<Args>(args)...};
     }
 };
 
@@ -83,8 +83,7 @@ template <> struct ConstructImpl<Function> {
     template <typename... Args>
     static void construct(Function* mem, Environment& env, Args&&... args)
     {
-        new (mem) Function{typeInfo.typeId<Function>(), env,
-                           std::forward<Args>(args)...};
+        new (mem) Function{env, std::forward<Args>(args)...};
     }
 };
 
@@ -107,6 +106,11 @@ public:
     std::vector<ObjectPtr>& immediates()
     {
         return immediates_;
+    }
+
+    std::vector<ObjectPtr>& operandStack()
+    {
+        return operandStack_;
     }
 
     // For storing and loading intern'd immediates
@@ -135,6 +139,11 @@ public:
         return callStack_;
     }
 
+    void runGC(Environment& env)
+    {
+        collector_->run(env, heap_);
+    }
+
 private:
     template <typename T, typename... Args>
     Heap::Ptr<T> create(Environment& env, Args&&... args)
@@ -154,7 +163,7 @@ private:
         try {
             return allocImpl();
         } catch (const Heap::OOM& oom) {
-            collector_->run(env, heap_);
+            runGC(env);
             return allocImpl();
         }
     }
@@ -166,6 +175,7 @@ private:
     Persistent<Boolean> booleans_[2];
     Persistent<Null> nullValue_;
     std::vector<ObjectPtr> immediates_;
+    std::vector<ObjectPtr> operandStack_;
     std::vector<DLL> dlls_;
     ast::TopLevel* astRoot_ = nullptr;
     std::unique_ptr<GC> collector_;

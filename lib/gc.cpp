@@ -3,12 +3,17 @@
 #include "memory.hpp"
 #include <deque>
 #include <iostream>
+#include <set>
+
+// FIXME: This code could use a good deal of work! On the one hand,
+// it's a reasonably performant mark/compact collector in less than
+// 200 lines of code, on the other hand, it could be a lot better.
 
 namespace lisp {
 
-void markFrame(Environment& frame);
+static void markFrame(Environment& frame);
 
-void markObject(ObjectPtr obj)
+static void markObject(ObjectPtr obj)
 {
     if (obj->marked()) {
         return;
@@ -22,11 +27,12 @@ void markObject(ObjectPtr obj)
 
     case typeInfo.typeId<Function>():
         markFrame(*obj.cast<Function>()->definitionEnvironment());
+        markObject(obj.cast<Function>()->getDocstring());
         break;
     }
 }
 
-void markFrame(Environment& frame)
+static void markFrame(Environment& frame)
 {
     for (auto& obj : frame.getVars()) {
         markObject(obj);
@@ -41,27 +47,137 @@ void MarkCompact::mark(Environment& env)
     for (auto& obj : env.getContext()->immediates()) {
         markObject(obj);
     }
+    for (auto& obj : env.getContext()->operandStack()) {
+        markObject(obj);
+    }
     env.getBool(true)->mark();
     env.getBool(false)->mark();
     env.getNull()->mark();
 }
 
+using BreakList = std::vector<std::pair<Object*, size_t>>;
+
+static void* remapObjectAddress(void* obj, const BreakList& breaks)
+{
+    size_t shiftAmount = 0;
+    auto iter = breaks.begin();
+    while (iter not_eq breaks.end() and iter->first < obj) {
+        shiftAmount += iter->second;
+        ++iter;
+    }
+    return (uint8_t*)obj - shiftAmount;
+}
+
+// Frames must be visited exactly once! FIXME: but the var shouldn't be global.
+thread_local std::set<Environment*> frameSet;
+
+static void remapFrame(Environment& frame, const BreakList& breaks)
+{
+    for (auto& obj : frame.getVars()) {
+        obj.overwrite(remapObjectAddress(obj.handle(), breaks));
+    }
+}
+
+static void gatherFrames(Environment& env)
+{
+    auto current = env.reference();
+    while (current) {
+        frameSet.insert(current.get());
+        current = current->parent();
+    }
+}
+
+static void remapInternalPointers(Object* obj, const BreakList& breaks)
+{
+    switch (obj->typeId()) {
+    case typeInfo.typeId<Pair>(): {
+        auto p = (Pair*)obj;
+        auto car = p->getCar();
+        auto cdr = p->getCdr();
+        car.overwrite(remapObjectAddress(car.handle(), breaks));
+        cdr.overwrite(remapObjectAddress(cdr.handle(), breaks));
+        p->setCar(car);
+        p->setCdr(cdr);
+    } break;
+
+    case typeInfo.typeId<Symbol>(): {
+        auto s = (Symbol*)obj;
+        auto val = s->value();
+        val.overwrite(remapObjectAddress(val.handle(), breaks));
+        s->set(val);
+    } break;
+
+    case typeInfo.typeId<Function>(): {
+        auto f = (Function*)obj;
+        auto doc = f->getDocstring();
+        doc.overwrite(remapObjectAddress(doc.handle(), breaks));
+        f->setDocstring(doc);
+        gatherFrames(*f->definitionEnvironment());
+        break;
+    }
+    }
+}
+
 void MarkCompact::compact(Environment& env, Heap& heap)
 {
-    uint8_t* mem = heap.begin();
+    BreakList breakList;
+    size_t bytesCompacted = 0;
     size_t index = 0;
-    size_t collectCount = 0;
+    bool collapse = false; // collapse consecutive objs
     while (index < heap.size()) {
-        auto current = (Object*)(mem + index);
+        auto current = (Object*)(heap.begin() + index);
+        const size_t currentSize = typeInfo[current->typeId()].size_;
         if (current->marked()) {
-            std::cout << "live object " << typeInfo[current->typeId()].name_
-                      << " @ " << current << std::endl;
+        PRESERVE:
+            current->unmark();
+            collapse = false;
+            if (bytesCompacted) {
+                uint8_t* const dest = ((uint8_t*)current) - bytesCompacted;
+                typeInfo[current->typeId()].relocatePolicy(current, dest);
+            }
         } else {
-            ++collectCount;
+            if (isType<String>(current)) {
+                auto s = (String*)current;
+                for (size_t i = 0; i < s->length(); ++i) {
+                    // If there are any outstanding references to the characters
+                    // belonging to the string, we can't collect it yet.
+                    if ((*s)[i]->marked())
+                        goto PRESERVE;
+                }
+            }
+            if (not collapse) {
+                breakList.push_back({current, currentSize});
+                collapse = true;
+            } else {
+                breakList.back().second += currentSize;
+            }
+            bytesCompacted += currentSize;
         }
-        index += typeInfo[current->typeId()].size_;
+        index += currentSize;
     }
-    std::cout << "collected: " << collectCount << std::endl;
+    heap.compacted(bytesCompacted);
+    index = 0;
+    while (index < heap.size()) {
+        auto current = (Object*)(heap.begin() + index);
+        const size_t currentSize = typeInfo[current->typeId()].size_;
+        remapInternalPointers(current, breakList);
+        index += currentSize;
+    }
+    for (auto& frame : env.getContext()->callStack()) {
+        gatherFrames(*frame);
+    }
+    for (auto& frame : frameSet) {
+        remapFrame(*frame, breakList);
+    }
+    frameSet.clear();
+    for (auto& obj : env.getContext()->immediates()) {
+        auto target = remapObjectAddress(obj.handle(), breakList);
+        obj.overwrite(target);
+    }
+    for (auto& obj : env.getContext()->operandStack()) {
+        auto target = remapObjectAddress(obj.handle(), breakList);
+        obj.overwrite(target);
+    }
 }
 
 

@@ -2,11 +2,11 @@
 
 #include "common.hpp"
 #include "memory.hpp"
+#include "utility.hpp"
 #include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
-#include "utility.hpp"
 
 namespace lisp {
 

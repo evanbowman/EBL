@@ -13,6 +13,14 @@ Heap::Heap() : begin_(nullptr), end_(nullptr), capacity_(0)
 {
 }
 
+Heap::Heap(Heap&& other)
+    : begin_(other.begin_), end_(other.end_), capacity_(other.capacity_)
+{
+    other.begin_ = nullptr;
+    other.end_ = nullptr;
+    other.capacity_ = 0;
+}
+
 void Heap::init(size_t capacity)
 {
     capacity_ = capacity;
@@ -23,6 +31,11 @@ void Heap::init(size_t capacity)
 Heap::~Heap()
 {
     free(begin_);
+}
+
+void Heap::compacted(size_t bytes)
+{
+    end_ -= bytes;
 }
 
 size_t Heap::size() const
