@@ -209,14 +209,7 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"not", nullptr, 1,
      [](Environment& env, const Arguments& args) {
-         // I was lazy, TODO simplify this
-         if (args[0] == env.getBool(true)) {
-             return env.getBool(false);
-         } else if (args[0] == env.getBool(false)) {
-             return env.getBool(true);
-         }
-         // TODO: raise error
-         return env.getNull();
+         return env.getBool(args[0] == env.getBool(false));
      }},
     {"apply", nullptr, 2,
      [](Environment& env, const Arguments& args) {

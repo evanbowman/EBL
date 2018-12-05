@@ -1,6 +1,7 @@
 #pragma once
 
 #include "extlib/optional.hpp"
+#include "extlib/smallVector.hpp"
 #include "types.hpp"
 
 

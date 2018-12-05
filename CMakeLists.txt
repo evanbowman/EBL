@@ -56,5 +56,5 @@ add_custom_command(TARGET ebl-dofile POST_BUILD
 
 
 # Build extensions
-# add_library(test SHARED dll/test.cpp)
-# target_link_libraries(test lisp)
+add_library(fs SHARED dll/fs.cpp)
+target_link_libraries(fs ebl-lisp)

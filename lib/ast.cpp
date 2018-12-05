@@ -10,7 +10,7 @@ namespace lisp {
 namespace ast {
 
 // FIXME: shouldn't be global... maybe put in Context or Environment...
-static thread_local Vector<StrVal*> namespacePath;
+thread_local Vector<StrVal*> namespacePath;
 
 VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
                    FrameDist traversed) const
@@ -249,12 +249,10 @@ ObjectPtr Begin::execute(Environment& env)
 ObjectPtr If::execute(Environment& env)
 {
     auto cond = condition_->execute(env);
-    if (cond == env.getBool(true)) {
-        return trueBranch_->execute(env);
-    } else if (cond == env.getBool(false)) {
+    if (cond == env.getBool(false)) {
         return falseBranch_->execute(env);
     } else {
-        throw std::runtime_error("bad if expression condition");
+        return trueBranch_->execute(env);
     }
 }
 
@@ -262,7 +260,7 @@ ObjectPtr If::execute(Environment& env)
 ObjectPtr Cond::execute(Environment& env)
 {
     for (auto& cCase : cases_) {
-        if (cCase.condition_->execute(env) == env.getBool(true)) {
+        if (not (cCase.condition_->execute(env) == env.getBool(false))) {
             auto up = env.getNull();
             for (auto& st : cCase.body_) {
                 up = st->execute(env);

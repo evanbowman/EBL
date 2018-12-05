@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <cassert>
 
 
 namespace lisp {
@@ -16,18 +17,36 @@ ObjectPtr Environment::getGlobal(const std::string& key)
     return context_->topLevel_->load(loc);
 }
 
-void Environment::setGlobal(const std::string& key, ObjectPtr value)
+void Environment::setGlobal(const std::string& key, const std::string& nameSpace, ObjectPtr value)
 {
+    assert(context_->astRoot_);
     auto def = make_unique<ast::Def>();
     auto obj = make_unique<ast::UserObject>(value);
     def->name_ = key;
     def->value_ = std::move(obj);
-    if (context_->astRoot_) {
-        context_->astRoot_->statements_.push_back(std::move(def));
-        context_->astRoot_->statements_.back()->init(*context_->topLevel(),
-                                                     *context_->astRoot_);
-        context_->astRoot_->statements_.back()->execute(*this);
-    }
+    // FIXME: this is quite inefficient, to push a namespace ast node
+    // for every definition, but the alternatives are hacky at the
+    // moment.
+    auto newNs = make_unique<ast::Namespace>();
+    newNs->name_ = nameSpace;
+    newNs->statements_.push_back(std::move(def));
+    context_->astRoot_->statements_.push_back(std::move(newNs));
+    context_->astRoot_->statements_.back()->init(*context_->topLevel(),
+                                                 *context_->astRoot_);
+    context_->astRoot_->statements_.back()->execute(*this);
+}
+
+void Environment::setGlobal(const std::string& key, ObjectPtr value)
+{
+    assert(context_->astRoot_);
+    auto def = make_unique<ast::Def>();
+    auto obj = make_unique<ast::UserObject>(value);
+    def->name_ = key;
+    def->value_ = std::move(obj);
+    context_->astRoot_->statements_.push_back(std::move(def));
+    context_->astRoot_->statements_.back()->init(*context_->topLevel(),
+                                                 *context_->astRoot_);
+    context_->astRoot_->statements_.back()->execute(*this);
 }
 
 void Environment::push(ObjectPtr value)

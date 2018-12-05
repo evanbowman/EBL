@@ -3,10 +3,9 @@
 
 namespace lisp {
 
-Heap::Heap(size_t capacity) : capacity_(capacity)
+Heap::Heap(size_t capacity)
 {
-    begin_ = (uint8_t*)malloc(capacity);
-    end_ = begin_;
+    init(capacity);
 }
 
 Heap::Heap() : begin_(nullptr), end_(nullptr), capacity_(0)

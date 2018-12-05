@@ -58,4 +58,15 @@
     (dolist (lambda (e)
               (if (> e up)
                   (set up e))) ...)
-    up))
+    up)
+
+  (def append
+       (let ((append-impl
+              (lambda (from to)
+                (if (null? from)
+                    to
+                    (begin
+                      (append-impl (cdr from) (cons (car from) to)))))))
+         (lambda (l1 l2)
+           "[l1 l2] -> l2 appended to l1"
+           (append-impl (reverse l1) l2)))))

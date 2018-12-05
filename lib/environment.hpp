@@ -36,6 +36,7 @@ public:
     // Load/store a variable in the root environment.
     ObjectPtr getGlobal(const std::string& key);
     void setGlobal(const std::string& key, ObjectPtr value);
+    void setGlobal(const std::string& key, const std::string& nameSpace, ObjectPtr value);
 
     // Compile and execute lisp code
     ObjectPtr exec(const std::string& code);
