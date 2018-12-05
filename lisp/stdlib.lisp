@@ -69,4 +69,14 @@
                       (append-impl (cdr from) (cons (car from) to)))))))
          (lambda (l1 l2)
            "[l1 l2] -> l2 appended to l1"
-           (append-impl (reverse l1) l2)))))
+           (append-impl (reverse l1) l2))))
+
+  (defn substr (str first last)
+    "[str begin end] -> substring from [begin, end)"
+    (defn collect (index list)
+      (if (equal? index first)
+          list
+          (begin
+            (def next (- index 1))
+            (collect next (cons (string-ref str next) list)))))
+    (apply string (collect last null))))

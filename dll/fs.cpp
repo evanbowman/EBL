@@ -7,9 +7,10 @@
 static struct {
     const char* name_;
     size_t argc_;
+    const char* docstring_;
     lisp::CFunction impl_;
 } exports[] = {
-    {"open", 3,
+     {"open", 3, "[filename mode callback] -> result of invoking callback on opened file",
      [](lisp::Environment& env, const lisp::Arguments& args) {
          lisp::Arguments callbackArgs(env);
          const auto fname = lisp::checkedCast<lisp::String>(args[0])->toAscii();
@@ -20,7 +21,7 @@ static struct {
          fclose(file);
          return result;
      }},
-    {"get-line", 1,
+    {"get-line", 1, "[file] -> string containing next line in the file",
      [](lisp::Environment& env, const lisp::Arguments& args) -> lisp::ObjectPtr {
          char* line = nullptr;
          size_t cap = 0;
@@ -40,9 +41,9 @@ extern "C" {
 void __dllMain(lisp::Environment& env)
 {
     for (const auto& exp : exports) {
+        auto doc = env.create<lisp::String>(exp.docstring_, strlen(exp.docstring_));
         env.setGlobal(exp.name_, "fs",
-                      env.create<lisp::Function>(env.getNull(),
-                                                 exp.argc_, exp.impl_));
+                      env.create<lisp::Function>(doc, exp.argc_, exp.impl_));
     }
 }
 }
