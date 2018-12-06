@@ -25,6 +25,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         LISP_EQ_CASE(String);
         LISP_EQ_CASE(Boolean);
         LISP_EQ_CASE(Complex);
+        LISP_EQ_CASE(Character);
     case typeInfo.typeId<Symbol>():
         return lhs == rhs;
     default:

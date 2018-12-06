@@ -27,7 +27,10 @@ static struct {
          size_t cap = 0;
          ssize_t len;
          auto file = lisp::checkedCast<lisp::RawPointer>(args[0])->value();
-         if ((len = getline(&line, &cap, (FILE*)file)) != -1) {
+         if ((len = getline(&line, &cap, (FILE*)file)) > 0) {
+             if (line[len - 1] == '\n') {
+                 len -= 1;
+             }
              return env.create<lisp::String>(line, (size_t)len);
          } else {
              return env.getBool(false);

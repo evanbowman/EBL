@@ -79,4 +79,19 @@
           (begin
             (def next (- index 1))
             (collect next (cons (string-ref str next) list)))))
-    (apply string (collect last null))))
+    (apply string (collect last null)))
+
+  ;; FIXME: The parser has trouble with negative numbers
+  (def -1 (- 0 1))
+
+  (defn split (str delim)
+    (defn impl (index partial result)
+      (if (equal? index -1)
+          (if partial
+              (cons (apply string partial) result)
+              result)
+          (let ((current (string-ref str index)))
+            (if (equal? current delim)
+                (impl (- index 1) null (cons (apply string partial) result))
+                (impl (- index 1) (cons current partial) result)))))
+    (impl (- (length str) 1) null null)))
