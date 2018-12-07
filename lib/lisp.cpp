@@ -9,11 +9,6 @@
 #include "lisp.hpp"
 #include "listBuilder.hpp"
 
-#ifdef __GNUC__
-#define unlikely(COND) __builtin_expect(COND, false)
-#else
-#define unlikely(COND) COND
-#endif
 
 namespace lisp {
 
@@ -165,21 +160,6 @@ static const BuiltinFunctionInfo builtins[] = {
          default:
              throw TypeError(args[0]->typeId(), "invalid type");
          }
-     }},
-    {"dotimes", "[fn n] -> call fn n times, passing each n as an arg", 2,
-     [](Environment& env, const Arguments& args) {
-         if (not isType<Function>(args[0])) {
-             throw ConversionError(args[0]->typeId(),
-                                   typeInfo.typeId<Function>());
-         }
-         const auto times = checkedCast<Integer>(args[1])->value();
-         for (Integer::Rep i = 0; i < times; ++i) {
-             Arguments params(env);
-             auto iObj = env.create<Integer>(i);
-             params.push(iObj);
-             args[0].cast<Function>()->call(params);
-         }
-         return env.getNull();
      }},
 #define LISP_TYPE_PROC(NAME, T)                                                \
     {                                                                          \

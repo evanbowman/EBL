@@ -2,7 +2,7 @@
 #include "lisp.hpp"
 #include "utility.hpp"
 #include "vm.hpp"
-
+#include "bytecode.hpp"
 #include <map>
 #include <memory>
 
@@ -38,9 +38,19 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
 ObjectPtr Function::call(Arguments& params)
 {
     if (bytecodeAddress_) {
-        VM vm;
-        vm.execute(*envPtr_, envPtr_->getContext()->getProgram(),
-                   bytecodeAddress_);
+        // VM vm;
+        // Context* const ctx = envPtr_->getContext();
+        // auto derived = envPtr_->derive();
+        // // NOTE: the last instruction in a program is always exit, so
+        // // set the return address to that.
+        // ctx->callStack().push_back({ctx->getProgram().size() - 1,
+        //                             bytecodeAddress_, envPtr_});
+        // std::cout << "address " << bytecodeAddress_ << std::endl;
+        // vm.execute(*derived, ctx->getProgram(), bytecodeAddress_);
+        // auto ret = ctx->operandStack().back();
+        // ctx->operandStack().pop_back();
+        // return ret;
+        assert(false && "calling lisp from native code unimplemented");
     }
     if (params.count() < requiredArgs_) {
         throw InvalidArgumentError("too few args, expected " +

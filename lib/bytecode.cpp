@@ -67,9 +67,20 @@ void BytecodeBuilder::visit(ast::False& node)
 
 void BytecodeBuilder::visit(ast::LValue& node)
 {
-    data_.push_back((uint8_t)Opcode::Load);
-    writeParam(data_, node.cachedVarLoc_.frameDist_);
-    writeParam(data_, node.cachedVarLoc_.offset_);
+    if (node.cachedVarLoc_.frameDist_ == 0) {
+        data_.push_back((uint8_t)Opcode::Load0);
+        writeParam(data_, node.cachedVarLoc_.offset_);
+    } else if (node.cachedVarLoc_.frameDist_ == 1) {
+        data_.push_back((uint8_t)Opcode::Load1);
+        writeParam(data_, node.cachedVarLoc_.offset_);
+    } else if (node.cachedVarLoc_.frameDist_ == 2) {
+        data_.push_back((uint8_t)Opcode::Load2);
+        writeParam(data_, node.cachedVarLoc_.offset_);
+    } else {
+        data_.push_back((uint8_t)Opcode::Load);
+        writeParam(data_, node.cachedVarLoc_.frameDist_);
+        writeParam(data_, node.cachedVarLoc_.offset_);
+    }
 }
 
 void BytecodeBuilder::visit(ast::Lambda& node)

@@ -16,7 +16,6 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 {
     auto env = environment.reference();
     Context* const context = env->getContext();
-    context->callStack().push_back({0, 0, env});
     size_t ip = start;
     while (true) {
         switch ((Opcode)bc[ip]) {
@@ -27,7 +26,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             auto target = context->operandStack().back();
             auto fn = checkedCast<Function>(target);
             if (auto addr = fn->getBytecodeAddress()) {
-                if (argc not_eq fn->argCount()) {
+                if (UNLIKELY(argc not_eq fn->argCount())) {
                     throw std::runtime_error("wrong number of arguments");
                 }
                 context->operandStack().pop_back();
@@ -47,7 +46,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 
         case Opcode::Return: {
             auto retAddr = context->callStack().back().returnAddress_;
-            // std::cout << ip << ": RETURN" << std::endl;
+            // std::cout << ip << ": RETURN " << retAddr << std::endl;
             context->callStack().pop_back();
             env = context->callStack().back().env_;
             ip = retAddr;
@@ -90,6 +89,24 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             // std::cout << ip << ": LOAD " << param.frameDist_ << ", " <<
             // param.offset_ << std::endl;
             context->operandStack().push_back(env->load(param));
+        } break;
+
+        case Opcode::Load0: {
+            ++ip;
+            const auto offset = readParam<StackLoc>(bc, ip);
+            context->operandStack().push_back(env->getVars()[offset]);
+        } break;
+
+        case Opcode::Load1: {
+            ++ip;
+            const auto offset = readParam<StackLoc>(bc, ip);
+            context->operandStack().push_back(env->parent()->getVars()[offset]);
+        } break;
+
+        case Opcode::Load2: {
+            ++ip;
+            const auto offset = readParam<StackLoc>(bc, ip);
+            context->operandStack().push_back(env->parent()->parent()->getVars()[offset]);
         } break;
 
         case Opcode::PushI: {
@@ -149,9 +166,6 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
         } break;
 
         case Opcode::Exit: {
-            if (context->operandStack().size() not_eq 0) {
-                throw std::runtime_error("stack checksum invalid!");
-            }
             return;
         }
 

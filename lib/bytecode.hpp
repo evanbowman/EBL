@@ -42,23 +42,25 @@ private:
 };
 
 enum class Opcode : uint8_t {
-    Exit,        // exit
-    Jump,        // jump(relative-addr)
-    JumpIfFalse, // jumpIfFalse(relative-addr) ; If top of stack is false,
-                 // branch to addr
-    Call,        // call(argcount)
-    Recur,       // recur
-    Return,      // return
-    Load,        // load(stackloc)
-    Store,       // store                     ; operandStack -> frame's stack
-    PushI,       // pushI(immediateId)
-    PushNull,    // pushNull
-    PushTrue,    // pushTrue
-    PushFalse,   // pushFalse
-    PushLambda,  // pushLambda(argc)
-    Pop,         // pop                       ; operandStack -1
-    EnterLet,    // enterLet
-    ExitLet,     // exitLet
+    Exit,
+    Jump,
+    JumpIfFalse,
+    Call,
+    Recur,
+    Return,
+    Load0,
+    Load1,
+    Load2,
+    Load,
+    Store,
+    PushI,
+    PushNull,
+    PushTrue,
+    PushFalse,
+    PushLambda,
+    Pop,
+    EnterLet,
+    ExitLet,
 };
 
 } // namespace lisp

@@ -133,7 +133,10 @@ public:
         return ret;
     }
 
-    EnvPtr topLevel();
+    Environment& topLevel()
+    {
+        return *topLevel_;
+    }
 
     friend class Environment;
 

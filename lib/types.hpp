@@ -16,6 +16,15 @@
 #include "utility.hpp"
 
 
+#ifdef __GNUC__
+#define LIKELY(COND) __builtin_expect(COND, true)
+#define UNLIKELY(COND) __builtin_expect(COND, false)
+#else
+#define LIKELY(COND) COND
+#define UNLIKELY(COND) COND
+#endif
+
+
 namespace lisp {
 
 class Environment;
@@ -421,7 +430,7 @@ public:
     // looking for.
     inline ObjectPtr directCall(Arguments& params)
     {
-        if (params.count() < requiredArgs_) {
+        if (UNLIKELY(params.count() < requiredArgs_)) {
             throw InvalidArgumentError("too few args, expected " +
                                        std::to_string(requiredArgs_) + " got " +
                                        std::to_string(params.count()));
@@ -519,7 +528,7 @@ template <typename T, typename Ptr> bool isType(Ptr obj)
 
 template <typename T> Heap::Ptr<T> checkedCast(ObjectPtr obj)
 {
-    if (isType<T>(obj)) {
+    if (LIKELY(isType<T>(obj))) {
         return obj.cast<T>();
     }
     throw ConversionError{obj->typeId(), typeInfo.typeId<T>()};

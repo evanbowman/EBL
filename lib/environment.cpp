@@ -72,6 +72,7 @@ Environment& Environment::getFrame(VarLoc loc)
     auto frame = reference();
     while (loc.frameDist_ > 0) {
         frame = frame->parent_;
+        assert(frame not_eq nullptr);
         loc.frameDist_--;
     }
     return *frame;
@@ -159,11 +160,6 @@ Context::~Context()
     }
 }
 
-std::shared_ptr<Environment> Context::topLevel()
-{
-    return topLevel_;
-}
-
 ObjectPtr Context::loadI(ImmediateId immediate)
 {
     return immediates_[immediate];
@@ -190,6 +186,7 @@ ObjectPtr Environment::exec(const std::string& code)
         context_->astRoot_->visit(builder);
         VM vm;
         context_->program_ = builder.result();
+        context_->callStack().push_back({0, 0, reference()});
         vm.execute(*this, context_->program_, lastExecuted);
     } else {
         root->init(*this, *root);
