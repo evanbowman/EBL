@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ast.hpp"
-#include <vector>
 #include "common.hpp"
+#include <vector>
 
 
 namespace lisp {
@@ -11,7 +11,6 @@ class Context;
 
 class BytecodeBuilder : public ast::Visitor {
 public:
-
     void visit(ast::Namespace& node) override;
     void visit(ast::Integer& node) override;
     void visit(ast::Double& node) override;
@@ -34,6 +33,7 @@ public:
     void visit(ast::Def& node) override;
     void visit(ast::Set& node) override;
     void visit(ast::UserObject& node) override;
+    void visit(ast::Recur& node) override;
 
     Bytecode result();
 
@@ -44,8 +44,10 @@ private:
 enum class Opcode : uint8_t {
     Exit,        // exit
     Jump,        // jump(relative-addr)
-    JumpIfFalse, // jumpIfFalse(relative-addr) ; If top of stack is false, branch to addr
+    JumpIfFalse, // jumpIfFalse(relative-addr) ; If top of stack is false,
+                 // branch to addr
     Call,        // call(argcount)
+    Recur,       // recur
     Return,      // return
     Load,        // load(stackloc)
     Store,       // store                     ; operandStack -> frame's stack
@@ -59,4 +61,4 @@ enum class Opcode : uint8_t {
     ExitLet,     // exitLet
 };
 
-}
+} // namespace lisp

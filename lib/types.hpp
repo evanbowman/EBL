@@ -71,13 +71,13 @@ public:
 
     static void relocate(Object* obj, uint8_t* dest)
     {
-        // std::cout << typeid(T).name() << " has alignment requirement " << alignof(T) << std::endl;
-        // std::cout << "move " << obj << " to " << (void*)dest << std::endl;
-        // NOTE: due to potentially overlapping memory, we need to first move
-        // the object to a temporary buffer, destruct the original, then move
-        // the buffer contents to the final location, and then destruct the
-        // object in the buffer.
-        alignas (T) std::array<uint8_t, sizeof(T)> buffer;
+        // std::cout << typeid(T).name() << " has alignment requirement " <<
+        // alignof(T) << std::endl; std::cout << "move " << obj << " to " <<
+        // (void*)dest << std::endl; NOTE: due to potentially overlapping
+        // memory, we need to first move the object to a temporary buffer,
+        // destruct the original, then move the buffer contents to the final
+        // location, and then destruct the object in the buffer.
+        alignas(T) std::array<uint8_t, sizeof(T)> buffer;
         new ((T*)buffer.data()) T(std::move(*reinterpret_cast<T*>(obj)));
         ((T*)obj)->~T();
         new ((T*)dest) T(std::move(*reinterpret_cast<T*>(buffer.data())));

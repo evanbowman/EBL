@@ -4,15 +4,14 @@
 #include <stdexcept>
 #include <stdint.h>
 #include <stdlib.h>
-#include <type_traits>
 #include <string>
+#include <type_traits>
 
 namespace lisp {
 
 class Environment;
 
-template <size_t Alignment>
-class Memory {
+template <size_t Alignment> class Memory {
 public:
     Memory(size_t capacity)
     {
@@ -48,8 +47,8 @@ public:
     {
         if (capacity % Alignment not_eq 0) {
             throw std::runtime_error("Allocation request does not satify"
-                                     " alignment requirement of "
-                                     + std::to_string(Alignment));
+                                     " alignment requirement of " +
+                                     std::to_string(Alignment));
         }
         capacity_ = capacity;
         begin_ = (uint8_t*)malloc(capacity);
@@ -106,8 +105,7 @@ private:
 };
 
 
-template <size_t Alignment>
-class Memory<Alignment>::GenericPtr {
+template <size_t Alignment> class Memory<Alignment>::GenericPtr {
 public:
     using HandleType = uint8_t*;
 
@@ -146,8 +144,8 @@ private:
 };
 
 template <size_t Alignment>
-template <typename T> class Memory<Alignment>::Ptr :
-        public Memory<Alignment>::GenericPtr {
+template <typename T>
+class Memory<Alignment>::Ptr : public Memory<Alignment>::GenericPtr {
 public:
     template <typename U> Ptr(Ptr<U> other) : GenericPtr{other.handle()}
     {
@@ -178,7 +176,8 @@ protected:
 
 
 template <size_t Alignment>
-template <size_t Size> typename Memory<Alignment>::GenericPtr Memory<Alignment>::alloc()
+template <size_t Size>
+typename Memory<Alignment>::GenericPtr Memory<Alignment>::alloc()
 {
     static_assert(Size % Alignment == 0, "Invalid alignment");
     if (this->size() + Size <= capacity_) {
@@ -190,7 +189,8 @@ template <size_t Size> typename Memory<Alignment>::GenericPtr Memory<Alignment>:
 }
 
 template <size_t Alignment>
-template <typename T> typename Memory<Alignment>::template Ptr<T>
+template <typename T>
+typename Memory<Alignment>::template Ptr<T>
 Memory<Alignment>::arrayElemAt(size_t index) const
 {
     return GenericPtr((uint8_t*)(((T*)begin()) + index)).template cast<T>();

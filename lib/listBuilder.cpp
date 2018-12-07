@@ -4,8 +4,7 @@
 namespace lisp {
 
 ListBuilder::ListBuilder(Environment& env, ObjectPtr first)
-    : env_(env), front_(env.create<Pair>(first, env.getNull())),
-      back_(front_)
+    : env_(env), front_(env.create<Pair>(first, env.getNull())), back_(front_)
 {
 }
 

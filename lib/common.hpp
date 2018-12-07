@@ -15,5 +15,5 @@ struct VarLoc {
 };
 
 using Bytecode = std::vector<uint8_t>;
-    
+
 } // namespace lisp

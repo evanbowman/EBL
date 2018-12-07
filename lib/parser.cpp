@@ -139,6 +139,14 @@ ast::Ptr<ast::And> parseAnd(Lexer& lexer)
 }
 
 
+ast::Ptr<ast::Recur> parseRecur(Lexer& lexer)
+{
+    auto recur = make_unique<ast::Recur>();
+    parseStatementList(lexer, recur->args_);
+    return recur;
+}
+
+
 ast::Ptr<ast::Lambda> parseLambda(Lexer& lexer)
 {
     std::vector<std::string> argNames;
@@ -309,6 +317,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
             return parseAnd(lexer);
         } else if (symb == "set") {
             return parseSet(lexer);
+        } else if (symb == "recur") {
+            return parseRecur(lexer);
         } else {
             apply->toApply_ = parseValue(lexer.rdbuf());
         }

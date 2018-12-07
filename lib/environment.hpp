@@ -38,7 +38,8 @@ public:
     // Load/store a variable in the root environment.
     ObjectPtr getGlobal(const std::string& key);
     void setGlobal(const std::string& key, ObjectPtr value);
-    void setGlobal(const std::string& key, const std::string& nameSpace, ObjectPtr value);
+    void setGlobal(const std::string& key, const std::string& nameSpace,
+                   ObjectPtr value);
 
     // Compile and execute lisp code
     ObjectPtr exec(const std::string& code);
@@ -71,7 +72,7 @@ private:
 
     Context* context_;
     EnvPtr parent_;
-    Ogre::SmallVector<ObjectPtr, 6> vars_;
+    Variables vars_;
 };
 
 template <typename T> struct ConstructImpl {
@@ -136,8 +137,7 @@ public:
 
     friend class Environment;
 
-    using ReturnAddress = size_t;
-    using CallStack = std::vector<std::pair<size_t, EnvPtr>>;
+    using CallStack = std::vector<StackFrame>;
     CallStack& callStack()
     {
         return callStack_;

@@ -11,6 +11,7 @@ namespace ast {
 
 // FIXME: shouldn't be global... maybe put in Context or Environment...
 thread_local Vector<StrVal*> namespacePath;
+thread_local Vector<Lambda*> currentFunction;
 
 VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
                    FrameDist traversed) const
@@ -32,112 +33,117 @@ VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
 
 using ExecutionFailure = std::runtime_error;
 
-void Integer::visit(Visitor& visitor) 
+void Integer::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Double::visit(Visitor& visitor) 
+void Double::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Character::visit(Visitor& visitor) 
+void Character::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void String::visit(Visitor& visitor) 
-{
-    visitor.visit(*this);
-}    
-
-void Null::visit(Visitor& visitor) 
+void String::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void True::visit(Visitor& visitor) 
+void Null::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void False::visit(Visitor& visitor) 
+void True::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
-    
+
+void False::visit(Visitor& visitor)
+{
+    visitor.visit(*this);
+}
+
 void Namespace::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void LValue::visit(Visitor& visitor) 
+void LValue::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Lambda::visit(Visitor& visitor) 
+void Lambda::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void VariadicLambda::visit(Visitor& visitor) 
-{
-    visitor.visit(*this);
-}    
-
-void Application::visit(Visitor& visitor) 
+void VariadicLambda::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Let::visit(Visitor& visitor) 
+void Application::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Begin::visit(Visitor& visitor) 
+void Let::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void TopLevel::visit(Visitor& visitor) 
+void Begin::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void If::visit(Visitor& visitor) 
+void TopLevel::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Cond::visit(Visitor& visitor) 
+void If::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Or::visit(Visitor& visitor) 
+void Recur::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void And::visit(Visitor& visitor) 
+void Cond::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Def::visit(Visitor& visitor) 
+void Or::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void Set::visit(Visitor& visitor) 
+void And::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
 
-void UserObject::visit(Visitor& visitor) 
+void Def::visit(Visitor& visitor)
+{
+    visitor.visit(*this);
+}
+
+void Set::visit(Visitor& visitor)
+{
+    visitor.visit(*this);
+}
+
+void UserObject::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
@@ -213,6 +219,7 @@ void LValue::init(Environment& env, Scope& scope)
 
 void Lambda::init(Environment& env, Scope& scope)
 {
+    currentFunction.push_back(this);
     Scope::setParent(&scope);
     for (auto it = argNames_.rbegin(); it != argNames_.rend(); ++it) {
         validateIdentifier(*it);
@@ -221,6 +228,7 @@ void Lambda::init(Environment& env, Scope& scope)
     for (const auto& statement : statements_) {
         statement->init(env, *this);
     }
+    currentFunction.pop_back();
 }
 
 
@@ -259,6 +267,20 @@ void If::init(Environment& env, Scope& scope)
     condition_->init(env, scope);
     trueBranch_->init(env, scope);
     falseBranch_->init(env, scope);
+}
+
+
+void Recur::init(Environment& env, Scope& scope)
+{
+    if (currentFunction.empty()) {
+        throw std::runtime_error("recur isn\'t allowed outside of a function");
+    }
+    if (args_.size() not_eq currentFunction.back()->argNames_.size()) {
+        throw std::runtime_error("wrong number of args supplied to recur");
+    }
+    for (auto& arg : args_) {
+        arg->init(env, scope);
+    }
 }
 
 
@@ -321,6 +343,6 @@ void TopLevel::init(Environment& env, Scope& scope)
     Begin::init(env, scope);
 }
 
-    
+
 } // namespace ast
 } // namespace lisp

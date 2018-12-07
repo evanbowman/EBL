@@ -1,12 +1,12 @@
 #include "environment.hpp"
+#include "bytecode.hpp"
 #include "parser.hpp"
+#include "vm.hpp"
+#include <cassert>
 #include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <cassert>
-#include "bytecode.hpp"
-#include "vm.hpp"
 
 
 namespace lisp {
@@ -19,7 +19,8 @@ ObjectPtr Environment::getGlobal(const std::string& key)
     return context_->topLevel_->load(loc);
 }
 
-void Environment::setGlobal(const std::string& key, const std::string& nameSpace, ObjectPtr value)
+void Environment::setGlobal(const std::string& key,
+                            const std::string& nameSpace, ObjectPtr value)
 {
     assert("FIXME, setGlobal unimplemented");
     // assert(context_->astRoot_);
@@ -50,7 +51,7 @@ void Environment::setGlobal(const std::string& key, ObjectPtr value)
     // auto obj = make_unique<ast::UserObject>(value);
     // def->name_ = key;
     // def->value_ = std::move(obj);
-    // context_->astRoot_->statements_.push_back(std::move(def));
+    // context_->astRoot_->stxatements_.push_back(std::move(def));
     // context_->astRoot_->statements_.back()->init(*context_->topLevel(),
     //                                              *context_->astRoot_);
     // BytecodeBuilder builder;
@@ -139,7 +140,7 @@ const char* utilities =
     "(defn cadddr (l) (car (cdr (cdr (cdr l)))))\n";
 
 Context::Context(const Configuration& config)
-    : heap_(config.heapSize_),
+    : heap_(config.heapSize_, 0),
       topLevel_(std::make_shared<Environment>(this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},

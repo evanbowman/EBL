@@ -53,8 +53,8 @@ private:
 
 
 class Visitor;
-    
-    
+
+
 struct Node {
     virtual ~Node()
     {
@@ -118,19 +118,19 @@ struct String : Value {
 
 struct Null : Value {
     virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override {};
+    virtual void init(Environment& env, Scope& scope) override{};
 };
 
 
 struct True : Value {
     virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment&, Scope&) override {};
+    virtual void init(Environment&, Scope&) override{};
 };
 
 
 struct False : Value {
     virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment&, Scope&) override {};
+    virtual void init(Environment&, Scope&) override{};
 };
 
 
@@ -214,6 +214,14 @@ struct If : Expr {
 };
 
 
+struct Recur : Expr {
+    Vector<Ptr<Statement>> args_;
+
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
+};
+
+
 struct Cond : Expr {
     struct Case {
         Ptr<Statement> condition_;
@@ -272,13 +280,15 @@ struct UserObject : Statement {
     }
 
     virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override {};
+    virtual void init(Environment& env, Scope& scope) override{};
 };
 
 
 class Visitor {
 public:
-    virtual ~Visitor() {}
+    virtual ~Visitor()
+    {
+    }
 
     virtual void visit(Namespace& node) = 0;
     virtual void visit(Integer& node) = 0;
@@ -296,6 +306,7 @@ public:
     virtual void visit(TopLevel& node) = 0;
     virtual void visit(Begin& node) = 0;
     virtual void visit(If& node) = 0;
+    virtual void visit(Recur& node) = 0;
     virtual void visit(Cond& node) = 0;
     virtual void visit(Or& node) = 0;
     virtual void visit(And& node) = 0;

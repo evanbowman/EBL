@@ -4,7 +4,7 @@
       null
       (begin
         (proc (car list))
-        (dolist proc (cdr list)))))
+        (recur proc (cdr list)))))
 
 
 (def iters 500)
@@ -13,7 +13,7 @@
      (lambda (z c iter-depth)
        (if (> iter-depth 0)
            (if (< (abs z) 2.0)
-               (mandelbrot (+ (* z z) c) c (- iter-depth 1))
+               (recur (+ (* z z) c) c (- iter-depth 1))
                false)
            true)))
 
@@ -28,7 +28,7 @@
                (def list-y (if (< n 50)
                                (cons (- 1.0 (* n y-coeff)) yl)
                                yl))
-               (make-matrix list-x list-y (- n 1)))))))
+               (recur list-x list-y (- n 1)))))))
 
 
 (def data-mat (make-matrix null null 100))

@@ -104,4 +104,3 @@ TOKENIZE_FLOAT:
     return Token::FLOAT;
 }
 } // namespace lisp
-

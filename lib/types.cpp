@@ -39,7 +39,8 @@ ObjectPtr Function::call(Arguments& params)
 {
     if (bytecodeAddress_) {
         VM vm;
-        vm.execute(*envPtr_, envPtr_->getContext()->getProgram(), bytecodeAddress_);
+        vm.execute(*envPtr_, envPtr_->getContext()->getProgram(),
+                   bytecodeAddress_);
     }
     if (params.count() < requiredArgs_) {
         throw InvalidArgumentError("too few args, expected " +
@@ -51,16 +52,15 @@ ObjectPtr Function::call(Arguments& params)
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    CFunction impl)
-    : docstring_(docstring), requiredArgs_(requiredArgs),
-      nativeFn_(impl), bytecodeAddress_(0),
-      envPtr_(env.reference())
+    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(impl),
+      bytecodeAddress_(0), envPtr_(env.reference())
 {
 }
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    size_t bytecodeAddress)
-    : docstring_(docstring), requiredArgs_(requiredArgs),
-      nativeFn_(), bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
+    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(),
+      bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
 {
 }
 
@@ -197,7 +197,8 @@ Arguments::Arguments(Environment& env)
 
 Arguments::Arguments(Environment& env, size_t count)
     : ctx_(env.getContext()),
-      startIdx_(env.getContext()->operandStack().size() - (count + 1)), count_(count)
+      startIdx_(env.getContext()->operandStack().size() - (count + 1)),
+      count_(count)
 {
 }
 
