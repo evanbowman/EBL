@@ -41,8 +41,8 @@ static void markFrame(Environment& frame)
 
 void MarkCompact::mark(Environment& env)
 {
-    for (auto& frame : env.getContext()->callStack()) {
-        markFrame(*frame);
+    for (auto& frameInfo : env.getContext()->callStack()) {
+        markFrame(*frameInfo.second);
     }
     for (auto& obj : env.getContext()->immediates()) {
         markObject(obj);
@@ -163,8 +163,8 @@ void MarkCompact::compact(Environment& env, Heap& heap)
         remapInternalPointers(current, breakList);
         index += currentSize;
     }
-    for (auto& frame : env.getContext()->callStack()) {
-        gatherFrames(*frame);
+    for (auto& frameInfo : env.getContext()->callStack()) {
+        gatherFrames(*frameInfo.second);
     }
     for (auto& frame : frameSet) {
         remapFrame(*frame, breakList);

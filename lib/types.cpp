@@ -1,6 +1,7 @@
 #include "types.hpp"
 #include "lisp.hpp"
 #include "utility.hpp"
+#include "vm.hpp"
 
 #include <map>
 #include <memory>
@@ -34,33 +35,32 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
     return true;
 }
 
-class CFunctionImpl : public Function::Impl {
-public:
-    CFunctionImpl(CFunction fn) : fn_(fn)
-    {
+ObjectPtr Function::call(Arguments& params)
+{
+    if (bytecodeAddress_) {
+        VM vm;
+        vm.execute(*envPtr_, envPtr_->getContext()->getProgram(), bytecodeAddress_);
     }
-
-    ObjectPtr call(Environment& env, Arguments& params) override
-    {
-        return fn_(env, params);
+    if (params.count() < requiredArgs_) {
+        throw InvalidArgumentError("too few args, expected " +
+                                   std::to_string(requiredArgs_) + " got " +
+                                   std::to_string(params.count()));
     }
-
-private:
-    CFunction fn_;
-};
+    return (*nativeFn_)(*envPtr_, params);
+}
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    CFunction impl)
     : docstring_(docstring), requiredArgs_(requiredArgs),
-      impl_(std::unique_ptr<CFunctionImpl>(new CFunctionImpl(impl))),
+      nativeFn_(impl), bytecodeAddress_(0),
       envPtr_(env.reference())
 {
 }
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
-                   std::unique_ptr<Impl> impl)
+                   size_t bytecodeAddress)
     : docstring_(docstring), requiredArgs_(requiredArgs),
-      impl_(std::move(impl)), envPtr_(env.reference())
+      nativeFn_(), bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
 {
 }
 
@@ -194,6 +194,13 @@ Arguments::Arguments(Environment& env)
       startIdx_(env.getContext()->operandStack().size()), count_(0)
 {
 }
+
+Arguments::Arguments(Environment& env, size_t count)
+    : ctx_(env.getContext()),
+      startIdx_(env.getContext()->operandStack().size() - (count + 1)), count_(count)
+{
+}
+
 
 Arguments::~Arguments()
 {

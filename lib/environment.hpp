@@ -15,6 +15,7 @@
 #include "gc.hpp"
 #include "memory.hpp"
 #include "types.hpp"
+#include "vm.hpp"
 
 
 namespace lisp {
@@ -30,6 +31,7 @@ public:
         : context_(context), parent_(parent)
     {
     }
+    Environment(const Environment&) = delete;
 
     template <typename T, typename... Args> Heap::Ptr<T> create(Args&&... args);
 
@@ -134,7 +136,8 @@ public:
 
     friend class Environment;
 
-    using CallStack = std::vector<EnvPtr>;
+    using ReturnAddress = size_t;
+    using CallStack = std::vector<std::pair<size_t, EnvPtr>>;
     CallStack& callStack()
     {
         return callStack_;
@@ -143,6 +146,11 @@ public:
     void runGC(Environment& env)
     {
         collector_->run(env, heap_);
+    }
+
+    const Bytecode& getProgram() const
+    {
+        return program_;
     }
 
 private:
@@ -173,17 +181,15 @@ private:
 
     Heap heap_;
     EnvPtr topLevel_;
-    Persistent<Boolean> booleans_[2];
-    Persistent<Null> nullValue_;
+    Heap::Ptr<Boolean> booleans_[2];
+    Heap::Ptr<Null> nullValue_;
     std::vector<ObjectPtr> immediates_;
     std::vector<ObjectPtr> operandStack_;
     std::vector<DLL> dlls_;
     ast::TopLevel* astRoot_ = nullptr;
+    Bytecode program_;
     std::unique_ptr<GC> collector_;
-
-    // A lambda knows where it was defined, but has no concept of
-    // where it was called, so we do actually need a call stack.
-    std::vector<EnvPtr> callStack_;
+    CallStack callStack_;
 };
 
 template <typename T, typename... Args>

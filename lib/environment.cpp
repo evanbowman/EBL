@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <iostream>
 #include <cassert>
+#include "bytecode.hpp"
+#include "vm.hpp"
 
 
 namespace lisp {
@@ -19,34 +21,42 @@ ObjectPtr Environment::getGlobal(const std::string& key)
 
 void Environment::setGlobal(const std::string& key, const std::string& nameSpace, ObjectPtr value)
 {
-    assert(context_->astRoot_);
-    auto def = make_unique<ast::Def>();
-    auto obj = make_unique<ast::UserObject>(value);
-    def->name_ = key;
-    def->value_ = std::move(obj);
-    // FIXME: this is quite inefficient, to push a namespace ast node
-    // for every definition, but the alternatives are hacky at the
-    // moment.
-    auto newNs = make_unique<ast::Namespace>();
-    newNs->name_ = nameSpace;
-    newNs->statements_.push_back(std::move(def));
-    context_->astRoot_->statements_.push_back(std::move(newNs));
-    context_->astRoot_->statements_.back()->init(*context_->topLevel(),
-                                                 *context_->astRoot_);
-    context_->astRoot_->statements_.back()->execute(*this);
+    assert("FIXME, setGlobal unimplemented");
+    // assert(context_->astRoot_);
+    // auto def = make_unique<ast::Def>();
+    // auto obj = make_unique<ast::UserObject>(value);
+    // def->name_ = key;
+    // def->value_ = std::move(obj);
+    // // FIXME: this is quite inefficient, to push a namespace ast node
+    // // for every definition, but the alternatives are hacky at the
+    // // moment.
+    // auto newNs = make_unique<ast::Namespace>();
+    // newNs->name_ = nameSpace;
+    // newNs->statements_.push_back(std::move(def));
+    // context_->astRoot_->statements_.push_back(std::move(newNs));
+    // context_->astRoot_->statements_.back()->init(*context_->topLevel(),
+    //                                              *context_->astRoot_);
+    // BytecodeBuilder builder;
+    // context_->astRoot_->statements_.back()->visit(builder);
+    // FIXME:
+    // context_->astRoot_->statements_.back()->execute(*this);
 }
 
 void Environment::setGlobal(const std::string& key, ObjectPtr value)
 {
-    assert(context_->astRoot_);
-    auto def = make_unique<ast::Def>();
-    auto obj = make_unique<ast::UserObject>(value);
-    def->name_ = key;
-    def->value_ = std::move(obj);
-    context_->astRoot_->statements_.push_back(std::move(def));
-    context_->astRoot_->statements_.back()->init(*context_->topLevel(),
-                                                 *context_->astRoot_);
-    context_->astRoot_->statements_.back()->execute(*this);
+    assert("FIXME, setGlobal unimplemented");
+    // assert(context_->astRoot_);
+    // auto def = make_unique<ast::Def>();
+    // auto obj = make_unique<ast::UserObject>(value);
+    // def->name_ = key;
+    // def->value_ = std::move(obj);
+    // context_->astRoot_->statements_.push_back(std::move(def));
+    // context_->astRoot_->statements_.back()->init(*context_->topLevel(),
+    //                                              *context_->astRoot_);
+    // BytecodeBuilder builder;
+    // context_->astRoot_->statements_.back()->visit(builder);
+    // FIXME:
+    // context_->astRoot_->statements_.back()->execute(*this);
 }
 
 void Environment::push(ObjectPtr value)
@@ -78,12 +88,12 @@ void Environment::store(VarLoc loc, ObjectPtr value)
 
 ObjectPtr Environment::getNull()
 {
-    return context_->nullValue_.get();
+    return context_->nullValue_;
 }
 
 ObjectPtr Environment::getBool(bool trueOrFalse)
 {
-    return context_->booleans_[trueOrFalse].get();
+    return context_->booleans_[trueOrFalse];
 }
 
 EnvPtr Environment::derive()
@@ -136,7 +146,7 @@ Context::Context(const Configuration& config)
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
 {
     initBuiltins(*topLevel_);
-    topLevel_->exec(utilities);
+    topLevel_->exec("");
 }
 
 Context::~Context()
@@ -144,7 +154,7 @@ Context::~Context()
     if (astRoot_) {
         std::ofstream out("save.lisp");
         out << std::fixed << std::setprecision(15);
-        astRoot_->store(out);
+        // astRoot_->store(out); FIXME
     }
 }
 
@@ -168,17 +178,25 @@ ObjectPtr Environment::exec(const std::string& code)
     auto root = lisp::parse(code);
     auto result = getNull();
     if (context_->astRoot_) {
+        BytecodeBuilder builder;
+        const size_t lastExecuted = context_->program_.size();
         // Splice and process each statement into the existing environment
         for (auto& st : root->statements_) {
             context_->astRoot_->statements_.push_back(std::move(st));
             context_->astRoot_->statements_.back()->init(*this,
                                                          *context_->astRoot_);
-            result = context_->astRoot_->statements_.back()->execute(*this);
         }
+        context_->astRoot_->visit(builder);
+        VM vm;
+        context_->program_ = builder.result();
+        vm.execute(*this, context_->program_, lastExecuted);
     } else {
         root->init(*this, *root);
-        result = root->execute(*this);
+        // FIXME:
+        // result = root->execute(*this);
+        BytecodeBuilder builder;
         context_->astRoot_ = root.release();
+        context_->astRoot_->visit(builder);
     }
     return result;
 }

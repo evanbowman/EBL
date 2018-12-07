@@ -81,9 +81,16 @@
             (collect next (cons (string-ref str next) list)))))
     (apply string (collect last null)))
 
+<<<<<<< Updated upstream
   ;; FIXME: The parser has trouble with negative numbers
   (def -1 (- 0 1))
 
+=======
+  ;; FIXME! Tokenizing negative numbers is broken right now, because '-', with
+  ;; nothing after it, has to also be a valid lvalue.
+  (def -1 (- 0 1))
+  
+>>>>>>> Stashed changes
   (defn split (str delim)
     (defn impl (index partial result)
       (if (equal? index -1)
@@ -91,7 +98,15 @@
               (cons (apply string partial) result)
               result)
           (let ((current (string-ref str index)))
+<<<<<<< Updated upstream
             (if (equal? current delim)
                 (impl (- index 1) null (cons (apply string partial) result))
                 (impl (- index 1) (cons current partial) result)))))
+=======
+            (cond
+             ((and (equal? current delim) (not (null? partial)))
+              (impl (- index 1) null (cons (apply string partial) result)))
+             (true
+              (impl (- index 1) (cons current partial) result))))))
+>>>>>>> Stashed changes
     (impl (- (length str) 1) null null)))

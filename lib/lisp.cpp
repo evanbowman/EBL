@@ -138,7 +138,7 @@ static const BuiltinFunctionInfo builtins[] = {
              checkedCast<String>(args[0])->value().toAscii());
      }},
     {"cons", "[car cdr] -> create a pair from car and cdr", 2,
-     [](Environment& env, const Arguments& args) {
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
          return env.create<Pair>(args[0], args[1]);
      }},
     {"car", "[pair] -> get the first element of pair", 1,
@@ -150,7 +150,7 @@ static const BuiltinFunctionInfo builtins[] = {
          return checkedCast<Pair>(args[0])->getCdr();
      }},
     {"length", "[obj] -> get the length of a list or string", 1,
-     [](Environment& env, const Arguments& args) {
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
          case typeInfo.typeId<Pair>(): {
              Integer::Rep length = 0;
@@ -428,18 +428,18 @@ static const BuiltinFunctionInfo builtins[] = {
          }
      }},
     {"complex", "[real imag] -> complex number from real + (b x imag)", 2,
-     [](Environment& env, const Arguments& args) {
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
          const auto real = checkedCast<Double>(args[0])->value();
          const auto imag = checkedCast<Double>(args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
      }},
     {"string-ref", "[str index] -> character at index in str", 2,
-     [](Environment& env, const Arguments& args) {
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
          return (*checkedCast<String>(
              args[0]))[checkedCast<Integer>(args[1])->value()];
      }},
     {"string", "[...] -> string constructed from all the args", 0,
-     [](Environment& env, const Arguments& args) {
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
          std::stringstream builder;
          for (auto& arg : args) {
              print(env, arg, builder);
@@ -479,6 +479,14 @@ static const BuiltinFunctionInfo builtins[] = {
              throw ConversionError(args[0]->typeId(),
                                    typeInfo.typeId<Double>());
          }
+     }},
+    {"character", "[ascii-integer-value] -> character", 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         const auto val = checkedCast<Integer>(args[0])->value();
+         if (val > -127 and val < 127) {
+             return env.create<Character>(Character::Rep{(char)val, 0, 0, 0});
+         }
+         return env.getNull();
      }},
     {"load", "[file-path] -> load lisp code from file-path", 1,
      [](Environment& env, const Arguments& args) {

@@ -18,7 +18,7 @@ public:
 
 private:
     Environment& env_;
-    Local<Pair> front_;
+    Heap::Ptr<Pair> front_;
     Heap::Ptr<Pair> back_;
 };
 

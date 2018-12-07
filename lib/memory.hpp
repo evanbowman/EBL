@@ -5,20 +5,59 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <type_traits>
+#include <string>
 
 namespace lisp {
 
 class Environment;
 
-class Heap {
+template <size_t Alignment>
+class Memory {
 public:
-    Heap(size_t capacity);
-    Heap();
-    Heap(const Heap&) = delete;
-    Heap(Heap&&);
-    ~Heap();
+    Memory(size_t capacity)
+    {
+        init(capacity);
+    }
 
-    void init(size_t capacity);
+    Memory(size_t capacity, uint8_t initialValue)
+    {
+        init(capacity);
+        std::memset(begin_, initialValue, capacity_);
+    }
+
+    Memory() : begin_(nullptr), end_(nullptr), capacity_(0)
+    {
+    }
+
+    Memory(const Memory&) = delete;
+
+    Memory(Memory&& other)
+        : begin_(other.begin_), end_(other.end_), capacity_(other.capacity_)
+    {
+        other.begin_ = nullptr;
+        other.end_ = nullptr;
+        other.capacity_ = 0;
+    }
+
+    ~Memory()
+    {
+        free(begin_);
+    }
+
+    void init(size_t capacity)
+    {
+        if (capacity % Alignment not_eq 0) {
+            throw std::runtime_error("Allocation request does not satify"
+                                     " alignment requirement of "
+                                     + std::to_string(Alignment));
+        }
+        capacity_ = capacity;
+        begin_ = (uint8_t*)malloc(capacity);
+        if (not begin_) {
+            throw std::runtime_error("failed to allocate a heap");
+        }
+        end_ = begin_;
+    }
 
     template <typename T> class Ptr;
     class GenericPtr;
@@ -33,14 +72,32 @@ public:
 
     template <size_t Size> GenericPtr alloc();
 
-    template <typename T> Heap::Ptr<T> arrayElemAt(size_t index) const;
+    template <typename T> Memory::Ptr<T> arrayElemAt(size_t index) const;
 
-    void compacted(size_t bytes);
+    void compacted(size_t bytes)
+    {
+        end_ -= bytes;
+    }
 
-    size_t size() const;
-    size_t capacity() const;
-    uint8_t* begin() const;
-    uint8_t* end() const;
+    size_t size() const
+    {
+        return end_ - begin_;
+    }
+
+    size_t capacity() const
+    {
+        return capacity_;
+    }
+
+    uint8_t* begin() const
+    {
+        return begin_;
+    }
+
+    uint8_t* end() const
+    {
+        return end_;
+    }
 
 private:
     uint8_t* begin_;
@@ -48,7 +105,9 @@ private:
     size_t capacity_;
 };
 
-class Heap::GenericPtr {
+
+template <size_t Alignment>
+class Memory<Alignment>::GenericPtr {
 public:
     using HandleType = uint8_t*;
 
@@ -76,7 +135,7 @@ public:
     }
 
 protected:
-    friend class Heap;
+    friend class Memory;
 
     GenericPtr(HandleType handle) : handle_(handle)
     {
@@ -86,88 +145,42 @@ private:
     HandleType handle_;
 };
 
-template <typename T> class Heap::Ptr : public GenericPtr {
+template <size_t Alignment>
+template <typename T> class Memory<Alignment>::Ptr :
+        public Memory<Alignment>::GenericPtr {
 public:
     template <typename U> Ptr(Ptr<U> other) : GenericPtr{other.handle()}
     {
         static_assert(std::is_base_of<T, U>::value, "bad upcast");
     }
 
-    Ptr(Local<T> local);
-
-    Ptr(Persistent<T> persistent);
-
     T& operator*() const
     {
-        return *reinterpret_cast<T*>(handle());
+        return *reinterpret_cast<T*>(GenericPtr::handle());
     }
     T* operator->() const
     {
-        return reinterpret_cast<T*>(handle());
+        return reinterpret_cast<T*>(GenericPtr::handle());
     }
 
     T* get()
     {
-        return reinterpret_cast<T*>(handle());
+        return reinterpret_cast<T*>(GenericPtr::handle());
     }
 
 protected:
     friend class GenericPtr;
 
-    Ptr(HandleType handle) : GenericPtr(handle)
+    Ptr(typename GenericPtr::HandleType handle) : GenericPtr(handle)
     {
     }
 };
 
-template <typename T> class Local {
-public:
-    template <typename U>
-    Local(Environment&, Heap::Ptr<U> value) : value_(value)
-    {
-    }
 
-    template <typename U> Local& operator=(Heap::Ptr<U> value)
-    {
-        value_ = value;
-        return *this;
-    }
-
-    Heap::Ptr<T> get() const
-    {
-        return value_;
-    }
-
-    // Copying or moving a local doesn't make any sense!
-    Local(Local&) = delete;
-
-private:
-    // TODO: right now Local doesn't do anything. Later, Local should
-    // instead store the value on the VM stack, and store a pointer to
-    // that stack location.
-    Heap::Ptr<T> value_;
-};
-
-template <typename T> Heap::Ptr<T>::Ptr(Local<T> other) : Ptr(other.get())
+template <size_t Alignment>
+template <size_t Size> typename Memory<Alignment>::GenericPtr Memory<Alignment>::alloc()
 {
-}
-
-template <typename T> Heap::Ptr<T>::Ptr(Persistent<T> other) : Ptr(other.value_)
-{
-}
-
-template <typename T> class Persistent {
-public:
-    Heap::Ptr<T> get()
-    {
-        return value_;
-    }
-
-    // TODO
-    Heap::Ptr<T> value_;
-};
-
-template <size_t Size> Heap::GenericPtr Heap::alloc()
-{
+    static_assert(Size % Alignment == 0, "Invalid alignment");
     if (this->size() + Size <= capacity_) {
         auto result = end_;
         end_ += Size;
@@ -176,9 +189,13 @@ template <size_t Size> Heap::GenericPtr Heap::alloc()
     throw OOM{};
 }
 
-template <typename T> Heap::Ptr<T> Heap::arrayElemAt(size_t index) const
+template <size_t Alignment>
+template <typename T> typename Memory<Alignment>::template Ptr<T>
+Memory<Alignment>::arrayElemAt(size_t index) const
 {
-    return GenericPtr((uint8_t*)(((T*)begin()) + index)).cast<T>();
+    return GenericPtr((uint8_t*)(((T*)begin()) + index)).template cast<T>();
 }
+
+using Heap = Memory<8>;
 
 } // namespace lisp

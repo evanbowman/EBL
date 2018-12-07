@@ -32,290 +32,115 @@ VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
 
 using ExecutionFailure = std::runtime_error;
 
-ObjectPtr Namespace::execute(Environment& env)
+void Integer::visit(Visitor& visitor) 
 {
-    // TODO...
-    auto up = env.getNull();
-    for (auto& statement : statements_) {
-        up = statement->execute(env);
-    }
-    return up;
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Integer::execute(Environment& env)
+void Double::visit(Visitor& visitor) 
 {
-    return env.getContext()->loadI(cachedVal_);
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Double::execute(Environment& env)
+void Character::visit(Visitor& visitor) 
 {
-    return env.getContext()->loadI(cachedVal_);
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Character::execute(Environment& env)
+void String::visit(Visitor& visitor) 
 {
-    return env.getContext()->loadI(cachedVal_);
+    visitor.visit(*this);
+}    
+
+void Null::visit(Visitor& visitor) 
+{
+    visitor.visit(*this);
 }
 
-
-ObjectPtr String::execute(Environment& env)
+void True::visit(Visitor& visitor) 
 {
-    return env.getContext()->loadI(cachedVal_);
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Null::execute(Environment& env)
+void False::visit(Visitor& visitor) 
 {
-    return env.getNull();
+    visitor.visit(*this);
+}
+    
+void Namespace::visit(Visitor& visitor)
+{
+    visitor.visit(*this);
 }
 
-
-ObjectPtr True::execute(Environment& env)
+void LValue::visit(Visitor& visitor) 
 {
-    return env.getBool(true);
+    visitor.visit(*this);
 }
 
-
-ObjectPtr False::execute(Environment& env)
+void Lambda::visit(Visitor& visitor) 
 {
-    return env.getBool(false);
+    visitor.visit(*this);
 }
 
-
-ObjectPtr LValue::execute(Environment& env)
+void VariadicLambda::visit(Visitor& visitor) 
 {
-    return env.load(cachedVarLoc_);
+    visitor.visit(*this);
+}    
+
+void Application::visit(Visitor& visitor) 
+{
+    visitor.visit(*this);
 }
 
-
-class InterpretedFunctionImpl : public Function::Impl {
-public:
-    InterpretedFunctionImpl(ast::Lambda* impl) : impl_(impl)
-    {
-    }
-
-    ObjectPtr call(Environment& env, Arguments& args)
-    {
-        auto& callStack = env.getContext()->callStack();
-        callStack.push_back(env.derive());
-        return dynamicWind(
-            [&] {
-                for (size_t i = 0; i < impl_->argNames_.size(); ++i) {
-                    callStack.back()->push(args[i]);
-                }
-                auto up = env.getNull();
-                for (auto& statement : impl_->statements_) {
-                    up = statement->execute(*callStack.back());
-                }
-                return up;
-            },
-            [&] { callStack.pop_back(); });
-    }
-
-private:
-    const ast::Lambda* impl_;
-};
-
-
-ObjectPtr Lambda::execute(Environment& env)
+void Let::visit(Visitor& visitor) 
 {
-    const auto argc = argNames_.size();
-    auto impl = make_unique<InterpretedFunctionImpl>(this);
-    return env.create<lisp::Function>(
-        [&]() -> ObjectPtr {
-            if (not docstring_.empty()) {
-                return env.create<lisp::String>(docstring_.c_str(),
-                                                docstring_.length());
-            } else {
-                return env.getNull();
-            }
-        }(),
-        argc, std::move(impl));
+    visitor.visit(*this);
 }
 
-
-class InterpretedVariadicFunctionImpl : public Function::Impl {
-public:
-    InterpretedVariadicFunctionImpl(ast::VariadicLambda* impl) : impl_(impl)
-    {
-    }
-
-    ObjectPtr call(Environment& env, Arguments& args)
-    {
-        auto& callStack = env.getContext()->callStack();
-        callStack.push_back(env.derive());
-        return dynamicWind(
-            [&] {
-                for (size_t i = 0; i < impl_->argNames_.size() - 1; ++i) {
-                    callStack.back()->push(args[i]);
-                }
-                LazyListBuilder builder(env);
-                for (size_t i = impl_->argNames_.size() - 1; i < args.count();
-                     ++i) {
-                    builder.pushBack(args[i]);
-                }
-                callStack.back()->push(builder.result());
-                auto up = env.getNull();
-                for (auto& statement : impl_->statements_) {
-                    up = statement->execute(*callStack.back());
-                }
-                return up;
-            },
-            [&] { callStack.pop_back(); });
-    }
-
-private:
-    const ast::VariadicLambda* impl_;
-};
-
-
-ObjectPtr VariadicLambda::execute(Environment& env)
+void Begin::visit(Visitor& visitor) 
 {
-    const auto argc = argNames_.size() - 1;
-    auto impl = make_unique<InterpretedVariadicFunctionImpl>(this);
-    return env.create<lisp::Function>(
-        [&]() -> ObjectPtr {
-            if (not docstring_.empty()) {
-                return env.create<lisp::String>(docstring_.c_str(),
-                                                docstring_.length());
-            } else {
-                return env.getNull();
-            }
-        }(),
-        argc, std::move(impl));
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Application::execute(Environment& env)
+void TopLevel::visit(Visitor& visitor) 
 {
-    try {
-        Arguments args(env);
-        for (const auto& arg : args_) {
-            args.push(arg->execute(env));
-        }
-        auto loaded = checkedCast<lisp::Function>(toApply_->execute(env));
-        return loaded->call(args);
-    } catch (const std::exception& err) {
-        std::stringstream fmt;
-        fmt << "failed to apply \'";
-        toApply_->store(fmt);
-        fmt << "\', reason:\n" << err.what();
-        throw ExecutionFailure(fmt.str());
-    }
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Let::execute(Environment& env)
+void If::visit(Visitor& visitor) 
 {
-    auto& callStack = env.getContext()->callStack();
-    callStack.push_back(env.derive());
-    return dynamicWind(
-        [&] {
-            for (const auto& binding : bindings_) {
-                callStack.back()->push(
-                    binding.value_->execute(*callStack.back()));
-            }
-            ObjectPtr up = env.getNull();
-            for (const auto& st : statements_) {
-                up = st->execute(*callStack.back());
-            }
-            return up;
-        },
-        [&] { callStack.pop_back(); });
+    visitor.visit(*this);
 }
 
-
-ObjectPtr TopLevel::execute(Environment& env)
+void Cond::visit(Visitor& visitor) 
 {
-    auto& callStack = env.getContext()->callStack();
-    callStack.push_back(env.reference());
-    return Begin::execute(*callStack.back());
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Begin::execute(Environment& env)
+void Or::visit(Visitor& visitor) 
 {
-    auto up = env.getNull();
-    for (const auto& st : statements_) {
-        up = st->execute(env);
-    }
-    return up;
+    visitor.visit(*this);
 }
 
-
-ObjectPtr If::execute(Environment& env)
+void And::visit(Visitor& visitor) 
 {
-    auto cond = condition_->execute(env);
-    if (cond == env.getBool(false)) {
-        return falseBranch_->execute(env);
-    } else {
-        return trueBranch_->execute(env);
-    }
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Cond::execute(Environment& env)
+void Def::visit(Visitor& visitor) 
 {
-    for (auto& cCase : cases_) {
-        if (not (cCase.condition_->execute(env) == env.getBool(false))) {
-            auto up = env.getNull();
-            for (auto& st : cCase.body_) {
-                up = st->execute(env);
-            }
-            return up;
-        }
-    }
-    return env.getNull();
+    visitor.visit(*this);
 }
 
-
-ObjectPtr Or::execute(Environment& env)
+void Set::visit(Visitor& visitor) 
 {
-    for (const auto& statement : statements_) {
-        auto result = statement->execute(env);
-        if (not(result == env.getBool(false))) {
-            return result;
-        }
-    }
-    return env.getBool(false);
+    visitor.visit(*this);
 }
 
-
-ObjectPtr And::execute(Environment& env)
+void UserObject::visit(Visitor& visitor) 
 {
-    ObjectPtr result = env.getBool(true);
-    for (const auto& statement : statements_) {
-        result = statement->execute(env);
-        if (result == env.getBool(false)) {
-            return env.getBool(false);
-        }
-    }
-    return result;
+    visitor.visit(*this);
 }
-
-
-ObjectPtr Def::execute(Environment& env)
-{
-    env.push(value_->execute(env));
-    return env.getNull();
-}
-
-
-ObjectPtr Set::execute(Environment& env)
-{
-    env.store(cachedVarLoc_, value_->execute(env));
-    return env.getNull();
-}
-
-
-ObjectPtr UserObject::execute(Environment& env)
-{
-    return value_;
-}
-
 
 void Namespace::init(Environment& env, Scope& scope)
 {
@@ -389,9 +214,9 @@ void LValue::init(Environment& env, Scope& scope)
 void Lambda::init(Environment& env, Scope& scope)
 {
     Scope::setParent(&scope);
-    for (const auto& argName : argNames_) {
-        validateIdentifier(argName);
-        Scope::insert(argName);
+    for (auto it = argNames_.rbegin(); it != argNames_.rend(); ++it) {
+        validateIdentifier(*it);
+        Scope::insert(*it);
     }
     for (const auto& statement : statements_) {
         statement->init(env, *this);
@@ -496,210 +321,6 @@ void TopLevel::init(Environment& env, Scope& scope)
     Begin::init(env, scope);
 }
 
-
-void Namespace::store(OutputStream& out) const
-{
-    // TODO...
-    out << "(namespace " << name_; //')';
-    for (auto& statement : statements_) {
-        out << ' ';
-        statement->store(out);
-    }
-    out << ')';
-}
-
-
-void Integer::store(OutputStream& out) const
-{
-    out << value_;
-}
-
-
-void Double::store(OutputStream& out) const
-{
-    out << value_;
-}
-
-
-void Character::store(OutputStream& out) const
-{
-    out << '\\';
-    for (char c : value_) {
-        if (not c) {
-            break;
-        }
-        out << c;
-    }
-}
-
-
-void String::store(OutputStream& out) const
-{
-    out << '\"' << value_ << '\"';
-}
-
-
-void Null::store(OutputStream& out) const
-{
-    out << "null";
-}
-
-
-void True::store(OutputStream& out) const
-{
-    out << "true";
-}
-
-
-void False::store(OutputStream& out) const
-{
-    out << "false";
-}
-
-
-void LValue::store(OutputStream& out) const
-{
-    out << name_;
-}
-
-
-void Lambda::store(OutputStream& out) const
-{
-    out << "(lambda (";
-    for (auto& arg : argNames_) {
-        out << arg << ' ';
-    }
-    out << ')';
-    for (auto& st : statements_) {
-        out << ' ';
-        st->store(out);
-    }
-    out << ')';
-}
-
-
-void Application::store(OutputStream& out) const
-{
-    out << '(';
-    toApply_->store(out);
-    for (auto& arg : args_) {
-        out << ' ';
-        arg->store(out);
-    }
-    out << ')';
-}
-
-
-void Let::store(OutputStream& out) const
-{
-    out << "(let (";
-    for (auto& binding : bindings_) {
-        validateIdentifier(binding.name_);
-        out << '(' << binding.name_ << ' ';
-        binding.value_->store(out);
-        out << ')';
-    }
-    out << ')';
-    for (auto& st : statements_) {
-        out << ' ';
-        st->store(out);
-    }
-    out << ')';
-}
-
-
-void Begin::store(OutputStream& out) const
-{
-    out << "(begin";
-    for (auto& st : statements_) {
-        out << ' ';
-        st->store(out);
-    }
-    out << ')';
-}
-
-
-void TopLevel::store(OutputStream& out) const
-{
-    for (auto& st : statements_) {
-        out << ' ';
-        st->store(out);
-    }
-}
-
-
-void If::store(OutputStream& out) const
-{
-    out << "(if ";
-    condition_->store(out);
-    out << ' ';
-    trueBranch_->store(out);
-    out << ' ';
-    falseBranch_->store(out);
-    out << ')';
-}
-
-
-void Cond::store(OutputStream& out) const
-{
-    out << "(cond";
-    for (auto& c : cases_) {
-        out << '(';
-        c.condition_->store(out);
-        for (auto& st : c.body_) {
-            out << ' ';
-            st->store(out);
-        }
-        out << ')';
-    }
-    out << ')';
-}
-
-
-void Or::store(OutputStream& out) const
-{
-    out << "(or";
-    for (auto& st : statements_) {
-        out << ' ';
-        st->store(out);
-    }
-    out << ')';
-}
-
-
-void And::store(OutputStream& out) const
-{
-    out << "(and";
-    for (auto& st : statements_) {
-        out << ' ';
-        st->store(out);
-    }
-    out << ')';
-}
-
-
-void Def::store(OutputStream& out) const
-{
-    out << "(def " << name_ << ' ';
-    value_->store(out);
-    out << ')';
-}
-
-
-void Set::store(OutputStream& out) const
-{
-    out << "(set " << name_ << ' ';
-    value_->store(out);
-    out << ')';
-}
-
-
-void UserObject::store(OutputStream& out) const
-{
-    out << "\n;; Warning: could not serialize user object\n";
-    out << 0;
-}
-
-
+    
 } // namespace ast
 } // namespace lisp

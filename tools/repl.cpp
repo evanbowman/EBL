@@ -2,7 +2,7 @@
 #include <iostream>
 
 
-int main()
+int main(int argc, char** argv)
 {
     using namespace lisp;
     Context context;
@@ -13,6 +13,9 @@ int main()
                                                      exit(0);
                                                      return env.getNull();
                                                  }));
+    if (argc == 2) {
+        env->exec(argv[1]);
+    }
     while (true) {
         std::cout << "> ";
         std::getline(std::cin, input);
