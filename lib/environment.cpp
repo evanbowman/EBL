@@ -19,45 +19,54 @@ ObjectPtr Environment::getGlobal(const std::string& key)
     return context_->topLevel_->load(loc);
 }
 
+static ast::Ptr<ast::Def> makeUoDef(Context* ctx, const std::string& key, ObjectPtr value)
+{
+    const auto id = ctx->immediates().size();
+    ctx->immediates().push_back(value);
+    auto def = make_unique<ast::Def>();
+    auto obj = make_unique<ast::UserObject>(id);
+    def->name_ = key;
+    def->value_ = std::move(obj);
+    return def;
+}
+
 void Environment::setGlobal(const std::string& key,
                             const std::string& nameSpace, ObjectPtr value)
 {
-    assert("FIXME, setGlobal unimplemented");
     assert(context_->astRoot_);
-    // auto def = make_unique<ast::Def>();
-    // auto obj = make_unique<ast::UserObject>(value);
-    // def->name_ = key;
-    // def->value_ = std::move(obj);
-    // // FIXME: this is quite inefficient, to push a namespace ast node
-    // // for every definition, but the alternatives are hacky at the
-    // // moment.
-    // auto newNs = make_unique<ast::Namespace>();
-    // newNs->name_ = nameSpace;
-    // newNs->statements_.push_back(std::move(def));
-    // context_->astRoot_->statements_.push_back(std::move(newNs));
-    // context_->astRoot_->statements_.back()->init(*context_->topLevel(),
-    //                                              *context_->astRoot_);
-    // BytecodeBuilder builder;
-    // context_->astRoot_->statements_.back()->visit(builder);
-    // FIXME:
-    // context_->astRoot_->statements_.back()->execute(*this);
+    auto newNs = make_unique<ast::Namespace>();
+    newNs->name_ = nameSpace;
+    newNs->statements_.push_back(makeUoDef(context_, key, value));
+    context_->astRoot_->statements_.push_back(std::move(newNs));
+    context_->astRoot_->statements_.back()->init(context_->topLevel(),
+                                                 *context_->astRoot_);
+    BytecodeBuilder builder;
+    const size_t lastExecuted = context_->program_.size();
+    context_->astRoot_->statements_.back()->visit(builder);
+
+    auto newCode = builder.result();
+    std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+    context_->callStack().push_back({0, 0, context_->topLevel().reference()});
+    VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
+    context_->callStack().pop_back();
+
 }
 
 void Environment::setGlobal(const std::string& key, ObjectPtr value)
 {
-    assert("FIXME, setGlobal unimplemented");
-    // assert(context_->astRoot_);
-    // auto def = make_unique<ast::Def>();
-    // auto obj = make_unique<ast::UserObject>(value);
-    // def->name_ = key;
-    // def->value_ = std::move(obj);
-    // context_->astRoot_->stxatements_.push_back(std::move(def));
-    // context_->astRoot_->statements_.back()->init(*context_->topLevel(),
-    //                                              *context_->astRoot_);
-    // BytecodeBuilder builder;
-    // context_->astRoot_->statements_.back()->visit(builder);
-    // FIXME:
-    // context_->astRoot_->statements_.back()->execute(*this);
+    assert(context_->astRoot_);
+    context_->astRoot_->statements_.push_back(makeUoDef(context_, key, value));
+    context_->astRoot_->statements_.back()->init(context_->topLevel(),
+                                                 *context_->astRoot_);
+    BytecodeBuilder builder;
+    const size_t lastExecuted = context_->program_.size();
+    context_->astRoot_->statements_.back()->visit(builder);
+    builder.unusedExpr();
+    auto newCode = builder.result();
+    std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+    context_->callStack().push_back({0, 0, context_->topLevel().reference()});
+    VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
+    context_->callStack().pop_back();
 }
 
 void Environment::push(ObjectPtr value)
@@ -187,14 +196,13 @@ ObjectPtr Environment::exec(const std::string& code)
             const size_t lastExecuted = context_->program_.size();
             // Splice and process each statement into the existing environment
             context_->astRoot_->statements_.push_back(std::move(st));
-            context_->astRoot_->statements_.back()->init(*this,
+            context_->astRoot_->statements_.back()->init(*context_->topLevel_,
                                                          *context_->astRoot_);
             context_->astRoot_->statements_.back()->visit(builder);
-            VM vm;
             auto newCode = builder.result();
             std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
-            context_->callStack().push_back({0, 0, reference()});
-            vm.execute(*context_->topLevel_, context_->program_, lastExecuted);
+            context_->callStack().push_back({0, 0, context_->topLevel_});
+            VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
             context_->callStack().pop_back();
             result = context_->operandStack().back();
             context_->operandStack().pop_back();
@@ -205,8 +213,7 @@ ObjectPtr Environment::exec(const std::string& code)
         context_->astRoot_ = root.release();
         context_->astRoot_->visit(builder);
         context_->program_ = builder.result();
-        VM vm;
-        vm.execute(*context_->topLevel_, context_->program_, 0);
+        VM::execute(*context_->topLevel_, context_->program_, 0);
     }
     return result;
 }

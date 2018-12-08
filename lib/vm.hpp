@@ -17,7 +17,7 @@ struct StackFrame {
 
 class VM {
 public:
-    void execute(Environment& env, const Bytecode& bc, size_t start);
+    static void execute(Environment& env, const Bytecode& bc, size_t start);
 };
 
 } // namespace lisp

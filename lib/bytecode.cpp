@@ -130,6 +130,8 @@ void BytecodeBuilder::visit(ast::Lambda& node)
 void BytecodeBuilder::visit(ast::VariadicLambda& node)
 {
     throw std::runtime_error("unimplemented");
+    fnContexts.push_back({0});
+    fnContexts.pop_back();
 }
 
 void BytecodeBuilder::visit(ast::Application& node)
@@ -263,7 +265,13 @@ void BytecodeBuilder::visit(ast::Set& node)
 
 void BytecodeBuilder::visit(ast::UserObject& node)
 {
-    puts("TODO: userobject");
+    data_.push_back((uint8_t)Opcode::PushI);
+    writeParam(data_, node.varLoc_);
+}
+
+void BytecodeBuilder::unusedExpr()
+{
+    data_.push_back((uint8_t)Opcode::Pop);
 }
 
 } // namespace lisp

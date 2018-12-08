@@ -150,6 +150,9 @@ void UserObject::visit(Visitor& visitor)
 
 void Namespace::init(Environment& env, Scope& scope)
 {
+    if (not currentFunction.empty()) {
+        throw std::runtime_error("namespace only allowed in top level");
+    }
     namespacePath.push_back(&name_);
     for (auto& statement : statements_) {
         statement->init(env, scope);
@@ -220,18 +223,23 @@ void LValue::init(Environment& env, Scope& scope)
 void Lambda::init(Environment& env, Scope& scope)
 {
     currentFunction.push_back(this);
-    if (not docstring_.empty()) {
-        cachedDocstringLoc_ = env.getContext()->storeI<lisp::String>(docstring_);
-    }
-    Scope::setParent(&scope);
-    for (auto it = argNames_.rbegin(); it != argNames_.rend(); ++it) {
-        validateIdentifier(*it);
-        Scope::insert(*it);
-    }
-    for (const auto& statement : statements_) {
-        statement->init(env, *this);
-    }
-    currentFunction.pop_back();
+    dynamicWind(
+        [&] {
+            if (not docstring_.empty()) {
+                cachedDocstringLoc_ = env.getContext()->storeI<lisp::String>(docstring_);
+            }
+            Scope::setParent(&scope);
+            for (auto it = argNames_.rbegin(); it != argNames_.rend(); ++it) {
+                validateIdentifier(*it);
+                Scope::insert(*it);
+            }
+            for (const auto& statement : statements_) {
+                statement->init(env, *this);
+            }
+        },
+        [&] {
+            currentFunction.pop_back();
+        });
 }
 
 

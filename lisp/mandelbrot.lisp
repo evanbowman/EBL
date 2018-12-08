@@ -1,11 +1,4 @@
-;; temporary...
-(defn dolist (proc list)
-  (if (null? list)
-      null
-      (begin
-        (proc (car list))
-        (recur proc (cdr list)))))
-
+(load "lisp/stdlib.lisp")
 
 (def iters 500)
 

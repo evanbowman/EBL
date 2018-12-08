@@ -9,4 +9,3 @@
                       (std::reverse result)
                       (impl (cons (std::split line \,) result))))
                 (impl null)))))
-q

@@ -43,7 +43,11 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             auto fn = checkedCast<Function>(target);
             if (auto addr = fn->getBytecodeAddress()) {
                 if (UNLIKELY(argc not_eq fn->argCount())) {
-                    throw std::runtime_error("wrong number of arguments");
+                    if (argc < fn->argCount()) {
+                        throw std::runtime_error("too few arguments");
+                    } else if (argc > fn->argCount()) {
+                        throw std::runtime_error("too many arguments");
+                    }
                 }
                 operandStack.pop_back();
                 env = fn->definitionEnvironment()->derive();

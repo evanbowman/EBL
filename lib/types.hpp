@@ -379,6 +379,8 @@ public:
 
     ObjectPtr operator[](size_t index) const;
 
+    void consumed();
+
     std::vector<ObjectPtr>::iterator begin() const;
     std::vector<ObjectPtr>::iterator end() const;
 

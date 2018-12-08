@@ -39,7 +39,7 @@ public:
         for (const auto& name : varNames_) {
             if (name == varName) {
                 throw Error("redefinition of variable " + varName +
-                            "not allowed");
+                            " not allowed");
             }
         }
         varNames_.push_back(varName);
@@ -278,9 +278,9 @@ struct Set : Expr {
 // Users of the library might want to push their own data into the environment,
 // but
 struct UserObject : Statement {
-    Heap::Ptr<Object> value_;
+    ImmediateId varLoc_;
 
-    UserObject(Heap::Ptr<Object> value) : value_(value)
+    UserObject(ImmediateId loc) : varLoc_(loc)
     {
     }
 

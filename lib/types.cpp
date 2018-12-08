@@ -38,19 +38,21 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
 ObjectPtr Function::call(Arguments& params)
 {
     if (bytecodeAddress_) {
-        // VM vm;
-        // Context* const ctx = envPtr_->getContext();
-        // auto derived = envPtr_->derive();
-        // // NOTE: the last instruction in a program is always exit, so
-        // // set the return address to that.
-        // ctx->callStack().push_back({ctx->getProgram().size() - 1,
-        //                             bytecodeAddress_, envPtr_});
-        // std::cout << "address " << bytecodeAddress_ << std::endl;
-        // vm.execute(*derived, ctx->getProgram(), bytecodeAddress_);
-        // auto ret = ctx->operandStack().back();
-        // ctx->operandStack().pop_back();
-        // return ret;
-        assert(false && "calling lisp from native code unimplemented");
+        if (UNLIKELY(params.count() != requiredArgs_)) {
+            throw std::runtime_error("wrong number of args");
+        }
+        Context* const ctx = envPtr_->getContext();
+        auto derived = envPtr_->derive();
+        ctx->callStack().push_back({ctx->getProgram().size() - 1,
+                                    bytecodeAddress_, derived});
+        VM::execute(*derived, ctx->getProgram(), bytecodeAddress_);
+        auto ret = ctx->operandStack().back();
+        // The bytecode function would have taken the args off of the
+        // operand stack, so we need to clear out the argument
+        // vector's count.
+        ctx->operandStack().pop_back();
+        params.consumed();
+        return ret;
     }
     if (params.count() < requiredArgs_) {
         throw InvalidArgumentError("too few args, expected " +
@@ -219,6 +221,11 @@ Arguments::~Arguments()
     for (size_t i = 0; i < count_; ++i) {
         opStack.pop_back();
     }
+}
+
+void Arguments::consumed()
+{
+    count_ = 0;
 }
 
 void Arguments::push(ObjectPtr arg)

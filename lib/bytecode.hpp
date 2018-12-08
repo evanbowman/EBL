@@ -35,6 +35,8 @@ public:
     void visit(ast::UserObject& node) override;
     void visit(ast::Recur& node) override;
 
+    void unusedExpr();
+
     Bytecode result();
 
 private:
