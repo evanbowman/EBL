@@ -97,9 +97,15 @@ void BytecodeBuilder::visit(ast::LValue& node)
 void BytecodeBuilder::visit(ast::Lambda& node)
 {
     fnContexts.push_back({0});
-    data_.push_back((uint8_t)Opcode::PushLambda);
     assert(node.argNames_.size() < 256);
-    data_.push_back((uint8_t)node.argNames_.size());
+    if (node.docstring_.empty()) {
+        data_.push_back((uint8_t)Opcode::PushLambda);
+        data_.push_back((uint8_t)node.argNames_.size());
+    } else {
+        data_.push_back((uint8_t)Opcode::PushDocumentedLambda);
+        data_.push_back((uint8_t)node.argNames_.size());
+        writeParam(data_, node.cachedDocstringLoc_);
+    }
     data_.push_back((uint8_t)Opcode::Jump);
     size_t jumpLoc = data_.size();
     writeParam(data_, (uint16_t)0);

@@ -220,6 +220,9 @@ void LValue::init(Environment& env, Scope& scope)
 void Lambda::init(Environment& env, Scope& scope)
 {
     currentFunction.push_back(this);
+    if (not docstring_.empty()) {
+        cachedDocstringLoc_ = env.getContext()->storeI<lisp::String>(docstring_);
+    }
     Scope::setParent(&scope);
     for (auto it = argNames_.rbegin(); it != argNames_.rend(); ++it) {
         validateIdentifier(*it);

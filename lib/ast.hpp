@@ -160,6 +160,7 @@ struct Lambda : Expr, Scope {
     Vector<StrVal> argNames_;
     Vector<Ptr<Statement>> statements_;
     StrVal docstring_;
+    ImmediateId cachedDocstringLoc_;
 
     virtual void visit(Visitor& visitor) override;
     virtual void init(Environment& env, Scope& scope) override;

@@ -177,6 +177,16 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             operandStack.push_back(lambda);
         } break;
 
+        case Opcode::PushDocumentedLambda: {
+            ++ip;
+            auto argc = readParam<uint8_t>(bc, ip);
+            auto docLoc = readParam<uint16_t>(bc, ip);
+            const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
+            auto lambda =
+                env->create<Function>(context->immediates()[docLoc], (size_t)argc, addr);
+            operandStack.push_back(lambda);
+        } break;
+
         case Opcode::Load0: {
             ++ip;
             const auto offset = readParam<StackLoc>(bc, ip);
