@@ -51,11 +51,6 @@ enum class Opcode : uint8_t {
     // Invoke a function.
     //
     Call,       // CALL(u8 argc) : invoke, consuming fn and args on stack
-    CallCached, // CallCached(u8 cacheId) : After a bytecode call, the
-                // vm will cache the call info, and if the same object
-                // pointer arrives at the callsite, the vm will jump
-                // immediatly without doing any type or argument
-                // checking.
 
     // JUMP INSTRUCTIONS
     //

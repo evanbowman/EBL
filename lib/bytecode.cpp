@@ -11,9 +11,10 @@ struct FunctionContext {
 
 thread_local std::vector<FunctionContext> fnContexts;
 
-
 Bytecode BytecodeBuilder::result()
 {
+    // Appending an Exit to the end of a sequence of expressions
+    // allows new bytecode to be simply appended to old bytecode.
     data_.push_back((uint8_t)Opcode::Exit);
     return std::move(data_);
 }

@@ -2,95 +2,72 @@
 ;;; A small standard library
 ;;;
 
-(defn dolist (proc list)
-  (if (null? list)
+(defn dolist (proc lat)
+  (if (null? lat)
       null
       (begin
-        (proc (car list))
-        (dolist proc (cdr list)))))
+        (proc (car lat))
+        (recur proc (cdr lat)))))
 
 (namespace std
-  (defn reverse (list)
-    "[list] -> reversed list"
-    (def up null)
-    (dolist (lambda (n) (set up (cons n up))) list)
-    up)
+  (def reverse
+       (let ((reverse-helper
+              (lambda (lat result)
+                (if (null? lat)
+                    result
+                    (recur (cdr lat) (cons (car lat) result))))))
+         (lambda (lat)
+           "[list] -> reversed list"
+           (reverse-helper lat null))))
 
-  (defn atom? (x)
-    "[x] -> false if x is a pair or if x is null"
-    (and (not (pair? x)) (not (null? x))))
-
-  (defn some (pred list)
+  (defn some (pred lat)
     "[pred list] -> first list element that satisfies pred, otherwise false"
-    (if (null? list)
+    (if (null? lat)
         false
-        (if (pred (car list))
-            (car list)
-            (some pred (cdr list)))))
+        (if (pred (car lat))
+            (car lat)
+            (recur pred (cdr lat)))))
 
-  (defn every (pred list)
+  (defn every (pred lat)
     "[pred list] -> true if pred is true for all elements, otherwise false"
-    (if (null? list)
+    (if (null? lat)
         true
-        (if (not (pred (car list)))
+        (if (not (pred (car lat)))
             false
-            (every pred (cdr list)))))
+            (recur pred (cdr lat)))))
 
-  (defn assoc (list key)
+  (defn assoc (lat key)
     "[key list] -> element associated with key in list, otherwise false"
     (some (lambda (elem)
             (equal? (car elem) key))
-          list))
+          lat))
 
   (defn identity (x) x)
-
-  (defn min (first ...)
-    "[args] -> find min element in args by calling <"
-    (def up first)
-    (dolist (lambda (e)
-              (if (< e up)
-                  (set up e))) ...)
-    up)
-
-  (defn max (first ...)
-    "[first ...] -> find max element in args by calling >"
-    (def up first)
-    (dolist (lambda (e)
-              (if (> e up)
-                  (set up e))) ...)
-    up)
 
   (def append
        (let ((append-impl
               (lambda (from to)
                 (if (null? from)
                     to
-                    (begin
-                      (append-impl (cdr from) (cons (car from) to)))))))
+                    (recur (cdr from) (cons (car from) to))))))
          (lambda (l1 l2)
            "[l1 l2] -> l2 appended to l1"
            (append-impl (reverse l1) l2))))
 
   (defn substr (str first last)
     "[str begin end] -> substring from [begin, end)"
-    (defn collect (index list)
+    (defn collect (index lat)
       (if (equal? index first)
-          list
+          lat
           (begin
             (def next (- index 1))
-            (collect next (cons (string-ref str next) list)))))
+            (recur next (cons (string-ref str next) lat)))))
     (apply string (collect last null)))
 
-<<<<<<< Updated upstream
-  ;; FIXME: The parser has trouble with negative numbers
-  (def -1 (- 0 1))
-
-=======
   ;; FIXME! Tokenizing negative numbers is broken right now, because '-', with
   ;; nothing after it, has to also be a valid lvalue.
   (def -1 (- 0 1))
-  
->>>>>>> Stashed changes
+
   (defn split (str delim)
     (defn impl (index partial result)
       (if (equal? index -1)
@@ -98,15 +75,7 @@
               (cons (apply string partial) result)
               result)
           (let ((current (string-ref str index)))
-<<<<<<< Updated upstream
             (if (equal? current delim)
-                (impl (- index 1) null (cons (apply string partial) result))
-                (impl (- index 1) (cons current partial) result)))))
-=======
-            (cond
-             ((and (equal? current delim) (not (null? partial)))
-              (impl (- index 1) null (cons (apply string partial) result)))
-             (true
-              (impl (- index 1) (cons current partial) result))))))
->>>>>>> Stashed changes
+                (recur (- index 1) null (cons (apply string partial) result))
+                (recur (- index 1) (cons current partial) result)))))
     (impl (- (length str) 1) null null)))

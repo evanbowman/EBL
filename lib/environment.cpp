@@ -149,6 +149,9 @@ Context::Context(const Configuration& config)
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
 {
     initBuiltins(*topLevel_);
+    // Techically, exec already pushes the root environment onto the callstack,
+    // but users should be able to call functions outside of running scripts.
+    callStack_.push_back({0, 0, topLevel_});
     topLevel_->exec("");
 }
 
@@ -179,26 +182,31 @@ ObjectPtr Environment::exec(const std::string& code)
     auto root = lisp::parse(code);
     auto result = getNull();
     if (context_->astRoot_) {
-        BytecodeBuilder builder;
-        const size_t lastExecuted = context_->program_.size();
-        // Splice and process each statement into the existing environment
         for (auto& st : root->statements_) {
+            BytecodeBuilder builder;
+            const size_t lastExecuted = context_->program_.size();
+            // Splice and process each statement into the existing environment
             context_->astRoot_->statements_.push_back(std::move(st));
             context_->astRoot_->statements_.back()->init(*this,
                                                          *context_->astRoot_);
+            context_->astRoot_->statements_.back()->visit(builder);
+            VM vm;
+            auto newCode = builder.result();
+            std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+            context_->callStack().push_back({0, 0, reference()});
+            vm.execute(*context_->topLevel_, context_->program_, lastExecuted);
+            context_->callStack().pop_back();
+            result = context_->operandStack().back();
+            context_->operandStack().pop_back();
         }
-        context_->astRoot_->visit(builder);
-        VM vm;
-        context_->program_ = builder.result();
-        context_->callStack().push_back({0, 0, reference()});
-        vm.execute(*this, context_->program_, lastExecuted);
     } else {
         root->init(*this, *root);
-        // FIXME:
-        // result = root->execute(*this);
         BytecodeBuilder builder;
         context_->astRoot_ = root.release();
         context_->astRoot_->visit(builder);
+        context_->program_ = builder.result();
+        VM vm;
+        vm.execute(*context_->topLevel_, context_->program_, 0);
     }
     return result;
 }

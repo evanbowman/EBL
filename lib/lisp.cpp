@@ -9,7 +9,6 @@
 #include "lisp.hpp"
 #include "listBuilder.hpp"
 
-
 namespace lisp {
 
 // FIXME: dolist isn't memory safe right now. Anything that causes an

@@ -26,12 +26,6 @@ uint16_t readParam(const Bytecode& bc, size_t& ip)
     return result;
 }
 
-struct CallCache {
-    // ...
-};
-
-
-
 void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 {
     auto env = environment.reference();
@@ -208,6 +202,9 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
         }
     }
 }
+
+
+
 
 
 } // namespace lisp
