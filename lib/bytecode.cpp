@@ -68,11 +68,21 @@ void BytecodeBuilder::visit(ast::False& node)
 void BytecodeBuilder::visit(ast::LValue& node)
 {
     if (node.cachedVarLoc_.frameDist_ == 0) {
-        data_.push_back((uint8_t)Opcode::Load0);
-        writeParam(data_, node.cachedVarLoc_.offset_);
+        if (node.cachedVarLoc_.offset_ < 256) {
+            data_.push_back((uint8_t)Opcode::Load0Fast);
+            writeParam(data_, (uint8_t)node.cachedVarLoc_.offset_);
+        } else {
+            data_.push_back((uint8_t)Opcode::Load0);
+            writeParam(data_, node.cachedVarLoc_.offset_);
+        }
     } else if (node.cachedVarLoc_.frameDist_ == 1) {
-        data_.push_back((uint8_t)Opcode::Load1);
-        writeParam(data_, node.cachedVarLoc_.offset_);
+        if (node.cachedVarLoc_.offset_ < 256) {
+            data_.push_back((uint8_t)Opcode::Load1Fast);
+            writeParam(data_, (uint8_t)node.cachedVarLoc_.offset_);
+        } else {
+            data_.push_back((uint8_t)Opcode::Load1);
+            writeParam(data_, node.cachedVarLoc_.offset_);
+        }
     } else if (node.cachedVarLoc_.frameDist_ == 2) {
         data_.push_back((uint8_t)Opcode::Load2);
         writeParam(data_, node.cachedVarLoc_.offset_);
@@ -102,7 +112,11 @@ void BytecodeBuilder::visit(ast::Lambda& node)
     data_.pop_back();
     data_.push_back((uint8_t)Opcode::Return);
     uint16_t* jumpOffset = (uint16_t*)(&data_[jumpLoc]);
-    *jumpOffset = (data_.size() - 2) - jumpLoc;
+    const size_t offset = (data_.size() - 2) - jumpLoc;
+    if (offset > std::numeric_limits<uint16_t>::max()) {
+        throw std::runtime_error("jump offset exceeds allowed size");
+    }
+    *jumpOffset = offset;
     fnContexts.pop_back();
 }
 
@@ -118,7 +132,7 @@ void BytecodeBuilder::visit(ast::Application& node)
     }
     node.toApply_->visit(*this);
     data_.push_back((uint8_t)Opcode::Call);
-    assert(node.args_.size() < 128);
+    assert(node.args_.size() < 256);
     data_.push_back((uint8_t)node.args_.size());
 }
 
@@ -185,12 +199,18 @@ void BytecodeBuilder::visit(ast::If& node)
     writeParam(data_, (uint16_t)0);
     // False block
     node.falseBranch_->visit(*this);
-
     uint16_t* jumpOffset1 = (uint16_t*)(&data_[jumpOffset1Loc]);
     uint16_t* jumpOffset2 = (uint16_t*)(&data_[jumpOffset2Loc]);
-    *jumpOffset1 = jumpOffset2Loc - jumpOffset1Loc; // size of the true block
-    *jumpOffset2 =
-        (data_.size() - 2) - jumpOffset2Loc; // size of the false block
+    // size of the true block
+    const size_t j1result = jumpOffset2Loc - jumpOffset1Loc;
+    // size of the false block
+    const size_t j2result = (data_.size() - 2) - jumpOffset2Loc;
+    if (j1result > std::numeric_limits<uint16_t>::max() or
+        j2result > std::numeric_limits<uint16_t>::max()) {
+        throw std::runtime_error("jump offset exceeds allowed size");
+    }
+    *jumpOffset1 = j1result;
+    *jumpOffset2 = j2result;
 }
 
 void BytecodeBuilder::visit(ast::Cond& node)

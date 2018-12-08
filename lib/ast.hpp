@@ -7,6 +7,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <limits>
 
 namespace lisp {
 
@@ -31,6 +32,9 @@ public:
 
     StackLoc insert(const std::string& varName)
     {
+        if (varNames_.size() > std::numeric_limits<StackLoc>::max()) {
+            throw std::runtime_error("Too many variables in environment");
+        }
         const StackLoc ret = varNames_.size();
         for (const auto& name : varNames_) {
             if (name == varName) {

@@ -8,11 +8,11 @@ int main(int argc, char** argv)
     Context context;
     std::string input;
     auto& env = context.topLevel();
-    env.setGlobal("quit", env.create<Function>(env.getNull(), size_t(0),
-                                               [](Environment& env, const Arguments&) {
-                                                   exit(0);
-                                                   return env.getNull();
-                                               }));
+    // env.setGlobal("quit", env.create<Function>(env.getNull(), size_t(0),
+    //                                            [](Environment& env, const Arguments&) {
+    //                                                exit(0);
+    //                                                return env.getNull();
+    //                                            }));
     if (argc == 2) {
         env.exec(argv[1]);
     }

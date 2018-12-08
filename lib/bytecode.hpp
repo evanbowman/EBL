@@ -43,15 +43,42 @@ private:
 
 enum class Opcode : uint8_t {
     Exit,
-    Jump,
-    JumpIfFalse,
-    Call,
     Recur,
     Return,
-    Load0,
-    Load1,
-    Load2,
-    Load,
+
+    // CALL INSTRUCTIONS
+    //
+    // Invoke a function.
+    //
+    Call,       // CALL(u8 argc) : invoke, consuming fn and args on stack
+    CallCached, // CallCached(u8 cacheId) : After a bytecode call, the
+                // vm will cache the call info, and if the same object
+                // pointer arrives at the callsite, the vm will jump
+                // immediatly without doing any type or argument
+                // checking.
+
+    // JUMP INSTRUCTIONS
+    //
+    // Update the instruction pointer by a relative offset.
+    //
+    Jump,             // JUMP(u16 offset)
+    JumpIfFalse,      // JUMPIFFALSE(u16 offset) : consume stack top, jump if false
+
+    // LOAD INSTRUCTIONS
+    //
+    // For loading values from the environment onto the operand
+    // stack. This is a frequent operation, and the compiler does a
+    // number of optimizations to cut down on the cost of loading,
+    // because generically loading from the lisp stack, which is a
+    // parent pointer tree, is costly.
+    //
+    Load,      // LOAD(u16 frame_dist, u16 frame_offset)
+    Load0,     // LOAD0(u16 frame_offset) : load from the current frame
+    Load1,     // LOAD1(u16 frame_offset) : load from the parent frame
+    Load2,     // LOAD2(u16 frame_offset) : load from the grandparent frame
+    Load0Fast, // LOAD0FAST(u8 frame_offset) : load from current, small offset
+    Load1Fast, // LOAD1FAST(u8 frame_offset) : load from parent, small offset
+
     Store,
     PushI,
     PushNull,

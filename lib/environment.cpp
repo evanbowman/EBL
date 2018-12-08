@@ -1,13 +1,13 @@
 #include "environment.hpp"
 #include "bytecode.hpp"
 #include "parser.hpp"
+#include "pool.hpp"
 #include "vm.hpp"
 #include <cassert>
 #include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-
 
 namespace lisp {
 
@@ -23,7 +23,7 @@ void Environment::setGlobal(const std::string& key,
                             const std::string& nameSpace, ObjectPtr value)
 {
     assert("FIXME, setGlobal unimplemented");
-    // assert(context_->astRoot_);
+    assert(context_->astRoot_);
     // auto def = make_unique<ast::Def>();
     // auto obj = make_unique<ast::UserObject>(value);
     // def->name_ = key;
@@ -100,7 +100,8 @@ ObjectPtr Environment::getBool(bool trueOrFalse)
 
 EnvPtr Environment::derive()
 {
-    return std::make_shared<Environment>(context_, reference());
+    PoolAllocator<Environment> alloc;
+    return std::allocate_shared<Environment>(alloc, context_, reference());
 }
 
 EnvPtr Environment::parent()
@@ -142,7 +143,7 @@ const char* utilities =
 
 Context::Context(const Configuration& config)
     : heap_(config.heapSize_, 0),
-      topLevel_(std::make_shared<Environment>(this, nullptr)),
+      topLevel_(std::allocate_shared<Environment>(PoolAllocator<Environment>{}, this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
@@ -158,6 +159,9 @@ Context::~Context()
         out << std::fixed << std::setprecision(15);
         // astRoot_->store(out); FIXME
     }
+    // For debugging
+    std::ofstream bc("bc", std::ofstream::binary);
+    bc.write((const char*)program_.data(), program_.size());
 }
 
 ObjectPtr Context::loadI(ImmediateId immediate)

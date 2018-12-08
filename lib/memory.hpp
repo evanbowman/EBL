@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string>
 #include <type_traits>
+#include <cstring>
 
 namespace lisp {
 

@@ -7,15 +7,37 @@ namespace lisp {
 
 template <typename T> T readParam(const Bytecode& bc, size_t& ip)
 {
-    const auto result = *reinterpret_cast<const T*>(bc.data() + ip);
-    ip += sizeof(T);
+    throw std::runtime_error("encountered unsupported param size");
+}
+
+template <>
+uint8_t readParam(const Bytecode& bc, size_t& ip)
+{
+    const auto result = bc[ip];
+    ip += 1;
     return result;
 }
+
+template <>
+uint16_t readParam(const Bytecode& bc, size_t& ip)
+{
+    const auto result = ((uint16_t)(bc[ip])) | (((uint16_t)(bc[ip + 1])) << 8);
+    ip += 2;
+    return result;
+}
+
+struct CallCache {
+    // ...
+};
+
+
 
 void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 {
     auto env = environment.reference();
     Context* const context = env->getContext();
+    auto& operandStack = context->operandStack();
+    auto& callStack = context->callStack();
     size_t ip = start;
     while (true) {
         switch ((Opcode)bc[ip]) {
@@ -23,32 +45,40 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             ++ip;
             auto argc = readParam<uint8_t>(bc, ip);
             // std::cout << ip << ": CALL " << (size_t)argc << std::endl;
-            auto target = context->operandStack().back();
+            auto target = operandStack.back();
             auto fn = checkedCast<Function>(target);
             if (auto addr = fn->getBytecodeAddress()) {
                 if (UNLIKELY(argc not_eq fn->argCount())) {
                     throw std::runtime_error("wrong number of arguments");
                 }
-                context->operandStack().pop_back();
+                operandStack.pop_back();
                 env = fn->definitionEnvironment()->derive();
-                context->callStack().push_back({ip, addr, env});
+                callStack.push_back({ip, addr, env});
                 ip = addr;
             } else {
                 auto result = env->getNull();
                 {
                     Arguments args(*env, argc);
-                    context->operandStack().pop_back();
+                    operandStack.pop_back();
                     result = fn->directCall(args);
                 }
-                context->operandStack().push_back(result);
+                operandStack.push_back(result);
             }
         } break;
 
+        case Opcode::Recur: {
+            ++ip;
+            // std::cout << ip << ": RECUR " <<
+            // callStack.back().functionTop_ << std::endl;
+            env->getVars().clear();
+            ip = callStack.back().functionTop_;
+        } break;
+
         case Opcode::Return: {
-            auto retAddr = context->callStack().back().returnAddress_;
+            auto retAddr = callStack.back().returnAddress_;
             // std::cout << ip << ": RETURN " << retAddr << std::endl;
-            context->callStack().pop_back();
-            env = context->callStack().back().env_;
+            callStack.pop_back();
+            env = callStack.back().env_;
             ip = retAddr;
         } break;
 
@@ -75,74 +105,70 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             ++ip;
             const auto jumpOffset = readParam<uint16_t>(bc, ip);
             // std::cout << ip << ": JIF " << jumpOffset << std::endl;
-            if (context->operandStack().back() == env->getBool(false)) {
+            if (operandStack.back() == env->getBool(false)) {
                 ip += jumpOffset;
             }
-            context->operandStack().pop_back();
+            operandStack.pop_back();
         } break;
 
-        case Opcode::Load: {
+        case Opcode::Load0Fast: {
             ++ip;
-            VarLoc param;
-            param.frameDist_ = readParam<FrameDist>(bc, ip);
-            param.offset_ = readParam<StackLoc>(bc, ip);
-            // std::cout << ip << ": LOAD " << param.frameDist_ << ", " <<
-            // param.offset_ << std::endl;
-            context->operandStack().push_back(env->load(param));
+            const auto offset = readParam<uint8_t>(bc, ip);
+            operandStack.push_back(env->getVars()[offset]);
         } break;
 
-        case Opcode::Load0: {
+        case Opcode::Load1Fast: {
             ++ip;
-            const auto offset = readParam<StackLoc>(bc, ip);
-            context->operandStack().push_back(env->getVars()[offset]);
+            const auto offset = readParam<uint8_t>(bc, ip);
+            operandStack.push_back(env->parent()->getVars()[offset]);
         } break;
 
         case Opcode::Load1: {
             ++ip;
             const auto offset = readParam<StackLoc>(bc, ip);
-            context->operandStack().push_back(env->parent()->getVars()[offset]);
+            operandStack.push_back(env->parent()->getVars()[offset]);
         } break;
 
         case Opcode::Load2: {
             ++ip;
             const auto offset = readParam<StackLoc>(bc, ip);
-            context->operandStack().push_back(env->parent()->parent()->getVars()[offset]);
+            operandStack.push_back(env->parent()->parent()->getVars()[offset]);
         } break;
 
         case Opcode::PushI: {
             ++ip;
             auto param = readParam<ImmediateId>(bc, ip);
             // std::cout << ip << ": PUSHI " << param << std::endl;
-            context->operandStack().push_back(context->immediates()[param]);
+            operandStack.push_back(context->immediates()[param]);
         } break;
 
         case Opcode::Store: {
             ++ip;
-            env->push(context->operandStack().back());
+            env->push(operandStack.back());
             // std::cout << ip << ": STORE" << std::endl;
-            context->operandStack().pop_back();
+            operandStack.pop_back();
         } break;
 
         case Opcode::Pop:
             ++ip;
-            context->operandStack().pop_back();
+            operandStack.pop_back();
             // std::cout << ip << ": POP" << std::endl;
             break;
 
         case Opcode::PushNull:
             ++ip;
-            context->operandStack().push_back(env->getNull());
+            operandStack.push_back(env->getNull());
             // std::cout << ip << ": PNULL" << std::endl;
             break;
 
         case Opcode::PushTrue:
             ++ip;
-            context->operandStack().push_back(env->getBool(true));
+            operandStack.push_back(env->getBool(true));
             // std::cout << ip << ": PTRUE" << std::endl;
             break;
 
         case Opcode::PushFalse:
-            context->operandStack().push_back(env->getBool(false));
+            operandStack.push_back(env->getBool(false));
             ++ip;
             // std::cout << ip << ": PFALSE" << std::endl;
             break;
@@ -154,15 +180,23 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
             auto lambda =
                 env->create<Function>(env->getNull(), (size_t)argc, addr);
-            context->operandStack().push_back(lambda);
+            operandStack.push_back(lambda);
         } break;
 
-        case Opcode::Recur: {
+        case Opcode::Load0: {
             ++ip;
-            // std::cout << ip << ": RECUR " <<
-            // context->callStack().back().functionTop_ << std::endl;
-            env->getVars().clear();
-            ip = context->callStack().back().functionTop_;
+            const auto offset = readParam<StackLoc>(bc, ip);
+            operandStack.push_back(env->getVars()[offset]);
+        } break;
+
+        case Opcode::Load: {
+            ++ip;
+            VarLoc param;
+            param.frameDist_ = readParam<FrameDist>(bc, ip);
+            param.offset_ = readParam<StackLoc>(bc, ip);
+            // std::cout << ip << ": LOAD " << param.frameDist_ << ", " <<
+            // param.offset_ << std::endl;
+            operandStack.push_back(env->load(param));
         } break;
 
         case Opcode::Exit: {
