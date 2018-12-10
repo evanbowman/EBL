@@ -64,11 +64,6 @@ public:
         reinterpret_cast<T*>(obj)->~T();
     }
 
-    // static void equality(Object* lhs, Object* rhs)
-    // {
-    //     return *reinterpret_cast<T*>(lhs) == *reinterpret_cast<T*>(rhs);
-    // }
-
     static void relocate(Object* obj, uint8_t* dest)
     {
         // std::cout << typeid(T).name() << " has alignment requirement " <<
@@ -504,18 +499,32 @@ template <typename... Builtins> struct TypeInfoTable {
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
                         Character, Symbol, RawPointer, Function>
-    typeInfo;
+    typeInfoTable;
+
+
+template <typename Ptr>
+const TypeInfo& typeInfo(Ptr obj)
+{
+    return typeInfoTable[obj->typeId()];
+}
 
 
 template <typename T>
-ObjectTemplate<T>::ObjectTemplate() : Object{typeInfo.typeId<T>()}
+constexpr TypeId typeId()
+{
+    return typeInfoTable.typeId<T>();
+}
+
+
+template <typename T>
+ObjectTemplate<T>::ObjectTemplate() : Object{::lisp::typeId<T>()}
 {
 }
 
 
 template <typename T, typename Ptr> bool isType(Ptr obj)
 {
-    return typeInfo.typeId<T>() == obj->typeId();
+    return typeId<T>() == obj->typeId();
 }
 
 
@@ -524,7 +533,7 @@ template <typename T> Heap::Ptr<T> checkedCast(ObjectPtr obj)
     if (LIKELY(isType<T>(obj))) {
         return obj.cast<T>();
     }
-    throw ConversionError{obj->typeId(), typeInfo.typeId<T>()};
+    throw ConversionError{obj->typeId(), typeId<T>()};
 }
 
 std::ostream& operator<<(std::ostream& out, const String& str);

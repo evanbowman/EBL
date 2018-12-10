@@ -29,7 +29,7 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
            bool showQuotes = false)
 {
     switch (obj->typeId()) {
-    case typeInfo.typeId<Pair>(): {
+    case typeId<Pair>(): {
         auto pair = obj.cast<Pair>();
         out << "(";
         print(env, pair->getCar(), out, true);
@@ -49,23 +49,23 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         out << ")";
     } break;
 
-    case typeInfo.typeId<Integer>():
+    case typeId<Integer>():
         out << obj.cast<Integer>()->value();
         break;
 
-    case typeInfo.typeId<Null>():
+    case typeId<Null>():
         out << "null";
         break;
 
-    case typeInfo.typeId<Boolean>():
+    case typeId<Boolean>():
         out << ((obj == env.getBool(true)) ? "true" : "false");
         break;
 
-    case typeInfo.typeId<Function>():
+    case typeId<Function>():
         out << "lambda<" << obj.cast<Function>()->argCount() << ">";
         break;
 
-    case typeInfo.typeId<String>():
+    case typeId<String>():
         if (showQuotes) {
             out << '"' << *obj.cast<String>() << '"';
         } else {
@@ -73,23 +73,23 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         }
         break;
 
-    case typeInfo.typeId<Double>():
+    case typeId<Double>():
         out << obj.cast<Double>()->value();
         break;
 
-    case typeInfo.typeId<Complex>():
+    case typeId<Complex>():
         out << obj.cast<Complex>()->value();
         break;
 
-    case typeInfo.typeId<Symbol>(): {
+    case typeId<Symbol>(): {
         out << *obj.cast<Symbol>()->value();
     } break;
 
-    case typeInfo.typeId<RawPointer>():
+    case typeId<RawPointer>():
         out << obj.cast<RawPointer>()->value();
         break;
 
-    case typeInfo.typeId<Character>():
+    case typeId<Character>():
         out << *obj.cast<Character>();
         break;
 
@@ -126,6 +126,10 @@ static const BuiltinFunctionInfo builtins[] = {
          env.getContext()->runGC(env);
          return env.getNull();
      }},
+    {"sizeof", "[obj] -> number of bytes that obj occupies in memory", 1,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         return env.create<Integer>(Integer::Rep(typeInfo(args[0]).size_));
+     }},
     {"error", "[string] -> raise error string and terminate", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          throw std::runtime_error(
@@ -146,14 +150,14 @@ static const BuiltinFunctionInfo builtins[] = {
     {"length", "[obj] -> get the length of a list or string", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
-         case typeInfo.typeId<Pair>(): {
+         case typeId<Pair>(): {
              Integer::Rep length = 0;
              if (not isType<Null>(args[0])) {
                  dolist(args[0], [&](ObjectPtr) { ++length; });
              }
              return env.create<Integer>(length);
          }
-         case typeInfo.typeId<String>():
+         case typeId<String>():
              return env.create<Integer>(
                  (Integer::Rep)args[0].cast<String>()->value().length());
          default:
@@ -227,15 +231,15 @@ static const BuiltinFunctionInfo builtins[] = {
          Double::Rep dSum = 0.0;
          for (size_t i = 0; i < args.count(); ++i) {
              switch (args[i]->typeId()) {
-             case typeInfo.typeId<Integer>():
+             case typeId<Integer>():
                  iSum += args[i].cast<Integer>()->value();
                  break;
 
-             case typeInfo.typeId<Double>():
+             case typeId<Double>():
                  dSum += args[i].cast<Double>()->value();
                  break;
 
-             case typeInfo.typeId<Complex>():
+             case typeId<Complex>():
                  cSum += args[i].cast<Complex>()->value();
                  break;
 
@@ -255,24 +259,24 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          // FIXME: this isn't as flexible as it should be
          switch (args[0]->typeId()) {
-         case typeInfo.typeId<Integer>():
+         case typeId<Integer>():
              switch (args[1]->typeId()) {
-             case typeInfo.typeId<Integer>():
+             case typeId<Integer>():
                  return env.create<Integer>(args[0].cast<Integer>()->value() -
                                             args[1].cast<Integer>()->value());
-             case typeInfo.typeId<Double>():
+             case typeId<Double>():
                  return env.create<Double>(args[0].cast<Integer>()->value() -
                                            args[1].cast<Double>()->value());
              default:
                  throw std::runtime_error("issue during subtraction");
              }
 
-         case typeInfo.typeId<Double>():
+         case typeId<Double>():
              switch (args[1]->typeId()) {
-             case typeInfo.typeId<Integer>():
+             case typeId<Integer>():
                  return env.create<Double>(args[0].cast<Double>()->value() -
                                            args[1].cast<Integer>()->value());
-             case typeInfo.typeId<Double>():
+             case typeId<Double>():
                  return env.create<Double>(args[0].cast<Double>()->value() -
                                            args[1].cast<Double>()->value());
              default:
@@ -281,7 +285,7 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.create<Double>(args[0].cast<Double>()->value() -
                                        checkedCast<Double>(args[1])->value());
 
-         case typeInfo.typeId<Complex>():
+         case typeId<Complex>():
              return env.create<Complex>(args[0].cast<Complex>()->value() -
                                         checkedCast<Complex>(args[1])->value());
          default:
@@ -295,15 +299,15 @@ static const BuiltinFunctionInfo builtins[] = {
          Complex::Rep cProd(1.0);
          for (size_t i = 0; i < args.count(); ++i) {
              switch (args[i]->typeId()) {
-             case typeInfo.typeId<Integer>():
+             case typeId<Integer>():
                  iProd *= args[i].cast<Integer>()->value();
                  break;
 
-             case typeInfo.typeId<Double>():
+             case typeId<Double>():
                  dProd *= args[i].cast<Double>()->value();
                  break;
 
-             case typeInfo.typeId<Complex>():
+             case typeId<Complex>():
                  cProd *= args[i].cast<Complex>()->value();
                  break;
              }
@@ -320,15 +324,15 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          // FIXME: this isn't as flexible as it should be
          switch (args[0]->typeId()) {
-         case typeInfo.typeId<Integer>():
+         case typeId<Integer>():
              return env.create<Integer>(args[0].cast<Integer>()->value() /
                                         checkedCast<Integer>(args[1])->value());
 
-         case typeInfo.typeId<Double>():
+         case typeId<Double>():
              return env.create<Double>(args[0].cast<Double>()->value() /
                                        checkedCast<Double>(args[1])->value());
 
-         case typeInfo.typeId<Complex>():
+         case typeId<Complex>():
              return env.create<Complex>(args[0].cast<Complex>()->value() /
                                         checkedCast<Complex>(args[1])->value());
          default:
@@ -338,16 +342,16 @@ static const BuiltinFunctionInfo builtins[] = {
     {">", nullptr, 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
-         case typeInfo.typeId<Integer>():
+         case typeId<Integer>():
              return env.getBool(args[0].cast<Integer>()->value() >
                                 checkedCast<Integer>(args[1])->value());
 
-         case typeInfo.typeId<Double>():
+         case typeId<Double>():
              return env.getBool(args[0].cast<Double>()->value() >
                                 checkedCast<Double>(args[1])->value());
 
-         case typeInfo.typeId<Complex>():
-             throw TypeError(typeInfo.typeId<Complex>(),
+         case typeId<Complex>():
+             throw TypeError(typeId<Complex>(),
                              "Comparison unsupported for complex numbers. "
                              "Why not try comparing the magnitude?");
 
@@ -358,16 +362,16 @@ static const BuiltinFunctionInfo builtins[] = {
     {"<", nullptr, 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
-         case typeInfo.typeId<Integer>():
+         case typeId<Integer>():
              return env.getBool(args[0].cast<Integer>()->value() <
                                 checkedCast<Integer>(args[1])->value());
 
-         case typeInfo.typeId<Double>():
+         case typeId<Double>():
              return env.getBool(args[0].cast<Double>()->value() <
                                 checkedCast<Double>(args[1])->value());
 
-         case typeInfo.typeId<Complex>():
-             throw TypeError(typeInfo.typeId<Complex>(),
+         case typeId<Complex>():
+             throw TypeError(typeId<Complex>(),
                              "Comparison unsupported for complex numbers. "
                              "Why not try comparing the magnitude?");
 
@@ -379,7 +383,7 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          auto inp = args[0];
          switch (inp->typeId()) {
-         case typeInfo.typeId<Integer>():
+         case typeId<Integer>():
              if (inp.cast<Integer>()->value() > 0) {
                  return inp;
              } else {
@@ -388,7 +392,7 @@ static const BuiltinFunctionInfo builtins[] = {
              }
              break;
 
-         case typeInfo.typeId<Double>():
+         case typeId<Double>():
              if (inp.cast<Double>()->value() > 0.0) {
                  return inp;
              } else {
@@ -397,7 +401,7 @@ static const BuiltinFunctionInfo builtins[] = {
              }
              break;
 
-         case typeInfo.typeId<Complex>(): {
+         case typeId<Complex>(): {
              const auto result = std::abs(inp.cast<Complex>()->value());
              return env.create<Double>(result);
          }
@@ -428,35 +432,35 @@ static const BuiltinFunctionInfo builtins[] = {
     {"integer", "[string-or-double] -> integer conversion of the input", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
-         case typeInfo.typeId<Integer>():
+         case typeId<Integer>():
              return args[0];
-         case typeInfo.typeId<String>(): {
+         case typeId<String>(): {
              Integer::Rep i = std::stoi(args[0].cast<String>()->toAscii());
              return env.create<Integer>(i);
          }
-         case typeInfo.typeId<Double>():
+         case typeId<Double>():
              return env.create<Integer>(
                  Integer::Rep(args[0].cast<Double>()->value()));
          default:
              throw ConversionError(args[0]->typeId(),
-                                   typeInfo.typeId<Integer>());
+                                   typeId<Integer>());
          }
      }},
     {"double", "[integer-or-string] -> double precision float", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
-         case typeInfo.typeId<Double>():
+         case typeId<Double>():
              return args[0];
-         case typeInfo.typeId<String>(): {
+         case typeId<String>(): {
              Double::Rep d = std::stod(args[0].cast<String>()->toAscii());
              return env.create<Double>(d);
          }
-         case typeInfo.typeId<Integer>():
+         case typeId<Integer>():
              return env.create<Double>(
                  Double::Rep(args[0].cast<Integer>()->value()));
          default:
              throw ConversionError(args[0]->typeId(),
-                                   typeInfo.typeId<Double>());
+                                   typeId<Double>());
          }
      }},
     {"character", "[ascii-integer-value] -> character", 1,

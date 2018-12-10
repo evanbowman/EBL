@@ -56,26 +56,39 @@
 
   (defn substr (str first last)
     "[str begin end] -> substring from [begin, end)"
-    (defn collect (index lat)
-      (if (equal? index first)
-          lat
-          (begin
-            (def next (- index 1))
-            (recur next (cons (string-ref str next) lat)))))
-    (apply string (collect last null)))
+    (apply string
+           ((lambda (index lat)
+              (if (equal? index first)
+                  lat
+                  (begin
+                    (def next (- index 1))
+                    (recur next (cons (string-ref str next) lat)))))
+            last null)))
 
   ;; FIXME! Tokenizing negative numbers is broken right now, because '-', with
   ;; nothing after it, has to also be a valid lvalue.
   (def -1 (- 0 1))
 
   (defn split (str delim)
-    (defn impl (index partial result)
-      (if (equal? index -1)
-          (if partial
-              (cons (apply string partial) result)
-              result)
-          (let ((current (string-ref str index)))
-            (if (equal? current delim)
-                (recur (- index 1) null (cons (apply string partial) result))
-                (recur (- index 1) (cons current partial) result)))))
-    (impl (- (length str) 1) null null)))
+    "[str delim] -> list of substrings, by cleaving str at delim"
+    ((lambda (index partial result)
+       (if (equal? index -1)
+           (if partial
+               (cons (apply string partial) result)
+               result)
+           (let ((current (string-ref str index)))
+             (if (equal? current delim)
+                 (recur (- index 1) null (cons (apply string partial) result))
+                 (recur (- index 1) (cons current partial) result)))))
+     (- (length str) 1) null null))
+
+  (defn join (lat delim)
+    "[lat delim] -> string, by concatenating each elem in lat, with delim in between"
+    ((lambda (lat result)
+       (if (null? lat)
+           result
+           (recur (cdr lat)
+                  (if result
+                      (string result delim (car lat))
+                      (string (car lat))))))
+     lat false)))

@@ -18,7 +18,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         return false;
     }
 #define LISP_EQ_CASE(T)                                                        \
-    case typeInfo.typeId<T>():                                                 \
+    case typeId<T>():                                                 \
         return lhs.cast<T>()->value() == rhs.cast<T>()->value();
     switch (type) {
         LISP_EQ_CASE(Integer);
@@ -27,7 +27,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         LISP_EQ_CASE(Boolean);
         LISP_EQ_CASE(Complex);
         LISP_EQ_CASE(Character);
-    case typeInfo.typeId<Symbol>():
+    case typeId<Symbol>():
         return lhs == rhs;
     default:
         throw TypeError(type, "no equalto defined for input");
@@ -77,13 +77,13 @@ Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
 }
 
 TypeError::TypeError(TypeId t, const std::string& reason)
-    : std::runtime_error(std::string("for type ") + typeInfo[t].name_ + ": " +
+    : std::runtime_error(std::string("for type ") + typeInfoTable[t].name_ + ": " +
                          reason)
 {
 }
 
 ConversionError::ConversionError(TypeId from, TypeId to)
-    : TypeError(from, std::string("invalid cast to ") + typeInfo[to].name_)
+    : TypeError(from, std::string("invalid cast to ") + typeInfoTable[to].name_)
 {
 }
 
