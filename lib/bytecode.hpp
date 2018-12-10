@@ -93,6 +93,13 @@ enum class Opcode : uint8_t {
 
     Store, // STORE : move the top of the stack to the end of env frame.
 
+    Rebind, // REBIND(u16 frame_dist, u16 frame_offset) : Overwrite a
+            // variable binding in the environment. This particular
+            // operation is not very optimized right now, although it
+            // could be sped up using similar techniques to the load
+            // instructions above. The "set" special form is generally
+            // discouraged anyway.
+
     // PUSH INSTRUCTIONS
     //
     // Push constants onto the operand stack.

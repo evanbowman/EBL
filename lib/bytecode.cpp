@@ -94,6 +94,15 @@ void BytecodeBuilder::visit(ast::LValue& node)
     }
 }
 
+void BytecodeBuilder::visit(ast::Set& node)
+{
+    node.value_->visit(*this);
+    data_.push_back((uint8_t)Opcode::Rebind);
+    writeParam(data_, node.cachedVarLoc_.frameDist_);
+    writeParam(data_, node.cachedVarLoc_.offset_);
+    data_.push_back((uint8_t)Opcode::PushNull);
+}
+
 void BytecodeBuilder::visit(ast::Lambda& node)
 {
     fnContexts.push_back({0});
@@ -256,11 +265,6 @@ void BytecodeBuilder::visit(ast::Recur& node)
         data_.push_back((uint8_t)Opcode::ExitLet);
     }
     data_.push_back((uint8_t)Opcode::Recur);
-}
-
-void BytecodeBuilder::visit(ast::Set& node)
-{
-    throw std::runtime_error("set unimplemented");
 }
 
 void BytecodeBuilder::visit(ast::UserObject& node)

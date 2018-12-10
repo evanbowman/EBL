@@ -207,6 +207,16 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             operandStack.push_back(env->load(param));
         } break;
 
+        case Opcode::Rebind: {
+            ++ip;
+            VarLoc param;
+            param.frameDist_ = readParam<FrameDist>(bc, ip);
+            param.offset_ = readParam<StackLoc>(bc, ip);
+            auto value = operandStack.back();
+            operandStack.pop_back();
+            env->store(param, value);
+        } break;
+
         case Opcode::Exit: {
             return;
         }
