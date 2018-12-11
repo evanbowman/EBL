@@ -7,16 +7,13 @@
 #include <chrono>
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <cassert>
 
 namespace lisp {
 
 ObjectPtr Environment::getGlobal(const std::string& key)
 {
-    // FIXME: this is pretty bad...
-    ast::Vector<ast::StrVal> patterns = {key};
-    auto loc = context_->astRoot_->find(patterns);
+    auto loc = context_->astRoot_->find(key);
     return context_->topLevel_->load(loc);
 }
 

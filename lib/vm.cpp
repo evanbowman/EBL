@@ -1,7 +1,6 @@
 #include "vm.hpp"
 #include "bytecode.hpp"
 #include "environment.hpp"
-#include <iostream>
 
 namespace lisp {
 

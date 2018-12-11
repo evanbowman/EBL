@@ -2,7 +2,6 @@
 #include "environment.hpp"
 #include "memory.hpp"
 #include <deque>
-#include <iostream>
 #include <set>
 
 // FIXME: This code could use a good deal of work! On the one hand,

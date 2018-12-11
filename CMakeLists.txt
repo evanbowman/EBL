@@ -60,3 +60,4 @@ target_link_libraries(ebl-dofile
 # Build extensions
 add_library(fs SHARED dll/fs.cpp)
 target_link_libraries(fs ebl-lisp)
+set_target_properties(fs PROPERTIES SUFFIX "")

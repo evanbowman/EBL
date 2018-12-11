@@ -21,7 +21,7 @@ static struct {
          fclose(file);
          return result;
      }},
-    {"get-line", 1, "[file] -> string containing next line in the file",
+    {"getline", 1, "[file] -> string containing next line in the file",
      [](lisp::Environment& env, const lisp::Arguments& args) -> lisp::ObjectPtr {
          char* line = nullptr;
          size_t cap = 0;
@@ -37,7 +37,18 @@ static struct {
          }
          free(line);
          return env.getNull();
-     }}
+     }},
+     {"write", 1, "[file obj ...] -> write representations of objects to file",
+      [](lisp::Environment& env, const lisp::Arguments& args) -> lisp::ObjectPtr {
+          auto file = lisp::checkedCast<lisp::RawPointer>(args[0])->value();
+          std::stringstream format;
+          for (size_t i = 1; i < args.count(); ++i) {
+              lisp::print(env, args[i], format, false);
+          }
+          const auto result = format.str();
+          fwrite(result.c_str(), result.size(), 1, (FILE*)file);
+          return env.getNull();
+      }},
 };
 
 extern "C" {
@@ -48,5 +59,8 @@ void __dllMain(lisp::Environment& env)
         env.setGlobal(exp.name_, "fs",
                       env.create<lisp::Function>(doc, exp.argc_, exp.impl_));
     }
+    env.setGlobal("stdin", "fs", env.create<lisp::RawPointer>(stdin));
+    env.setGlobal("stdout", "fs", env.create<lisp::RawPointer>(stdout));
+    env.setGlobal("stderr", "fs", env.create<lisp::RawPointer>(stderr));
 }
 }

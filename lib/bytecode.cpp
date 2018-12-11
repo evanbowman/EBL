@@ -1,7 +1,6 @@
 #include "bytecode.hpp"
 #include "environment.hpp"
 #include <cassert>
-#include <iostream>
 
 namespace lisp {
 

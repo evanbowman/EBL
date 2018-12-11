@@ -1,4 +1,6 @@
+(open-dll "libfs.dylib")
 (load "lisp/stdlib.lisp")
+(def newline (let ((lf (character 10))) (lambda () (print lf))))
 
 (def iters 500)
 

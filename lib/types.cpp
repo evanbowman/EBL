@@ -7,7 +7,6 @@
 #include <memory>
 
 #include <bitset>
-#include <iostream>
 
 namespace lisp {
 

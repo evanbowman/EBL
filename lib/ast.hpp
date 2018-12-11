@@ -4,7 +4,6 @@
 #include "memory.hpp"
 #include "utility.hpp"
 #include <memory>
-#include <ostream>
 #include <string>
 #include <vector>
 #include <limits>
@@ -19,7 +18,6 @@ template <typename T> using Ptr = std::unique_ptr<T>;
 template <typename T> using Vector = std::vector<T>;
 using StrVal = std::string;
 using Error = std::runtime_error;
-using OutputStream = std::ostream;
 
 
 class Scope {
@@ -45,6 +43,8 @@ public:
         varNames_.push_back(varName);
         return ret;
     }
+
+    VarLoc find(const StrVal& varPath, FrameDist traversed = 0) const;
 
 
     VarLoc find(const Vector<StrVal>& varNamePatterns,

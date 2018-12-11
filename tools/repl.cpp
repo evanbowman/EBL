@@ -13,6 +13,7 @@ int main(int argc, char** argv)
                                                    exit(0);
                                                    return env.getNull();
                                                }));
+    env.openDLL("libfs");
     if (argc == 2) {
         env.exec(argv[1]);
     }

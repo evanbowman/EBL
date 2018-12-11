@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <fstream>
 #include <functional>
-#include <iostream>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -214,16 +214,21 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"print", "[...] -> print each arg in ...", 0,
      [](Environment& env, const Arguments& args) {
+         auto out = env.getGlobal("fs::stdout");
+         auto write = env.getGlobal("fs::write");
+         Arguments params(env);
+         params.push(out);
          for (const auto& arg : args) {
-             print(env, arg, std::cout);
+             params.push(arg);
          }
+         checkedCast<Function>(write)->call(params);
          return env.getNull();
      }},
-    {"newline", "[] -> write a newline to standard out", 0,
-     [](Environment& env, const Arguments& args) {
-         std::cout << "\n";
-         return env.getNull();
-     }},
+    // {"newline", "[] -> write a newline to standard out", 0,
+    //  [](Environment& env, const Arguments& args) {
+    //      std::cout << "\n";
+    //      return env.getNull();
+    //  }},
     {"mod", "[integer] -> the modulus of integer", 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          return env.create<Integer>(checkedCast<Integer>(args[0])->value() %

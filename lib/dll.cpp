@@ -53,7 +53,6 @@ DLL::~DLL()
     if (handle_) {
         dlclose(handle_);
         handle_ = nullptr;
-        puts("closing handle");
     }
 #endif
 }

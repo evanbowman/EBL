@@ -4,7 +4,7 @@
     (fs::open file-name "r"
               (lambda (file)
                 ((lambda (result)
-                   (def line (fs::get-line file))
+                   (def line (fs::getline file))
                    (if (not line)
                        (std::reverse result)
                        (recur (cons (std::split line \,) result))))

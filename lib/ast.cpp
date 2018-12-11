@@ -2,7 +2,6 @@
 #include "lisp.hpp"
 #include "listBuilder.hpp"
 #include "utility.hpp"
-#include <iostream>
 #include <sstream>
 
 
@@ -30,6 +29,22 @@ VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
                     " is not visible in the current environment");
     }
 }
+
+VarLoc Scope::find(const StrVal& varNamePath, FrameDist traversed) const
+{
+    for (StackLoc i = 0; i < varNames_.size(); ++i) {
+        if (varNames_[i] == varNamePath) {
+            return {traversed, i};
+        }
+    }
+    if (parent_) {
+        return parent_->find(varNamePath, traversed + 1);
+    } else {
+        throw Error("variable " + varNamePath +
+                    " is not visible in the current environment");
+    }
+}
+
 
 using ExecutionFailure = std::runtime_error;
 

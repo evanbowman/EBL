@@ -2,7 +2,6 @@
 #include <array>
 #include <cassert>
 #include "macros.hpp"
-#include <iostream>
 #include <mutex>
 
 namespace lisp {
