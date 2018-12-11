@@ -30,6 +30,7 @@ private:
     struct Header {
         const TypeId typeInfoIndex;
         uint8_t marked : 1;
+        uint8_t reserved : 7;
     } header_;
 
 public:
