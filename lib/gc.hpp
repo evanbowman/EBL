@@ -1,9 +1,10 @@
 #pragma once
 
+#include "memory.hpp"
+
 namespace lisp {
 
 class Environment;
-class Heap;
 
 class GC {
 public:

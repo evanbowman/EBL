@@ -1,7 +1,8 @@
 #include "types.hpp"
 #include "lisp.hpp"
 #include "utility.hpp"
-
+#include "vm.hpp"
+#include "bytecode.hpp"
 #include <map>
 #include <memory>
 
@@ -17,7 +18,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         return false;
     }
 #define LISP_EQ_CASE(T)                                                        \
-    case typeInfo.typeId<T>():                                                 \
+    case typeId<T>():                                                 \
         return lhs.cast<T>()->value() == rhs.cast<T>()->value();
     switch (type) {
         LISP_EQ_CASE(Integer);
@@ -26,7 +27,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         LISP_EQ_CASE(Boolean);
         LISP_EQ_CASE(Complex);
         LISP_EQ_CASE(Character);
-    case typeInfo.typeId<Symbol>():
+    case typeId<Symbol>():
         return lhs == rhs;
     default:
         throw TypeError(type, "no equalto defined for input");
@@ -34,44 +35,55 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
     return true;
 }
 
-class CFunctionImpl : public Function::Impl {
-public:
-    CFunctionImpl(CFunction fn) : fn_(fn)
-    {
+ObjectPtr Function::call(Arguments& params)
+{
+    if (bytecodeAddress_) {
+        if (UNLIKELY(params.count() != requiredArgs_)) {
+            throw std::runtime_error("wrong number of args");
+        }
+        Context* const ctx = envPtr_->getContext();
+        auto derived = envPtr_->derive();
+        ctx->callStack().push_back({ctx->getProgram().size() - 1,
+                                    bytecodeAddress_, derived});
+        VM::execute(*derived, ctx->getProgram(), bytecodeAddress_);
+        auto ret = ctx->operandStack().back();
+        // The bytecode function would have taken the args off of the
+        // operand stack, so we need to clear out the argument
+        // vector's count.
+        ctx->operandStack().pop_back();
+        params.consumed();
+        return ret;
     }
-
-    ObjectPtr call(Environment& env, Arguments& params) override
-    {
-        return fn_(env, params);
+    if (params.count() < requiredArgs_) {
+        throw InvalidArgumentError("too few args, expected " +
+                                   std::to_string(requiredArgs_) + " got " +
+                                   std::to_string(params.count()));
     }
-
-private:
-    CFunction fn_;
-};
+    return (*nativeFn_)(*envPtr_, params);
+}
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    CFunction impl)
-    : docstring_(docstring), requiredArgs_(requiredArgs),
-      impl_(std::unique_ptr<CFunctionImpl>(new CFunctionImpl(impl))),
-      envPtr_(env.reference())
+    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(impl),
+      bytecodeAddress_(0), envPtr_(env.reference())
 {
 }
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
-                   std::unique_ptr<Impl> impl)
-    : docstring_(docstring), requiredArgs_(requiredArgs),
-      impl_(std::move(impl)), envPtr_(env.reference())
+                   size_t bytecodeAddress)
+    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(),
+      bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
 {
 }
 
 TypeError::TypeError(TypeId t, const std::string& reason)
-    : std::runtime_error(std::string("for type ") + typeInfo[t].name_ + ": " +
+    : std::runtime_error(std::string("for type ") + typeInfoTable[t].name_ + ": " +
                          reason)
 {
 }
 
 ConversionError::ConversionError(TypeId from, TypeId to)
-    : TypeError(from, std::string("invalid cast to ") + typeInfo[to].name_)
+    : TypeError(from, std::string("invalid cast to ") + typeInfoTable[to].name_)
 {
 }
 
@@ -195,12 +207,25 @@ Arguments::Arguments(Environment& env)
 {
 }
 
+Arguments::Arguments(Environment& env, size_t count)
+    : ctx_(env.getContext()),
+      startIdx_(env.getContext()->operandStack().size() - (count + 1)),
+      count_(count)
+{
+}
+
+
 Arguments::~Arguments()
 {
     auto& opStack = ctx_->operandStack();
     for (size_t i = 0; i < count_; ++i) {
         opStack.pop_back();
     }
+}
+
+void Arguments::consumed()
+{
+    count_ = 0;
 }
 
 void Arguments::push(ObjectPtr arg)

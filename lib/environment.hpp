@@ -15,6 +15,7 @@
 #include "gc.hpp"
 #include "memory.hpp"
 #include "types.hpp"
+#include "vm.hpp"
 
 
 namespace lisp {
@@ -30,13 +31,15 @@ public:
         : context_(context), parent_(parent)
     {
     }
+    Environment(const Environment&) = delete;
 
     template <typename T, typename... Args> Heap::Ptr<T> create(Args&&... args);
 
     // Load/store a variable in the root environment.
     ObjectPtr getGlobal(const std::string& key);
     void setGlobal(const std::string& key, ObjectPtr value);
-    void setGlobal(const std::string& key, const std::string& nameSpace, ObjectPtr value);
+    void setGlobal(const std::string& key, const std::string& nameSpace,
+                   ObjectPtr value);
 
     // Compile and execute lisp code
     ObjectPtr exec(const std::string& code);
@@ -69,7 +72,7 @@ private:
 
     Context* context_;
     EnvPtr parent_;
-    Ogre::SmallVector<ObjectPtr, 6> vars_;
+    Variables vars_;
 };
 
 template <typename T> struct ConstructImpl {
@@ -130,11 +133,14 @@ public:
         return ret;
     }
 
-    EnvPtr topLevel();
+    Environment& topLevel()
+    {
+        return *topLevel_;
+    }
 
     friend class Environment;
 
-    using CallStack = std::vector<EnvPtr>;
+    using CallStack = std::vector<StackFrame>;
     CallStack& callStack()
     {
         return callStack_;
@@ -145,12 +151,17 @@ public:
         collector_->run(env, heap_);
     }
 
+    const Bytecode& getProgram() const
+    {
+        return program_;
+    }
+
 private:
     template <typename T, typename... Args>
     Heap::Ptr<T> create(Environment& env, Args&&... args)
     {
         auto allocObj = [&] {
-            return heap_.alloc<typeInfo.get<T>().size_>().template cast<T>();
+            return heap_.alloc<typeInfoTable.get<T>().size_>().template cast<T>();
         };
         auto mem = alloc<T>(env, allocObj);
         ConstructImpl<T>::construct(mem.get(), env,
@@ -173,17 +184,15 @@ private:
 
     Heap heap_;
     EnvPtr topLevel_;
-    Persistent<Boolean> booleans_[2];
-    Persistent<Null> nullValue_;
+    Heap::Ptr<Boolean> booleans_[2];
+    Heap::Ptr<Null> nullValue_;
     std::vector<ObjectPtr> immediates_;
     std::vector<ObjectPtr> operandStack_;
     std::vector<DLL> dlls_;
     ast::TopLevel* astRoot_ = nullptr;
+    Bytecode program_;
     std::unique_ptr<GC> collector_;
-
-    // A lambda knows where it was defined, but has no concept of
-    // where it was called, so we do actually need a call stack.
-    std::vector<EnvPtr> callStack_;
+    CallStack callStack_;
 };
 
 template <typename T, typename... Args>

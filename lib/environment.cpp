@@ -1,11 +1,14 @@
 #include "environment.hpp"
+#include "bytecode.hpp"
 #include "parser.hpp"
+#include "pool.hpp"
+#include "vm.hpp"
+#include <cassert>
 #include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <cassert>
-
 
 namespace lisp {
 
@@ -17,36 +20,54 @@ ObjectPtr Environment::getGlobal(const std::string& key)
     return context_->topLevel_->load(loc);
 }
 
-void Environment::setGlobal(const std::string& key, const std::string& nameSpace, ObjectPtr value)
+static ast::Ptr<ast::Def> makeUoDef(Context* ctx, const std::string& key, ObjectPtr value)
 {
-    assert(context_->astRoot_);
+    const auto id = ctx->immediates().size();
+    ctx->immediates().push_back(value);
     auto def = make_unique<ast::Def>();
-    auto obj = make_unique<ast::UserObject>(value);
+    auto obj = make_unique<ast::UserObject>(id);
     def->name_ = key;
     def->value_ = std::move(obj);
-    // FIXME: this is quite inefficient, to push a namespace ast node
-    // for every definition, but the alternatives are hacky at the
-    // moment.
+    return def;
+}
+
+void Environment::setGlobal(const std::string& key,
+                            const std::string& nameSpace, ObjectPtr value)
+{
+    assert(context_->astRoot_);
     auto newNs = make_unique<ast::Namespace>();
     newNs->name_ = nameSpace;
-    newNs->statements_.push_back(std::move(def));
+    newNs->statements_.push_back(makeUoDef(context_, key, value));
     context_->astRoot_->statements_.push_back(std::move(newNs));
-    context_->astRoot_->statements_.back()->init(*context_->topLevel(),
+    context_->astRoot_->statements_.back()->init(context_->topLevel(),
                                                  *context_->astRoot_);
-    context_->astRoot_->statements_.back()->execute(*this);
+    BytecodeBuilder builder;
+    const size_t lastExecuted = context_->program_.size();
+    context_->astRoot_->statements_.back()->visit(builder);
+
+    auto newCode = builder.result();
+    std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+    context_->callStack().push_back({0, 0, context_->topLevel().reference()});
+    VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
+    context_->callStack().pop_back();
+
 }
 
 void Environment::setGlobal(const std::string& key, ObjectPtr value)
 {
     assert(context_->astRoot_);
-    auto def = make_unique<ast::Def>();
-    auto obj = make_unique<ast::UserObject>(value);
-    def->name_ = key;
-    def->value_ = std::move(obj);
-    context_->astRoot_->statements_.push_back(std::move(def));
-    context_->astRoot_->statements_.back()->init(*context_->topLevel(),
+    context_->astRoot_->statements_.push_back(makeUoDef(context_, key, value));
+    context_->astRoot_->statements_.back()->init(context_->topLevel(),
                                                  *context_->astRoot_);
-    context_->astRoot_->statements_.back()->execute(*this);
+    BytecodeBuilder builder;
+    const size_t lastExecuted = context_->program_.size();
+    context_->astRoot_->statements_.back()->visit(builder);
+    builder.unusedExpr();
+    auto newCode = builder.result();
+    std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+    context_->callStack().push_back({0, 0, context_->topLevel().reference()});
+    VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
+    context_->callStack().pop_back();
 }
 
 void Environment::push(ObjectPtr value)
@@ -61,6 +82,7 @@ Environment& Environment::getFrame(VarLoc loc)
     auto frame = reference();
     while (loc.frameDist_ > 0) {
         frame = frame->parent_;
+        assert(frame not_eq nullptr);
         loc.frameDist_--;
     }
     return *frame;
@@ -78,17 +100,18 @@ void Environment::store(VarLoc loc, ObjectPtr value)
 
 ObjectPtr Environment::getNull()
 {
-    return context_->nullValue_.get();
+    return context_->nullValue_;
 }
 
 ObjectPtr Environment::getBool(bool trueOrFalse)
 {
-    return context_->booleans_[trueOrFalse].get();
+    return context_->booleans_[trueOrFalse];
 }
 
 EnvPtr Environment::derive()
 {
-    return std::make_shared<Environment>(context_, reference());
+    PoolAllocator<Environment> alloc;
+    return std::allocate_shared<Environment>(alloc, context_, reference());
 }
 
 EnvPtr Environment::parent()
@@ -129,14 +152,17 @@ const char* utilities =
     "(defn cadddr (l) (car (cdr (cdr (cdr l)))))\n";
 
 Context::Context(const Configuration& config)
-    : heap_(config.heapSize_),
-      topLevel_(std::make_shared<Environment>(this, nullptr)),
+    : heap_(config.heapSize_, 0),
+      topLevel_(std::allocate_shared<Environment>(PoolAllocator<Environment>{}, this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
 {
     initBuiltins(*topLevel_);
-    topLevel_->exec(utilities);
+    // Techically, exec already pushes the root environment onto the callstack,
+    // but users should be able to call functions outside of running scripts.
+    callStack_.push_back({0, 0, topLevel_});
+    topLevel_->exec("");
 }
 
 Context::~Context()
@@ -144,13 +170,11 @@ Context::~Context()
     if (astRoot_) {
         std::ofstream out("save.lisp");
         out << std::fixed << std::setprecision(15);
-        astRoot_->store(out);
+        // astRoot_->store(out); FIXME
     }
-}
-
-std::shared_ptr<Environment> Context::topLevel()
-{
-    return topLevel_;
+    // For debugging
+    std::ofstream bc("bc", std::ofstream::binary);
+    bc.write((const char*)program_.data(), program_.size());
 }
 
 ObjectPtr Context::loadI(ImmediateId immediate)
@@ -168,17 +192,29 @@ ObjectPtr Environment::exec(const std::string& code)
     auto root = lisp::parse(code);
     auto result = getNull();
     if (context_->astRoot_) {
-        // Splice and process each statement into the existing environment
         for (auto& st : root->statements_) {
+            BytecodeBuilder builder;
+            const size_t lastExecuted = context_->program_.size();
+            // Splice and process each statement into the existing environment
             context_->astRoot_->statements_.push_back(std::move(st));
-            context_->astRoot_->statements_.back()->init(*this,
+            context_->astRoot_->statements_.back()->init(*context_->topLevel_,
                                                          *context_->astRoot_);
-            result = context_->astRoot_->statements_.back()->execute(*this);
+            context_->astRoot_->statements_.back()->visit(builder);
+            auto newCode = builder.result();
+            std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+            context_->callStack().push_back({0, 0, context_->topLevel_});
+            VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
+            context_->callStack().pop_back();
+            result = context_->operandStack().back();
+            context_->operandStack().pop_back();
         }
     } else {
         root->init(*this, *root);
-        result = root->execute(*this);
+        BytecodeBuilder builder;
         context_->astRoot_ = root.release();
+        context_->astRoot_->visit(builder);
+        context_->program_ = builder.result();
+        VM::execute(*context_->topLevel_, context_->program_, 0);
     }
     return result;
 }

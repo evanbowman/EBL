@@ -20,12 +20,12 @@ static void markObject(ObjectPtr obj)
     }
     obj->mark();
     switch (obj->typeId()) {
-    case typeInfo.typeId<Pair>():
+    case typeId<Pair>():
         markObject(obj.cast<Pair>()->getCar());
         markObject(obj.cast<Pair>()->getCdr());
         break;
 
-    case typeInfo.typeId<Function>():
+    case typeId<Function>():
         markFrame(*obj.cast<Function>()->definitionEnvironment());
         markObject(obj.cast<Function>()->getDocstring());
         break;
@@ -41,8 +41,8 @@ static void markFrame(Environment& frame)
 
 void MarkCompact::mark(Environment& env)
 {
-    for (auto& frame : env.getContext()->callStack()) {
-        markFrame(*frame);
+    for (auto& frameInfo : env.getContext()->callStack()) {
+        markFrame(*frameInfo.env_);
     }
     for (auto& obj : env.getContext()->immediates()) {
         markObject(obj);
@@ -90,7 +90,7 @@ static void gatherFrames(Environment& env)
 static void remapInternalPointers(Object* obj, const BreakList& breaks)
 {
     switch (obj->typeId()) {
-    case typeInfo.typeId<Pair>(): {
+    case typeId<Pair>(): {
         auto p = (Pair*)obj;
         auto car = p->getCar();
         auto cdr = p->getCdr();
@@ -100,14 +100,14 @@ static void remapInternalPointers(Object* obj, const BreakList& breaks)
         p->setCdr(cdr);
     } break;
 
-    case typeInfo.typeId<Symbol>(): {
+    case typeId<Symbol>(): {
         auto s = (Symbol*)obj;
         auto val = s->value();
         val.overwrite(remapObjectAddress(val.handle(), breaks));
         s->set(val);
     } break;
 
-    case typeInfo.typeId<Function>(): {
+    case typeId<Function>(): {
         auto f = (Function*)obj;
         auto doc = f->getDocstring();
         doc.overwrite(remapObjectAddress(doc.handle(), breaks));
@@ -126,14 +126,14 @@ void MarkCompact::compact(Environment& env, Heap& heap)
     bool collapse = false; // collapse consecutive objs
     while (index < heap.size()) {
         auto current = (Object*)(heap.begin() + index);
-        const size_t currentSize = typeInfo[current->typeId()].size_;
+        const size_t currentSize = typeInfo(current).size_;
         if (current->marked()) {
         PRESERVE:
             current->unmark();
             collapse = false;
             if (bytesCompacted) {
                 uint8_t* const dest = ((uint8_t*)current) - bytesCompacted;
-                typeInfo[current->typeId()].relocatePolicy(current, dest);
+                typeInfo(current).relocatePolicy(current, dest);
             }
         } else {
             if (isType<String>(current)) {
@@ -159,12 +159,12 @@ void MarkCompact::compact(Environment& env, Heap& heap)
     index = 0;
     while (index < heap.size()) {
         auto current = (Object*)(heap.begin() + index);
-        const size_t currentSize = typeInfo[current->typeId()].size_;
+        const size_t currentSize = typeInfo(current).size_;
         remapInternalPointers(current, breakList);
         index += currentSize;
     }
-    for (auto& frame : env.getContext()->callStack()) {
-        gatherFrames(*frame);
+    for (auto& frameInfo : env.getContext()->callStack()) {
+        gatherFrames(*frameInfo.env_);
     }
     for (auto& frame : frameSet) {
         remapFrame(*frame, breakList);

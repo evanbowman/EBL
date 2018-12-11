@@ -7,12 +7,11 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <limits>
 
 namespace lisp {
 
-class Environment;
 class Object;
-
 
 namespace ast {
 
@@ -33,11 +32,14 @@ public:
 
     StackLoc insert(const std::string& varName)
     {
+        if (varNames_.size() > std::numeric_limits<StackLoc>::max()) {
+            throw std::runtime_error("Too many variables in environment");
+        }
         const StackLoc ret = varNames_.size();
         for (const auto& name : varNames_) {
             if (name == varName) {
                 throw Error("redefinition of variable " + varName +
-                            "not allowed");
+                            " not allowed");
             }
         }
         varNames_.push_back(varName);
@@ -54,19 +56,16 @@ private:
 };
 
 
+class Visitor;
+
+
 struct Node {
     virtual ~Node()
     {
     }
 
-    virtual Heap::Ptr<Object> execute(Environment& env) = 0;
-
-    virtual void store(OutputStream& out) const = 0;
-
-    // Resolve the stack addresses for variables accesses, and initialize
-    // constants that we'll need while executing the program. It's possible
-    // to save a lot of memory by caching literals.
-    virtual void init(Environment&, Scope&) = 0;
+    virtual void visit(Visitor& visitor) = 0;
+    virtual void init(Environment& env, Scope& scope) = 0;
 };
 
 
@@ -87,9 +86,8 @@ struct Integer : Value {
     Rep value_;
     ImmediateId cachedVal_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -98,9 +96,8 @@ struct Double : Value {
     Rep value_;
     ImmediateId cachedVal_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -109,9 +106,8 @@ struct Character : Value {
     Rep value_;
     ImmediateId cachedVal_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -119,36 +115,26 @@ struct String : Value {
     StrVal value_;
     ImmediateId cachedVal_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
 struct Null : Value {
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override
-    {
-    }
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override{};
 };
 
 
 struct True : Value {
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override
-    {
-    }
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment&, Scope&) override{};
 };
 
 
 struct False : Value {
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override
-    {
-    }
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment&, Scope&) override{};
 };
 
 
@@ -156,18 +142,17 @@ struct Namespace : Expr {
     StrVal name_;
     Vector<Ptr<Statement>> statements_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment&, Scope&) override;
 };
 
 
 struct LValue : Value {
     StrVal name_;
     VarLoc cachedVarLoc_;
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -175,15 +160,15 @@ struct Lambda : Expr, Scope {
     Vector<StrVal> argNames_;
     Vector<Ptr<Statement>> statements_;
     StrVal docstring_;
+    ImmediateId cachedDocstringLoc_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
 struct VariadicLambda : Lambda {
-    Heap::Ptr<Object> execute(Environment& env) override;
+    virtual void visit(Visitor& visitor) override;
 };
 
 
@@ -191,9 +176,8 @@ struct Application : Expr {
     Ptr<Statement> toApply_;
     Vector<Ptr<Statement>> args_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -206,25 +190,22 @@ struct Let : Expr, Scope {
     Vector<Binding> bindings_;
     Vector<Ptr<Statement>> statements_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
 struct Begin : Expr {
     Vector<Ptr<Statement>> statements_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
 struct TopLevel : Begin, Scope {
-    void init(Environment& env, Scope&) override;
-    void store(OutputStream& out) const override;
-    Heap::Ptr<Object> execute(Environment& env) override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -233,9 +214,16 @@ struct If : Expr {
     Ptr<Statement> trueBranch_;
     Ptr<Statement> falseBranch_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
+};
+
+
+struct Recur : Expr {
+    Vector<Ptr<Statement>> args_;
+
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -247,27 +235,24 @@ struct Cond : Expr {
 
     std::vector<Case> cases_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
 struct Or : Expr {
     std::vector<Ptr<Statement>> statements_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
 struct And : Expr {
     std::vector<Ptr<Statement>> statements_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -275,9 +260,8 @@ struct Def : Expr {
     StrVal name_;
     Ptr<Statement> value_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -286,28 +270,55 @@ struct Set : Expr {
     Ptr<Statement> value_;
     VarLoc cachedVarLoc_;
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override;
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override;
 };
 
 
 // Users of the library might want to push their own data into the environment,
 // but
 struct UserObject : Statement {
-    Heap::Ptr<Object> value_;
+    ImmediateId varLoc_;
 
-    UserObject(Heap::Ptr<Object> value) : value_(value)
+    UserObject(ImmediateId loc) : varLoc_(loc)
     {
     }
 
-    Heap::Ptr<Object> execute(Environment& env) override;
-    void init(Environment&, Scope&) override
-    {
-    }
-    void store(OutputStream& out) const override;
+    virtual void visit(Visitor& visitor) override;
+    virtual void init(Environment& env, Scope& scope) override{};
 };
 
+
+class Visitor {
+public:
+    virtual ~Visitor()
+    {
+    }
+
+    virtual void visit(Namespace& node) = 0;
+    virtual void visit(Integer& node) = 0;
+    virtual void visit(Double& node) = 0;
+    virtual void visit(Character& node) = 0;
+    virtual void visit(String& node) = 0;
+    virtual void visit(Null& node) = 0;
+    virtual void visit(True& node) = 0;
+    virtual void visit(False& node) = 0;
+    virtual void visit(LValue& node) = 0;
+    virtual void visit(Lambda& node) = 0;
+    virtual void visit(VariadicLambda& node) = 0;
+    virtual void visit(Application& node) = 0;
+    virtual void visit(Let& node) = 0;
+    virtual void visit(TopLevel& node) = 0;
+    virtual void visit(Begin& node) = 0;
+    virtual void visit(If& node) = 0;
+    virtual void visit(Recur& node) = 0;
+    virtual void visit(Cond& node) = 0;
+    virtual void visit(Or& node) = 0;
+    virtual void visit(And& node) = 0;
+    virtual void visit(Def& node) = 0;
+    virtual void visit(Set& node) = 0;
+    virtual void visit(UserObject& node) = 0;
+};
 
 } // namespace ast
 } // namespace lisp

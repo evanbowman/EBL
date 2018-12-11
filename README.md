@@ -1,7 +1,14 @@
 # EB LISP
 
 ## Introduction
-A lisp dialect, runs standalone, or can be easily embedded in C++ applications. Some notable features listed below:
+EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. The GC uses a mark-compact algorithm, but the collector is modular and you can override it with your own (in C++). EBL also supports lexical closures.
+
+This particular lisp dialect supports efficient tail recursion through the `recur` special form (like clojure). I prefer a `recur` keyword to automatic TCO for a number of reasons:
+* It's explicit and obvious to readers of the code.
+* A recur keyword allows recursion within anonomyous lambdas.
+* Tail call optimization would need to happen at runtime, and could be somewhat expensive. Or at least more expensive than recur, which is essentially free.
+
+EBL philosophy for mutability: data itself (lists, strings, etc.) is immutable, but, although it's discouraged, you can rebind new data to variables.
 
 #### Lexical closures
 ``` scheme
@@ -39,73 +46,11 @@ A lisp dialect, runs standalone, or can be easily embedded in C++ applications. 
 (math::smoothstep 0.0 100.0 25.0) ;; 0.15625
 ```
 
-#### Variadic functions
-
-If you create a variable called `...`, extra arguments will be passed as a list bound to `...`.
+#### Strings
+Look how easy it is to build strings in EBL!
 ```scheme
-(defn example* (factor ...)
-  (if (not (null? ...))
-      (begin
-        (print (* factor (car ...)) " ")
-        (apply example* (cdr ...)))))
-
-(example* 10 1 2 3 4 5) ;; 10 20 30 40 50
+(string \a \b \c " Hello, " 1 \, 2 \, 3) ;; "abc Hello, 1,2,2"
 ```
 
-## Non-trivial example:
-Here's something a little more advanced, mandelbrot sets:
-
-Code: https://github.com/evanbowman/lisp/blob/master/lisp/mandelbrot.lisp
-Output:
-```
-
-
-                               *
-                               *
-                             *****
-                             *****
-                             *****
-                              ****
-                          * ********* *
-                        **************    **
-                  ***  *********************
-                   ***********************
-                    ************************
-                   ****************************
-                   ***************************
-                  ****************************
-                 ******************************
-                  ******************************
-                 ********************************     ***** *
-                 ********************************   *********
-                 ********************************  ************
-                  ******************************* *************
-                  ******************************* *************
-                   ****************************** *****************
-                     ****************************************************************
-                   ****************************** *****************
-                  ******************************* *************
-                  ******************************* *************
-                 ********************************  ************
-                 ********************************   *********
-                 ********************************     ***** *
-                  ******************************
-                 ******************************
-                  ****************************
-                   ***************************
-                   ****************************
-                    ************************
-                   ***********************
-                  ***  *********************
-                        **************    **
-                          * ********* *
-                              ****
-                             *****
-                             *****
-                             *****
-                               *
-                               *
-
-
-
-```
+## Further Reading
+For more examples, see the code in the lisp/ directory. The standard library in file stdlib.lisp is a good place to start, and there's another example in mandelbrot.lisp, which computes mandelbrot sets.

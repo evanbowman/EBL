@@ -22,6 +22,7 @@ project(ebl-lisp)
 add_library(ebl-lisp SHARED
   lib/environment.cpp
   lib/listBuilder.cpp
+  lib/bytecode.cpp
   lib/memory.cpp
   lib/parser.cpp
   lib/types.cpp
@@ -29,7 +30,8 @@ add_library(ebl-lisp SHARED
   lib/lisp.cpp
   lib/ast.cpp
   lib/dll.cpp
-  lib/gc.cpp)
+  lib/gc.cpp
+  lib/vm.cpp)
 
 target_link_libraries(ebl-lisp
   dl)
@@ -51,8 +53,8 @@ target_link_libraries(ebl-dofile
   ebl-lisp)
 
 # Run the unit tests
-add_custom_command(TARGET ebl-dofile POST_BUILD
-  COMMAND ./ebl-dofile lisp/unit-test.lisp)
+# add_custom_command(TARGET ebl-dofile POST_BUILD
+#   COMMAND ./ebl-dofile lisp/unit-test.lisp)
 
 
 # Build extensions

@@ -14,7 +14,7 @@
 #include "extlib/smallVector.hpp"
 #include "memory.hpp"
 #include "utility.hpp"
-
+#include "macros.hpp"
 
 namespace lisp {
 
@@ -66,12 +66,13 @@ public:
 
     static void relocate(Object* obj, uint8_t* dest)
     {
-        // std::cout << "move " << obj << " to " << (void*)dest << std::endl;
-        // NOTE: due to potentially overlapping memory, we need to first move
-        // the object to a temporary buffer, destruct the original, then move
-        // the buffer contents to the final location, and then destruct the
-        // object in the buffer.
-        thread_local std::array<uint8_t, sizeof(T)> buffer;
+        // std::cout << typeid(T).name() << " has alignment requirement " <<
+        // alignof(T) << std::endl; std::cout << "move " << obj << " to " <<
+        // (void*)dest << std::endl; NOTE: due to potentially overlapping
+        // memory, we need to first move the object to a temporary buffer,
+        // destruct the original, then move the buffer contents to the final
+        // location, and then destruct the object in the buffer.
+        alignas(T) std::array<uint8_t, sizeof(T)> buffer;
         new ((T*)buffer.data()) T(std::move(*reinterpret_cast<T*>(obj)));
         ((T*)obj)->~T();
         new ((T*)dest) T(std::move(*reinterpret_cast<T*>(buffer.data())));
@@ -103,7 +104,10 @@ struct ConversionError : TypeError {
 };
 
 
-class Null : public ObjectTemplate<Null> {
+// NOTE: All Objects are allocated from single contiguous and
+// compacted heap, and therefore need to share the same alignment
+// requirement. There're static asserts for this elsewhere.
+class alignas(8) Null : public ObjectTemplate<Null> {
 public:
     static constexpr const char* name()
     {
@@ -149,7 +153,7 @@ private:
 };
 
 
-class Boolean : public ObjectTemplate<Boolean> {
+class alignas(8) Boolean : public ObjectTemplate<Boolean> {
 public:
     inline Boolean(bool value) : value_(value)
     {
@@ -177,7 +181,7 @@ private:
 
 class Integer : public ObjectTemplate<Integer> {
 public:
-    using Rep = int32_t;
+    using Rep = int64_t;
     using Input = Rep;
 
     inline Integer(Input value) : value_(value)
@@ -247,7 +251,7 @@ private:
 };
 
 
-class Character : public ObjectTemplate<Character> {
+class alignas(8) Character : public ObjectTemplate<Character> {
 public:
     using Rep = std::array<char, 4>;
     using Input = Rep;
@@ -361,6 +365,7 @@ class Arguments {
 public:
     Arguments(Environment& env);
     Arguments(const Arguments&) = delete;
+    Arguments(Environment& env, size_t count);
     ~Arguments();
 
     size_t count() const;
@@ -368,6 +373,8 @@ public:
     void push(ObjectPtr arg);
 
     ObjectPtr operator[](size_t index) const;
+
+    void consumed();
 
     std::vector<ObjectPtr>::iterator begin() const;
     std::vector<ObjectPtr>::iterator end() const;
@@ -379,7 +386,8 @@ private:
 };
 
 
-using CFunction = std::function<ObjectPtr(Environment&, const Arguments&)>;
+typedef ObjectPtr (*CFunction)(Environment&, const Arguments&);
+
 struct InvalidArgumentError : std::runtime_error {
     InvalidArgumentError(const std::string& msg) : std::runtime_error(msg)
     {
@@ -389,34 +397,38 @@ struct InvalidArgumentError : std::runtime_error {
 
 class Function : public ObjectTemplate<Function> {
 public:
-    class Impl {
-    public:
-        virtual ~Impl()
-        {
-        }
-        virtual ObjectPtr call(Environment& env, Arguments&) = 0;
-    };
-
     Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
              CFunction cFn);
 
     Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
-             std::unique_ptr<Impl> impl);
+             size_t bytecodeAddress);
 
     static constexpr const char* name()
     {
         return "<Function>";
     }
 
-    // TODO: call function should be defined differently?
-    inline ObjectPtr call(Arguments& params)
+    ObjectPtr call(Arguments& params);
+
+    // When a VM is executing functions, it will try to extract a function's
+    // bytecode address and avoid entering a new execution environment. If the
+    // function is defined in native code, the vm will instead call
+    // directCall. If you're a user of the library, and are trying to simply
+    // call a function, the regular call() method is probably what you're
+    // looking for.
+    inline ObjectPtr directCall(Arguments& params)
     {
-        if (params.count() < requiredArgs_) {
+        if (UNLIKELY(params.count() < requiredArgs_)) {
             throw InvalidArgumentError("too few args, expected " +
                                        std::to_string(requiredArgs_) + " got " +
                                        std::to_string(params.count()));
         }
-        return impl_->call(*envPtr_, params);
+        return (*nativeFn_)(*envPtr_, params);
+    }
+
+    inline size_t getBytecodeAddress() const
+    {
+        return bytecodeAddress_;
     }
 
     inline ObjectPtr getDocstring()
@@ -442,7 +454,8 @@ public:
 private:
     ObjectPtr docstring_;
     size_t requiredArgs_;
-    std::unique_ptr<Impl> impl_;
+    CFunction nativeFn_;
+    size_t bytecodeAddress_;
     EnvPtr envPtr_;
 };
 
@@ -486,27 +499,41 @@ template <typename... Builtins> struct TypeInfoTable {
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
                         Character, Symbol, RawPointer, Function>
-    typeInfo;
+    typeInfoTable;
+
+
+template <typename Ptr>
+const TypeInfo& typeInfo(Ptr obj)
+{
+    return typeInfoTable[obj->typeId()];
+}
 
 
 template <typename T>
-ObjectTemplate<T>::ObjectTemplate() : Object{typeInfo.typeId<T>()}
+constexpr TypeId typeId()
+{
+    return typeInfoTable.typeId<T>();
+}
+
+
+template <typename T>
+ObjectTemplate<T>::ObjectTemplate() : Object{::lisp::typeId<T>()}
 {
 }
 
 
 template <typename T, typename Ptr> bool isType(Ptr obj)
 {
-    return typeInfo.typeId<T>() == obj->typeId();
+    return typeId<T>() == obj->typeId();
 }
 
 
 template <typename T> Heap::Ptr<T> checkedCast(ObjectPtr obj)
 {
-    if (isType<T>(obj)) {
+    if (LIKELY(isType<T>(obj))) {
         return obj.cast<T>();
     }
-    throw ConversionError{obj->typeId(), typeInfo.typeId<T>()};
+    throw ConversionError{obj->typeId(), typeId<T>()};
 }
 
 std::ostream& operator<<(std::ostream& out, const String& str);

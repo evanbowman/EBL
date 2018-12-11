@@ -4,15 +4,14 @@
 namespace lisp {
 
 ListBuilder::ListBuilder(Environment& env, ObjectPtr first)
-    : env_(env), front_(env, env.create<Pair>(first, env.getNull())),
-      back_(front_.get())
+    : env_(env), front_(env.create<Pair>(first, env.getNull())), back_(front_)
 {
 }
 
 
 void ListBuilder::pushFront(ObjectPtr value)
 {
-    front_ = env_.create<Pair>(value, front_.get());
+    front_ = env_.create<Pair>(value, front_);
 }
 
 
@@ -26,7 +25,7 @@ void ListBuilder::pushBack(ObjectPtr value)
 
 ObjectPtr ListBuilder::result()
 {
-    return front_.get();
+    return front_;
 }
 
 
