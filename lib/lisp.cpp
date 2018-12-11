@@ -224,6 +224,11 @@ static const BuiltinFunctionInfo builtins[] = {
          std::cout << "\n";
          return env.getNull();
      }},
+    {"mod", "[integer] -> the modulus of integer", 2,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         return env.create<Integer>(checkedCast<Integer>(args[0])->value() %
+                                    checkedCast<Integer>(args[0])->value());
+     }},
     {"+", "[...] -> the result of adding each arg in ...", 0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          Integer::Rep iSum = 0;
