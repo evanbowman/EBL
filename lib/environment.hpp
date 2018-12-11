@@ -161,7 +161,7 @@ private:
     Heap::Ptr<T> create(Environment& env, Args&&... args)
     {
         auto allocObj = [&] {
-            return heap_.alloc<typeInfoTable.get<T>().size_>().template cast<T>();
+            return heap_.alloc<T>().template cast<T>();
         };
         auto mem = alloc<T>(env, allocObj);
         ConstructImpl<T>::construct(mem.get(), env,

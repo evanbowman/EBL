@@ -179,9 +179,9 @@ private:
 };
 
 
-class Integer : public ObjectTemplate<Integer> {
+class alignas(8) Integer : public ObjectTemplate<Integer> {
 public:
-    using Rep = int64_t;
+    using Rep = int32_t;
     using Input = Rep;
 
     inline Integer(Input value) : value_(value)

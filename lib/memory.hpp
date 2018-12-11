@@ -14,6 +14,8 @@ class Environment;
 
 template <size_t Alignment> class Memory {
 public:
+    static constexpr const size_t Align = Alignment;
+
     Memory(size_t capacity)
     {
         init(capacity);
@@ -70,7 +72,7 @@ public:
         }
     };
 
-    template <size_t Size> GenericPtr alloc();
+    template <typename T> GenericPtr alloc();
 
     template <typename T> Memory::Ptr<T> arrayElemAt(size_t index) const;
 
@@ -177,13 +179,13 @@ protected:
 
 
 template <size_t Alignment>
-template <size_t Size>
+template <typename T>
 typename Memory<Alignment>::GenericPtr Memory<Alignment>::alloc()
 {
-    static_assert(Size % Alignment == 0, "Invalid alignment");
-    if (this->size() + Size <= capacity_) {
+    static_assert(alignof(T) == Alignment, "Invalid alignment");
+    if (this->size() + sizeof(T) <= capacity_) {
         auto result = end_;
-        end_ += Size;
+        end_ += sizeof(T);
         return {result};
     }
     throw OOM{};

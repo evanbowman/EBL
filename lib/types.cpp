@@ -103,7 +103,7 @@ void String::initialize(const char* data, size_t len, Encoding enc)
     case Encoding::binary: {
         storage_.init(len * sizeof(Character));
         for (size_t i = 0; i < len; ++i) {
-            auto charMem = storage_.alloc<sizeof(Character)>();
+            auto charMem = storage_.alloc<Character>();
             new (charMem.cast<Character>().get()) Character({data[i], 0, 0, 0});
         }
     } break;
@@ -112,7 +112,7 @@ void String::initialize(const char* data, size_t len, Encoding enc)
         storage_.init(utf8Len(data, len) * sizeof(Character));
         foreachUtf8Glyph(
             [&](const Character::Rep& val) {
-                auto charMem = storage_.alloc<sizeof(Character)>();
+                auto charMem = storage_.alloc<Character>();
                 new (charMem.cast<Character>().get()) Character(val);
             },
             data, len);
