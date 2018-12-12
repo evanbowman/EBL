@@ -3,11 +3,9 @@
 ## Introduction
 EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. The GC uses a mark-compact algorithm, but the collector is modular and you can override it with your own (in C++). EBL supports first class lexical closures.
 
-This particular lisp dialect enables efficient tail recursion through the `recur` special form (like clojure). I prefer a `recur` keyword to automatic TCO for a number of reasons, foremost that it's explicit and allows recursion in anonomous lambdas.*
+This particular lisp dialect enables efficient tail recursion through the `recur` special form (like clojure). I prefer a `recur` keyword to automatic TCO for a number of reasons, foremost that it's explicit and allows recursion in anonomous lambdas.
 
 Mutability: data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to variables.
-
-*without resorting to combinators :-) 
 
 #### Builtin unicode
 ```scheme
