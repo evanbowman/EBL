@@ -59,8 +59,5 @@ void __dllMain(lisp::Environment& env)
         env.setGlobal(exp.name_, "fs",
                       env.create<lisp::Function>(doc, exp.argc_, exp.impl_));
     }
-    env.setGlobal("stdin", "fs", env.create<lisp::RawPointer>(stdin));
-    env.setGlobal("stdout", "fs", env.create<lisp::RawPointer>(stdout));
-    env.setGlobal("stderr", "fs", env.create<lisp::RawPointer>(stderr));
 }
 }

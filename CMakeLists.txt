@@ -61,3 +61,7 @@ target_link_libraries(ebl-dofile
 add_library(fs SHARED dll/fs.cpp)
 target_link_libraries(fs ebl-lisp)
 set_target_properties(fs PROPERTIES SUFFIX "")
+
+add_library(sys SHARED dll/sys.cpp)
+target_link_libraries(sys ebl-lisp)
+set_target_properties(sys PROPERTIES SUFFIX "")

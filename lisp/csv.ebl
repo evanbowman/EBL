@@ -1,0 +1,6 @@
+
+(namespace csv
+  (defn read (file-name)
+    (fs::map-lines file-name
+                   (lambda (line)
+                     (std::split line \,)))))

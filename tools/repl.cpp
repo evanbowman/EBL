@@ -14,6 +14,7 @@ int main(int argc, char** argv)
                                                    return env.getNull();
                                                }));
     env.openDLL("libfs");
+    env.openDLL("libsys");
     if (argc == 2) {
         env.exec(argv[1]);
     }

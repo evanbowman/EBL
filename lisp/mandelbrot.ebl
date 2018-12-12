@@ -1,16 +1,13 @@
-(open-dll "libfs.dylib")
-(load "lisp/stdlib.lisp")
-(def newline (let ((lf (character 10))) (lambda () (print lf))))
+(load "lisp/stdlib.ebl")
 
 (def iters 500)
 
-(def mandelbrot
-     (lambda (z c iter-depth)
-       (if (> iter-depth 0)
-           (if (< (abs z) 2.0)
-               (recur (+ (* z z) c) c (- iter-depth 1))
-               false)
-           true)))
+(defn mandelbrot (z c iter-depth)
+  (if (> iter-depth 0)
+      (if (< (abs z) 2.0)
+          (recur (+ (* z z) c) c (- iter-depth 1))
+          false)
+      true))
 
 (def make-matrix
      (let ((x-coeff (/ 3.5 100.0))
@@ -25,16 +22,15 @@
                                yl))
                (recur list-x list-y (- n 1)))))))
 
-
 (def data-mat (make-matrix null null 100))
 
-(dolist
+(std::dolist
  (lambda (i)
-   (dolist
+   (std::dolist
     (lambda (r)
       (if (mandelbrot (complex 0.0 0.0) (complex r i) iters)
           (print "*")
           (print " ")))
     (car data-mat))
-   (newline))
+   (print line-feed))
  (cdr data-mat))

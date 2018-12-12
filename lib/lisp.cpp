@@ -214,7 +214,7 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"print", "[...] -> print each arg in ...", 0,
      [](Environment& env, const Arguments& args) {
-         auto out = env.getGlobal("fs::stdout");
+         auto out = env.getGlobal("sys::stdout");
          auto write = env.getGlobal("fs::write");
          Arguments params(env);
          params.push(out);
@@ -224,11 +224,6 @@ static const BuiltinFunctionInfo builtins[] = {
          checkedCast<Function>(write)->call(params);
          return env.getNull();
      }},
-    // {"newline", "[] -> write a newline to standard out", 0,
-    //  [](Environment& env, const Arguments& args) {
-    //      std::cout << "\n";
-    //      return env.getNull();
-    //  }},
     {"mod", "[integer] -> the modulus of integer", 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          return env.create<Integer>(checkedCast<Integer>(args[0])->value() %

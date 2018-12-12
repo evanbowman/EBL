@@ -1,15 +1,24 @@
 ;;;
 ;;; A small standard library
 ;;;
-
-(defn dolist (proc lat)
-  (if (null? lat)
-      null
-      (begin
-        (proc (car lat))
-        (recur proc (cdr lat)))))
+;;; All of the recursively defined standard functions are tail recursive, so
+;;; that they can be used on large inputs. This may have some impact on runtime
+;;; speed (e.g. map needs to reverse its result), but not on the overall
+;;; asymptotic bound. In fact, the recur keyword is so significantly faster than
+;;; normal recursion, that the overhead of reversing a list more-or-less evens
+;;; out. So the main difference is mostly in memory usage.
+;;;
 
 (namespace std
+  (defn dolist (proc lat)
+    (if (null? lat)
+        null
+        (begin
+          (proc (car lat))
+          (recur proc (cdr lat)))))
+
+  (def line-feed (character 10))
+
   (def reverse
        (let ((reverse-helper
               (lambda (lat result)
@@ -20,6 +29,26 @@
            "[list] -> reversed list"
            (reverse-helper lat null))))
 
+  (def map
+       (let ((impl
+              (lambda (f lat result)
+                (if (null? lat)
+                    (reverse result)
+                    (recur f (cdr lat) (cons (f (car lat)) result))))))
+         (lambda (f lat)
+           (impl f lat null))))
+
+  (def filter
+       (let ((impl
+              (lambda (pred lat result)
+                (if (null? lat)
+                    result
+                    (if (pred (car lat))
+                        (recur pred (cdr lat) (cons (car lat) result))
+                        (recur pred (cdr lat) result))))))
+         (lambda (pred lat)
+           (reverse (impl pred lat null)))))
+  
   (defn some (pred lat)
     "[pred list] -> first list element that satisfies pred, otherwise false"
     (if (null? lat)
@@ -92,3 +121,14 @@
                       (string result delim (car lat))
                       (string (car lat))))))
      lat false)))
+
+(namespace fs
+  (defn map-lines (file-name proc)
+    (open file-name "r"
+          (lambda (file)
+            ((lambda (result)
+               (def line (getline file))
+               (if (not line)
+                   (std::reverse result)
+                   (recur (cons (proc line) result))))
+             null)))))

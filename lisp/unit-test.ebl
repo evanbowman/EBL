@@ -2,7 +2,7 @@
 ;;; Unit tests for nightly regression
 ;;;
 
-(load "lisp/stdlib.lisp")
+(load "lisp/stdlib.ebl")
 
 (def test-case
      (lambda (name body)

@@ -16,6 +16,7 @@ int main(int argc, char** argv)
     std::stringstream buffer;
     buffer << t.rdbuf();
     env.openDLL("libfs");
+    env.openDLL("libsys");
     try {
         using namespace std::chrono;
         auto start = high_resolution_clock::now();
