@@ -83,10 +83,12 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             ++ip;
             // std::cout << ip << ": ENLET" << std::endl;
             env = env->derive();
+            callStack.push_back({0, 0, env});
         } break;
 
         case Opcode::ExitLet: {
             ++ip;
+            callStack.pop_back();
             // std::cout << ip << ": EXLET" << std::endl;
             env = env->parent();
         } break;

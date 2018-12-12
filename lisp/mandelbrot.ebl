@@ -1,6 +1,5 @@
-(load "lisp/stdlib.ebl")
+(require "lisp/stdlib.ebl")
 
-(def iters 500)
 
 (defn mandelbrot (z c iter-depth)
   (if (> iter-depth 0)
@@ -28,9 +27,9 @@
  (lambda (i)
    (std::dolist
     (lambda (r)
-      (if (mandelbrot (complex 0.0 0.0) (complex r i) iters)
+      (if (mandelbrot (complex 0.0 0.0) (complex r i) 500)
           (print "*")
           (print " ")))
     (car data-mat))
-   (print line-feed))
+   (print std::line-feed))
  (cdr data-mat))

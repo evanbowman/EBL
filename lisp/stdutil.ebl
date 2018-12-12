@@ -1,0 +1,13 @@
+;;;
+;;; Misc. utilities
+;;;
+
+
+(namespace std
+  (def line-feed (character 10))
+
+  (defn identity (x) "[x] -> x" x)
+
+  ;; FIXME! Tokenizing negative numbers is broken right now, because '-', with
+  ;; nothing after it, has to also be a valid lvalue.
+  (def -1 (- 0 1)))

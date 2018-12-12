@@ -1,0 +1,87 @@
+;;;
+;;; Some common higher order list algorithms
+;;;
+
+
+(namespace std
+  (defn dolist (f lat)
+    "[proc list] -> null, apply f to list for the side-effects"
+    (if (null? lat)
+        null
+        (begin
+          (f (car lat))
+          (recur f (cdr lat)))))
+
+  (def reverse
+       (let ((reverse-helper
+              (lambda (lat result)
+                (if (null? lat)
+                    result
+                    (recur (cdr lat) (cons (car lat) result))))))
+         (lambda (lat)
+           "[list] -> reversed list"
+           (reverse-helper lat null))))
+
+  (def map
+       (let ((impl
+              (lambda (f lat result)
+                (if (null? lat)
+                    (reverse result)
+                    (recur f (cdr lat) (cons (f (car lat)) result))))))
+         (lambda (f lat)
+           "[f list] -> list, from applying f to each element of input list"
+           (impl f lat null))))
+
+  (def filter
+       (let ((impl
+              (lambda (pred lat result)
+                (if (null? lat)
+                    result
+                    (if (pred (car lat))
+                        (recur pred (cdr lat) (cons (car lat) result))
+                        (recur pred (cdr lat) result))))))
+         (lambda (pred lat)
+           "[pred list] -> list of all elements of list that satisfy pred"
+           (reverse (impl pred lat null)))))
+
+  (def reduce
+       (let ((impl
+              (lambda (f lat result)
+                (if (null? lat)
+                    result
+                    (recur f (cdr lat) (f result (car lat)))))))
+         (lambda (f lat)
+           "[f list] -> reduction of list by left fold with f"
+           (impl f (cdr lat) (car lat)))))
+
+  (defn zip (f lat1 lat2)
+    "[f list1 list2] -> element-wise combination of list1 and list2"
+    (if (null? lat1)
+        null
+        (cons
+         (f (car lat1) (car lat2))
+         (zip f (cdr lat1) (cdr lat2)))))
+
+  (defn every (pred lat)
+    "[pred list] -> true if pred is true for all elements, otherwise false"
+    (if (null? lat)
+        true
+        (if (not (pred (car lat)))
+            false
+            (recur pred (cdr lat)))))
+
+  (defn assoc (lat key)
+    "[key list] -> element associated with key in list, otherwise false"
+    (some (lambda (elem)
+            (equal? (car elem) key))
+          lat))
+
+  (def append
+       (let ((append-impl
+              (lambda (from to)
+                (if (null? from)
+                    to
+                    (recur (cdr from) (cons (car from) to))))))
+         (lambda (l1 l2)
+           "[l1 l2] -> l2 appended to l1"
+           (append-impl (reverse l1) l2)))))

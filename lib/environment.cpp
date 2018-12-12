@@ -79,7 +79,7 @@ Environment& Environment::getFrame(VarLoc loc)
     auto frame = reference();
     while (loc.frameDist_ > 0) {
         frame = frame->parent_;
-        assert(frame not_eq nullptr);
+        // assert(frame not_eq nullptr);
         loc.frameDist_--;
     }
     return *frame;
@@ -133,20 +133,27 @@ const Context::Configuration& Context::defaultConfig()
 }
 
 const char* utilities =
-    "(defn list (...)\n"
-    "  \"[...] -> construct a list from args in ...\"\n"
-    "  ...) ;; Well that was easy :)\n"
     "\n"
-    "(defn println (...)\n"
-    "  \"[...] -> print each arg in ... with print, then write a line break\"\n"
-    "  (apply print ...)\n"
-    "  (newline))\n"
+    "(namespace std\n"
+    "  (defn some (pred lat)\n"
+    "    \"[pred list] -> first list element that satisfies pred, otherwise false\"\n"
+    "    (if (null? lat)\n"
+    "        false\n"
+    "        (if (pred (car lat))\n"
+    "            (car lat)\n"
+    "            (recur pred (cdr lat))))))\n"
     "\n"
-    "(defn caar (l) (car (car l)))\n"
-    "(defn cadr (l) (car (cdr l)))\n"
-    "(defn cdar (l) (cdr (car l)))\n"
-    "(defn caddr (l) (car (cdr (cdr l))))\n"
-    "(defn cadddr (l) (car (cdr (cdr (cdr l)))))\n";
+    "(def require\n"
+    "     (let ((required-set null))\n"
+    "       (lambda (file-name)\n"
+    "         (let ((found (std::some (lambda (n)\n"
+    "                                   (equal? n file-name)) required-set)))\n"
+    "           (if found\n"
+    "               null\n"
+    "               (begin\n"
+    "                 (load file-name)\n"
+    "                 (set required-set (cons file-name required-set))))))))\n"
+    "";
 
 Context::Context(const Configuration& config)
     : heap_(config.heapSize_, 0),
@@ -156,10 +163,8 @@ Context::Context(const Configuration& config)
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
 {
     initBuiltins(*topLevel_);
-    // Techically, exec already pushes the root environment onto the callstack,
-    // but users should be able to call functions outside of running scripts.
     callStack_.push_back({0, 0, topLevel_});
-    topLevel_->exec("");
+    topLevel_->exec(utilities);
 }
 
 Context::~Context()
@@ -172,7 +177,7 @@ Context::~Context()
     // For debugging
     std::ofstream bc("bc", std::ofstream::binary);
     bc.write((const char*)program_.data(), program_.size());
-}
+ }
 
 ObjectPtr Context::loadI(ImmediateId immediate)
 {
