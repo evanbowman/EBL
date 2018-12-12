@@ -37,5 +37,8 @@ Look how easy it is to build strings in EBL!
 (string \a \b \c " Hello, " 1 \, 2 \, 3) ;; "abc Hello, 1,2,2"
 ```
 
+## Syntax Highlighting
+For Emacs users, there's a hack of scheme-mode in the emacs/ directory that highlights EBL keywords
+
 ## Further Reading
 For more examples, see the code in the lisp/ directory. The standard library in file stdlib.ebl is a good place to start, and there's another example in mandelbrot.lisp, which computes mandelbrot sets.
