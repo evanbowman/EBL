@@ -32,9 +32,9 @@ Mutability: data itself (numbers, lists, strings, etc.) is immutable, but you ca
 ```
 
 #### Strings
-Look how easy it is to build strings in EBL!
+Look how easy it is to build strings in EBL! The string function is variadic and accepts arguments of any type:
 ```scheme
-(string \a \b \c " Hello, " 1 \, 2 \, 3) ;; "abc Hello, 1,2,2"
+(string " Hello, " \W \o \r \l \d " " 1 \, 2 \, 3) ;; "Hello, World 1,2,3"
 ```
 
 ## Syntax Highlighting
