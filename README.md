@@ -38,4 +38,4 @@ Look how easy it is to build strings in EBL!
 ```
 
 ## Further Reading
-For more examples, see the code in the lisp/ directory. The standard library in file stdlib.lisp is a good place to start, and there's another example in mandelbrot.lisp, which computes mandelbrot sets.
+For more examples, see the code in the lisp/ directory. The standard library in file stdlib.ebl is a good place to start, and there's another example in mandelbrot.lisp, which computes mandelbrot sets.
