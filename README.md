@@ -1,26 +1,11 @@
 # EB LISP
 
 ## Introduction
-EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. The GC uses a mark-compact algorithm, but the collector is modular and you can override it with your own (in C++). EBL also supports lexical closures.
+EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. The GC uses a mark-compact algorithm, but the collector is modular and you can override it with your own (in C++). EBL supports first class lexical closures.
 
-This particular lisp dialect supports efficient tail recursion through the `recur` special form (like clojure). I prefer a `recur` keyword to automatic TCO for a number of reasons:
-* It's explicit and obvious to readers of the code.
-* A recur keyword allows recursion within anonomyous lambdas.
-* Tail call optimization would need to happen at runtime, and could be somewhat expensive. Or at least more expensive than recur, which is essentially free.
+This particular lisp dialect enables efficient tail recursion through the `recur` special form (like clojure). I prefer a `recur` keyword to automatic TCO for a number of reasons, foremost that it's explicit and allows recursion in anonomous lambdas.
 
-EBL philosophy for mutability: data itself (lists, strings, etc.) is immutable, but, although it's discouraged, you can rebind new data to variables.
-
-#### Lexical closures
-``` scheme
-(def closure-test
-     (let ((a 1))
-       (lambda (b)
-         (set a (+ a b))
-         a)))
-
-(println (closure-test 3))  ;; 4
-(println (closure-test 38)) ;; 42
-```
+Mutability: data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to variables.
 
 #### Builtin unicode
 ```scheme
