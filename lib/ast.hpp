@@ -21,6 +21,12 @@ using Error = std::runtime_error;
 
 
 class Scope {
+private:
+    struct Variable {
+        StrVal name_;
+        bool isMutable_;
+    };
+
 public:
     void setParent(Scope* parent)
     {
@@ -28,31 +34,42 @@ public:
     }
 
 
-    StackLoc insert(const std::string& varName)
+    inline StackLoc insert(const std::string& varName, bool isMutable = false)
     {
-        if (varNames_.size() > std::numeric_limits<StackLoc>::max()) {
+        if (variables_.size() > std::numeric_limits<StackLoc>::max()) {
             throw std::runtime_error("Too many variables in environment");
         }
-        const StackLoc ret = varNames_.size();
-        for (const auto& name : varNames_) {
-            if (name == varName) {
+        const StackLoc ret = variables_.size();
+        for (const auto& var : variables_) {
+            if (var.name_ == varName) {
                 throw Error("redefinition of variable " + varName +
                             " not allowed");
             }
         }
-        varNames_.push_back(varName);
+        variables_.push_back({varName, isMutable});
         return ret;
     }
 
-    VarLoc find(const StrVal& varPath, FrameDist traversed = 0) const;
+    struct FindResult {
+        VarLoc varLoc_;
+        const Scope* owner_;
+        bool isMutable_;
+    };
+
+    FindResult find(const StrVal& varPath, FrameDist traversed = 0) const;
 
 
-    VarLoc find(const Vector<StrVal>& varNamePatterns,
-                FrameDist traversed = 0) const;
+    FindResult find(const Vector<StrVal>& varNamePatterns,
+                    FrameDist traversed = 0) const;
+
+    inline Scope* getParent() const
+    {
+        return parent_;
+    }
 
 private:
     Scope* parent_ = nullptr;
-    std::vector<std::string> varNames_;
+    Vector<Variable> variables_;
 };
 
 
@@ -86,8 +103,8 @@ struct Integer : Value {
     Rep value_;
     ImmediateId cachedVal_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -96,8 +113,8 @@ struct Double : Value {
     Rep value_;
     ImmediateId cachedVal_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -106,8 +123,8 @@ struct Character : Value {
     Rep value_;
     ImmediateId cachedVal_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -115,26 +132,26 @@ struct String : Value {
     StrVal value_;
     ImmediateId cachedVal_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
 struct Null : Value {
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override{};
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override{};
 };
 
 
 struct True : Value {
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment&, Scope&) override{};
+    void visit(Visitor& visitor) override;
+    void init(Environment&, Scope&) override{};
 };
 
 
 struct False : Value {
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment&, Scope&) override{};
+    void visit(Visitor& visitor) override;
+    void init(Environment&, Scope&) override{};
 };
 
 
@@ -142,17 +159,17 @@ struct Namespace : Expr {
     StrVal name_;
     Vector<Ptr<Statement>> statements_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment&, Scope&) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment&, Scope&) override;
 };
 
 
 struct LValue : Value {
     StrVal name_;
-    VarLoc cachedVarLoc_;
+    Scope::FindResult cachedVarInfo_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -162,13 +179,13 @@ struct Lambda : Expr, Scope {
     StrVal docstring_;
     ImmediateId cachedDocstringLoc_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
 struct VariadicLambda : Lambda {
-    virtual void visit(Visitor& visitor) override;
+    void visit(Visitor& visitor) override;
 };
 
 
@@ -176,8 +193,8 @@ struct Application : Expr {
     Ptr<Statement> toApply_;
     Vector<Ptr<Statement>> args_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -190,22 +207,22 @@ struct Let : Expr, Scope {
     Vector<Binding> bindings_;
     Vector<Ptr<Statement>> statements_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
 struct Begin : Expr {
     Vector<Ptr<Statement>> statements_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
 struct TopLevel : Begin, Scope {
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -214,16 +231,16 @@ struct If : Expr {
     Ptr<Statement> trueBranch_;
     Ptr<Statement> falseBranch_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
 struct Recur : Expr {
     Vector<Ptr<Statement>> args_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -235,24 +252,24 @@ struct Cond : Expr {
 
     std::vector<Case> cases_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
 struct Or : Expr {
     std::vector<Ptr<Statement>> statements_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
 struct And : Expr {
     std::vector<Ptr<Statement>> statements_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -260,18 +277,22 @@ struct Def : Expr {
     StrVal name_;
     Ptr<Statement> value_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
+
+struct DefMut : Def {
+    void init(Environment& env, Scope& scope) override;
+};
 
 struct Set : Expr {
     StrVal name_;
     Ptr<Statement> value_;
     VarLoc cachedVarLoc_;
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override;
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
 };
 
 
@@ -284,8 +305,8 @@ struct UserObject : Statement {
     {
     }
 
-    virtual void visit(Visitor& visitor) override;
-    virtual void init(Environment& env, Scope& scope) override{};
+    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override{};
 };
 
 

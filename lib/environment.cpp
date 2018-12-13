@@ -13,7 +13,7 @@ namespace lisp {
 
 ObjectPtr Environment::getGlobal(const std::string& key)
 {
-    auto loc = context_->astRoot_->find(key);
+    auto loc = context_->astRoot_->find(key).varLoc_;
     return context_->topLevel_->load(loc);
 }
 
@@ -79,7 +79,6 @@ Environment& Environment::getFrame(VarLoc loc)
     auto frame = reference();
     while (loc.frameDist_ > 0) {
         frame = frame->parent_;
-        // assert(frame not_eq nullptr);
         loc.frameDist_--;
     }
     return *frame;
@@ -144,15 +143,16 @@ const char* utilities =
     "            (recur pred (cdr lat))))))\n"
     "\n"
     "(def require\n"
-    "     (let ((required-set null))\n"
-    "       (lambda (file-name)\n"
-    "         (let ((found (std::some (lambda (n)\n"
-    "                                   (equal? n file-name)) required-set)))\n"
-    "           (if found\n"
-    "               null\n"
-    "               (begin\n"
-    "                 (load file-name)\n"
-    "                 (set required-set (cons file-name required-set))))))))\n"
+    "     ((lambda ()\n"
+    "        (def-mut required-set null)\n"
+    "        (lambda (file-name)\n"
+    "          (let ((found (std::some (lambda (n)\n"
+    "                                    (equal? n file-name)) required-set)))\n"
+    "            (if found\n"
+    "                null\n"
+    "                (begin\n"
+    "                  (load file-name)\n"
+    "                  (set required-set (cons file-name required-set)))))))))\n"
     "";
 
 Context::Context(const Configuration& config)

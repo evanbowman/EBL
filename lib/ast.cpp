@@ -12,13 +12,13 @@ namespace ast {
 thread_local Vector<StrVal*> namespacePath;
 thread_local Vector<Lambda*> currentFunction;
 
-VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
-                   FrameDist traversed) const
+Scope::FindResult Scope::find(const Vector<StrVal>& varNamePatterns,
+                              FrameDist traversed) const
 {
-    for (StackLoc i = 0; i < varNames_.size(); ++i) {
+    for (StackLoc i = 0; i < variables_.size(); ++i) {
         for (auto& pattern : varNamePatterns) {
-            if (varNames_[i] == pattern) {
-                return {traversed, i};
+            if (variables_[i].name_ == pattern) {
+                return {{traversed, i}, this, variables_[i].isMutable_};
             }
         }
     }
@@ -30,11 +30,11 @@ VarLoc Scope::find(const Vector<StrVal>& varNamePatterns,
     }
 }
 
-VarLoc Scope::find(const StrVal& varNamePath, FrameDist traversed) const
+Scope::FindResult Scope::find(const StrVal& varNamePath, FrameDist traversed) const
 {
-    for (StackLoc i = 0; i < varNames_.size(); ++i) {
-        if (varNames_[i] == varNamePath) {
-            return {traversed, i};
+    for (StackLoc i = 0; i < variables_.size(); ++i) {
+        if (variables_[i].name_ == varNamePath) {
+            return {{traversed, i}, this, variables_[i].isMutable_};
         }
     }
     if (parent_) {
@@ -231,7 +231,7 @@ static void validateIdentifier(const StrVal& name)
 void LValue::init(Environment& env, Scope& scope)
 {
     const auto patterns = makeNsPatterns(name_);
-    cachedVarLoc_ = scope.find(patterns);
+    cachedVarInfo_ = scope.find(patterns);
 }
 
 
@@ -351,10 +351,28 @@ void Def::init(Environment& env, Scope& scope)
 }
 
 
+void DefMut::init(Environment& env, Scope& scope)
+{
+    validateIdentifier(name_);
+    StrVal fullName;
+    for (auto name : namespacePath) {
+        fullName += *name;
+        fullName += "::";
+    }
+    fullName += name_;
+    scope.insert(fullName, true);
+    value_->init(env, scope);
+}
+
+
 void Set::init(Environment& env, Scope& scope)
 {
     const auto patterns = makeNsPatterns(name_);
-    cachedVarLoc_ = scope.find(patterns);
+    auto found = scope.find(patterns);
+    if (not found.isMutable_) {
+        throw std::runtime_error("failed to rebind immutable variable " + name_);
+    }
+    cachedVarLoc_ = found.varLoc_;
     value_->init(env, scope);
 }
 

@@ -67,29 +67,30 @@ void BytecodeBuilder::visit(ast::False& node)
 
 void BytecodeBuilder::visit(ast::LValue& node)
 {
-    if (node.cachedVarLoc_.frameDist_ == 0) {
-        if (node.cachedVarLoc_.offset_ < 256) {
+    const auto varloc = node.cachedVarInfo_.varLoc_;
+    if (varloc.frameDist_ == 0) {
+        if (varloc.offset_ < 256) {
             data_.push_back((uint8_t)Opcode::Load0Fast);
-            writeParam(data_, (uint8_t)node.cachedVarLoc_.offset_);
+            writeParam(data_, (uint8_t)varloc.offset_);
         } else {
             data_.push_back((uint8_t)Opcode::Load0);
-            writeParam(data_, node.cachedVarLoc_.offset_);
+            writeParam(data_, varloc.offset_);
         }
-    } else if (node.cachedVarLoc_.frameDist_ == 1) {
-        if (node.cachedVarLoc_.offset_ < 256) {
+    } else if (varloc.frameDist_ == 1) {
+        if (varloc.offset_ < 256) {
             data_.push_back((uint8_t)Opcode::Load1Fast);
-            writeParam(data_, (uint8_t)node.cachedVarLoc_.offset_);
+            writeParam(data_, (uint8_t)varloc.offset_);
         } else {
             data_.push_back((uint8_t)Opcode::Load1);
-            writeParam(data_, node.cachedVarLoc_.offset_);
+            writeParam(data_, varloc.offset_);
         }
-    } else if (node.cachedVarLoc_.frameDist_ == 2) {
+    } else if (varloc.frameDist_ == 2) {
         data_.push_back((uint8_t)Opcode::Load2);
-        writeParam(data_, node.cachedVarLoc_.offset_);
+        writeParam(data_, varloc.offset_);
     } else {
         data_.push_back((uint8_t)Opcode::Load);
-        writeParam(data_, node.cachedVarLoc_.frameDist_);
-        writeParam(data_, node.cachedVarLoc_.offset_);
+        writeParam(data_, varloc.frameDist_);
+        writeParam(data_, varloc.offset_);
     }
 }
 
@@ -122,7 +123,7 @@ void BytecodeBuilder::visit(ast::Lambda& node)
     }
     for (auto& statement : node.statements_) {
         statement->visit(*this);
-        data_.push_back((uint8_t)Opcode::Pop);
+        data_.push_back((uint8_t)Opcode::Discard);
     }
     data_.pop_back();
     data_.push_back((uint8_t)Opcode::Return);
@@ -144,6 +145,34 @@ void BytecodeBuilder::visit(ast::VariadicLambda& node)
 
 void BytecodeBuilder::visit(ast::Application& node)
 {
+    if (auto lval = dynamic_cast<ast::LValue*>(node.toApply_.get())) {
+        const bool isTopLevel = lval->cachedVarInfo_.owner_->getParent() == nullptr;
+        if (isTopLevel) {
+            if (lval->name_ == "cons") {
+                if (node.args_.size() not_eq 2) {
+                    throw std::runtime_error("wrong number of args to cons");
+                }
+                node.args_[0]->visit(*this);
+                node.args_[1]->visit(*this);
+                data_.push_back((uint8_t)Opcode::Cons);
+                return;
+            } else if (lval->name_ == "car") {
+                if (node.args_.size() not_eq 1) {
+                    throw std::runtime_error("wrong number of args to car");
+                }
+                node.args_[0]->visit(*this);
+                data_.push_back((uint8_t)Opcode::Car);
+                return;
+            } else if (lval->name_ == "cdr") {
+                if (node.args_.size() not_eq 1) {
+                    throw std::runtime_error("wrong number of args to cdr");
+                }
+                node.args_[0]->visit(*this);
+                data_.push_back((uint8_t)Opcode::Cdr);
+                return;
+            }
+        }
+    }
     for (auto& arg : node.args_) {
         arg->visit(*this);
     }
@@ -165,7 +194,7 @@ void BytecodeBuilder::visit(ast::Let& node)
     }
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Pop);
+        data_.push_back((uint8_t)Opcode::Discard);
     }
     data_.pop_back();
     data_.push_back((uint8_t)Opcode::ExitLet);
@@ -178,7 +207,7 @@ void BytecodeBuilder::visit(ast::TopLevel& node)
 {
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Pop);
+        data_.push_back((uint8_t)Opcode::Discard);
     }
 }
 
@@ -186,7 +215,7 @@ void BytecodeBuilder::visit(ast::Namespace& node)
 {
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Pop);
+        data_.push_back((uint8_t)Opcode::Discard);
     }
     data_.pop_back();
 }
@@ -195,7 +224,7 @@ void BytecodeBuilder::visit(ast::Begin& node)
 {
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Pop);
+        data_.push_back((uint8_t)Opcode::Discard);
     }
     // A begin expression needs to return a value, so remove the last
     // Opcode::Pop, in order to keep the result on the operand stack.
@@ -274,7 +303,7 @@ void BytecodeBuilder::visit(ast::UserObject& node)
 
 void BytecodeBuilder::unusedExpr()
 {
-    data_.push_back((uint8_t)Opcode::Pop);
+    data_.push_back((uint8_t)Opcode::Discard);
 }
 
 } // namespace lisp

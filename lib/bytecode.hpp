@@ -113,10 +113,16 @@ enum class Opcode : uint8_t {
     PushLambda,           // PUSHLAMBDA(u8 argc)
     PushDocumentedLambda, // PUSHDOCUMENTEDLAMBDA(u8 argc, u16 id)
 
-    Pop, // POP : pop the top of the operand stack
+    Discard, // DISCARD : pop the top of the operand stack, i.e. toss out the
+             // result of the last expression.
 
     EnterLet, // ENTERLET : open a new env frame for the let expression
     ExitLet,  // EXITLET : pop the env frame associated with the let expr
+
+    // INLINED FUNCTION CALLS
+    Cons,
+    Car,
+    Cdr
 };
 
 } // namespace lisp

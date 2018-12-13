@@ -203,6 +203,16 @@ ast::Ptr<ast::Def> parseDef(Lexer& lexer)
     return def;
 }
 
+ast::Ptr<ast::Def> parseDefMut(Lexer& lexer)
+{
+    expect<Lexer::Token::SYMBOL>(lexer, "in parse binding");
+    auto defmut = make_unique<ast::DefMut>();
+    defmut->name_ = lexer.rdbuf();
+    defmut->value_ = parseStatement(lexer);
+    expect<Lexer::Token::RPAREN>(lexer, "in parse binding");
+    return ast::Ptr<ast::Def>(defmut.release());
+}
+
 ast::Ptr<ast::Def> parseDefn(Lexer& lexer)
 {
     expect<Lexer::Token::SYMBOL>(lexer, "in parse defn");
@@ -296,6 +306,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         const std::string symb = lexer.rdbuf();
         if (symb == "def") {
             return parseDef(lexer);
+        } else if (symb == "def-mut") {
+            return parseDefMut(lexer);
         } else if (symb == "defn") {
             return parseDefn(lexer);
         } else if (symb == "lambda") {
