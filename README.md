@@ -5,7 +5,7 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 
 This particular lisp dialect enables efficient tail recursion through the `recur` special form (like clojure). I prefer a `recur` keyword to automatic TCO for a number of reasons, foremost that it's explicit and allows recursion in anonomous lambdas.
 
-Mutability: data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to variables.
+Mutability: data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to certain variables. Variables defined with `def` or `let` are immutable, but you can use `def-mut` or `let-mut` to create mutable bindings.
 
 #### Builtin unicode
 ```scheme
