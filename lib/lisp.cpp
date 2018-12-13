@@ -102,7 +102,7 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
 struct BuiltinFunctionInfo {
     const char* name;
     const char* docstring;
-    size_t requiredArgs;
+    Function::ArgCount requiredArgs;
     CFunction impl;
 };
 

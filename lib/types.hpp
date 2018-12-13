@@ -397,10 +397,12 @@ struct InvalidArgumentError : std::runtime_error {
 
 class Function : public ObjectTemplate<Function> {
 public:
-    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+    using ArgCount = uint32_t;
+
+    Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
              CFunction cFn);
 
-    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+    Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
              size_t bytecodeAddress);
 
     static constexpr const char* name()
@@ -418,7 +420,7 @@ public:
     // looking for.
     inline ObjectPtr directCall(Arguments& params)
     {
-        if (UNLIKELY(params.count() < requiredArgs_)) {
+        if (UNLIKELY(params.count() < static_cast<size_t>(requiredArgs_))) {
             throw InvalidArgumentError("too few args, expected " +
                                        std::to_string(requiredArgs_) + " got " +
                                        std::to_string(params.count()));
@@ -441,7 +443,7 @@ public:
         docstring_ = val;
     }
 
-    inline size_t argCount()
+    inline ArgCount argCount()
     {
         return requiredArgs_;
     }
@@ -452,8 +454,8 @@ public:
     }
 
 private:
+    ArgCount requiredArgs_;
     ObjectPtr docstring_;
-    size_t requiredArgs_;
     CFunction nativeFn_;
     size_t bytecodeAddress_;
     EnvPtr envPtr_;

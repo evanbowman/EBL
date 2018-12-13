@@ -6,7 +6,7 @@
 
 static struct {
     const char* name_;
-    size_t argc_;
+    lisp::Function::ArgCount argc_;
     const char* docstring_;
     lisp::CFunction impl_;
 } exports[] = {

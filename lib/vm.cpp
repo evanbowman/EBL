@@ -187,20 +187,20 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 
         case Opcode::PushLambda: {
             ++ip;
-            auto argc = readParam<uint8_t>(bc, ip);
+            const Function::ArgCount argc = readParam<uint8_t>(bc, ip);
             const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
             auto lambda =
-                env->create<Function>(env->getNull(), (size_t)argc, addr);
+                env->create<Function>(env->getNull(), argc, addr);
             operandStack.push_back(lambda);
         } break;
 
         case Opcode::PushDocumentedLambda: {
             ++ip;
-            auto argc = readParam<uint8_t>(bc, ip);
-            auto docLoc = readParam<uint16_t>(bc, ip);
+            const Function::ArgCount argc = readParam<uint8_t>(bc, ip);
+            const auto docLoc = readParam<uint16_t>(bc, ip);
             const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
             auto lambda =
-                env->create<Function>(context->immediates()[docLoc], (size_t)argc, addr);
+                env->create<Function>(context->immediates()[docLoc], argc, addr);
             operandStack.push_back(lambda);
         } break;
 

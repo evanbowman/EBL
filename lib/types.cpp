@@ -61,16 +61,16 @@ ObjectPtr Function::call(Arguments& params)
     return (*nativeFn_)(*envPtr_, params);
 }
 
-Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+Function::Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
                    CFunction impl)
-    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(impl),
+    : requiredArgs_(requiredArgs), docstring_(docstring), nativeFn_(impl),
       bytecodeAddress_(0), envPtr_(env.reference())
 {
 }
 
-Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+Function::Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
                    size_t bytecodeAddress)
-    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(),
+    : requiredArgs_(requiredArgs), docstring_(docstring), nativeFn_(),
       bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
 {
 }
