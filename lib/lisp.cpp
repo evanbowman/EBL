@@ -33,17 +33,22 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         auto pair = obj.cast<Pair>();
         out << "(";
         print(env, pair->getCar(), out, true);
-        while (true) {
-            if (isType<Pair>(pair->getCdr())) {
-                out << " ";
-                print(env, pair->getCdr().cast<Pair>()->getCar(), out, true);
-                pair = pair->getCdr().cast<Pair>();
-            } else if (not isType<Null>(pair->getCdr())) {
-                out << " ";
-                print(env, pair->getCdr(), out, true);
-                break;
-            } else {
-                break;
+        if (not isType<Pair>(pair->getCdr())) {
+            out << " . ";
+            print(env, pair->getCdr(), out, true);
+        } else {
+            while (true) {
+                if (isType<Pair>(pair->getCdr())) {
+                    out << " ";
+                    print(env, pair->getCdr().cast<Pair>()->getCar(), out, true);
+                    pair = pair->getCdr().cast<Pair>();
+                } else if (not isType<Null>(pair->getCdr())) {
+                    out << " ";
+                    print(env, pair->getCdr(), out, true);
+                    break;
+                } else {
+                    break;
+                }
             }
         }
         out << ")";
