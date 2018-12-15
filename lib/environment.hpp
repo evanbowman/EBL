@@ -160,9 +160,7 @@ private:
     template <typename T, typename... Args>
     Heap::Ptr<T> create(Environment& env, Args&&... args)
     {
-        auto allocObj = [&] {
-            return heap_.alloc<T>().template cast<T>();
-        };
+        auto allocObj = [&] { return heap_.alloc<T>().template cast<T>(); };
         auto mem = alloc<T>(env, allocObj);
         ConstructImpl<T>::construct(mem.get(), env,
                                     std::forward<Args>(args)...);

@@ -12,10 +12,7 @@ class Context;
 class BytecodeBuilder : public ast::Visitor {
 public:
     void visit(ast::Namespace& node) override;
-    void visit(ast::Integer& node) override;
-    void visit(ast::Double& node) override;
-    void visit(ast::Character& node) override;
-    void visit(ast::String& node) override;
+    void visit(ast::Literal& node) override;
     void visit(ast::Null& node) override;
     void visit(ast::True& node) override;
     void visit(ast::False& node) override;
@@ -27,7 +24,6 @@ public:
     void visit(ast::TopLevel& node) override;
     void visit(ast::Begin& node) override;
     void visit(ast::If& node) override;
-    void visit(ast::Cond& node) override;
     void visit(ast::Or& node) override;
     void visit(ast::And& node) override;
     void visit(ast::Def& node) override;

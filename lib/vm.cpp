@@ -9,16 +9,14 @@ template <typename T> T readParam(const Bytecode& bc, size_t& ip)
     throw std::runtime_error("encountered unsupported param size");
 }
 
-template <>
-uint8_t readParam(const Bytecode& bc, size_t& ip)
+template <> uint8_t readParam(const Bytecode& bc, size_t& ip)
 {
     const auto result = bc[ip];
     ip += 1;
     return result;
 }
 
-template <>
-uint16_t readParam(const Bytecode& bc, size_t& ip)
+template <> uint16_t readParam(const Bytecode& bc, size_t& ip)
 {
     const auto result = ((uint16_t)(bc[ip])) | (((uint16_t)(bc[ip + 1])) << 8);
     ip += 2;
@@ -37,7 +35,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
         case Opcode::Cons: {
             ++ip;
             static_assert(std::is_same<decltype(operandStack),
-                          std::vector<ObjectPtr>&>::value,
+                                       std::vector<ObjectPtr>&>::value,
                           "operandStack indexing makes an assumption based "
                           "on random access iterator here.");
             auto cell = env->create<Pair>(operandStack.end()[-2],
@@ -187,20 +185,20 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 
         case Opcode::PushLambda: {
             ++ip;
-            const Function::ArgCount argc = readParam<uint8_t>(bc, ip);
+            auto argc = readParam<uint8_t>(bc, ip);
             const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
             auto lambda =
-                env->create<Function>(env->getNull(), argc, addr);
+                env->create<Function>(env->getNull(), (size_t)argc, addr);
             operandStack.push_back(lambda);
         } break;
 
         case Opcode::PushDocumentedLambda: {
             ++ip;
-            const Function::ArgCount argc = readParam<uint8_t>(bc, ip);
-            const auto docLoc = readParam<uint16_t>(bc, ip);
+            auto argc = readParam<uint8_t>(bc, ip);
+            auto docLoc = readParam<uint16_t>(bc, ip);
             const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
-            auto lambda =
-                env->create<Function>(context->immediates()[docLoc], argc, addr);
+            auto lambda = env->create<Function>(context->immediates()[docLoc],
+                                                (size_t)argc, addr);
             operandStack.push_back(lambda);
         } break;
 
@@ -237,9 +235,6 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
         }
     }
 }
-
-
-
 
 
 } // namespace lisp

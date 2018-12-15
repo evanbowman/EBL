@@ -26,43 +26,30 @@ template <typename T> void writeParam(Bytecode& bc, const T& param)
     }
 }
 
-void BytecodeBuilder::visit(ast::Integer& node)
+template <Opcode op> void writeOp(Bytecode& bc)
 {
-    data_.push_back((uint8_t)Opcode::PushI);
-    writeParam(data_, node.cachedVal_);
+    bc.push_back(static_cast<uint8_t>(op));
 }
 
-void BytecodeBuilder::visit(ast::Double& node)
+void BytecodeBuilder::visit(ast::Literal& node)
 {
-    data_.push_back((uint8_t)Opcode::PushI);
-    writeParam(data_, node.cachedVal_);
-}
-
-void BytecodeBuilder::visit(ast::Character& node)
-{
-    data_.push_back((uint8_t)Opcode::PushI);
-    writeParam(data_, node.cachedVal_);
-}
-
-void BytecodeBuilder::visit(ast::String& node)
-{
-    data_.push_back((uint8_t)Opcode::PushI);
+    writeOp<Opcode::PushI>(data_);
     writeParam(data_, node.cachedVal_);
 }
 
 void BytecodeBuilder::visit(ast::Null& node)
 {
-    data_.push_back((uint8_t)Opcode::PushNull);
+    writeOp<Opcode::PushNull>(data_);
 }
 
 void BytecodeBuilder::visit(ast::True& node)
 {
-    data_.push_back((uint8_t)Opcode::PushTrue);
+    writeOp<Opcode::PushTrue>(data_);
 }
 
 void BytecodeBuilder::visit(ast::False& node)
 {
-    data_.push_back((uint8_t)Opcode::PushFalse);
+    writeOp<Opcode::PushFalse>(data_);
 }
 
 void BytecodeBuilder::visit(ast::LValue& node)
@@ -70,25 +57,25 @@ void BytecodeBuilder::visit(ast::LValue& node)
     const auto varloc = node.cachedVarInfo_.varLoc_;
     if (varloc.frameDist_ == 0) {
         if (varloc.offset_ < 256) {
-            data_.push_back((uint8_t)Opcode::Load0Fast);
+            writeOp<Opcode::Load0Fast>(data_);
             writeParam(data_, (uint8_t)varloc.offset_);
         } else {
-            data_.push_back((uint8_t)Opcode::Load0);
+            writeOp<Opcode::Load0>(data_);
             writeParam(data_, varloc.offset_);
         }
     } else if (varloc.frameDist_ == 1) {
         if (varloc.offset_ < 256) {
-            data_.push_back((uint8_t)Opcode::Load1Fast);
+            writeOp<Opcode::Load1Fast>(data_);
             writeParam(data_, (uint8_t)varloc.offset_);
         } else {
-            data_.push_back((uint8_t)Opcode::Load1);
+            writeOp<Opcode::Load1>(data_);
             writeParam(data_, varloc.offset_);
         }
     } else if (varloc.frameDist_ == 2) {
-        data_.push_back((uint8_t)Opcode::Load2);
+        writeOp<Opcode::Load2>(data_);
         writeParam(data_, varloc.offset_);
     } else {
-        data_.push_back((uint8_t)Opcode::Load);
+        writeOp<Opcode::Load>(data_);
         writeParam(data_, varloc.frameDist_);
         writeParam(data_, varloc.offset_);
     }
@@ -97,10 +84,10 @@ void BytecodeBuilder::visit(ast::LValue& node)
 void BytecodeBuilder::visit(ast::Set& node)
 {
     node.value_->visit(*this);
-    data_.push_back((uint8_t)Opcode::Rebind);
+    writeOp<Opcode::Rebind>(data_);
     writeParam(data_, node.cachedVarLoc_.frameDist_);
     writeParam(data_, node.cachedVarLoc_.offset_);
-    data_.push_back((uint8_t)Opcode::PushNull);
+    writeOp<Opcode::PushNull>(data_);
 }
 
 void BytecodeBuilder::visit(ast::Lambda& node)
@@ -108,25 +95,25 @@ void BytecodeBuilder::visit(ast::Lambda& node)
     fnContexts.push_back({0});
     assert(node.argNames_.size() < 256);
     if (node.docstring_.empty()) {
-        data_.push_back((uint8_t)Opcode::PushLambda);
+        writeOp<Opcode::PushLambda>(data_);
         data_.push_back((uint8_t)node.argNames_.size());
     } else {
-        data_.push_back((uint8_t)Opcode::PushDocumentedLambda);
+        writeOp<Opcode::PushDocumentedLambda>(data_);
         data_.push_back((uint8_t)node.argNames_.size());
         writeParam(data_, node.cachedDocstringLoc_);
     }
-    data_.push_back((uint8_t)Opcode::Jump);
+    writeOp<Opcode::Jump>(data_);
     size_t jumpLoc = data_.size();
     writeParam(data_, (uint16_t)0);
     for (size_t i = 0; i < node.argNames_.size(); ++i) {
-        data_.push_back((uint8_t)Opcode::Store);
+        writeOp<Opcode::Store>(data_);
     }
     for (auto& statement : node.statements_) {
         statement->visit(*this);
-        data_.push_back((uint8_t)Opcode::Discard);
+        writeOp<Opcode::Discard>(data_);
     }
     data_.pop_back();
-    data_.push_back((uint8_t)Opcode::Return);
+    writeOp<Opcode::Return>(data_);
     uint16_t* jumpOffset = (uint16_t*)(&data_[jumpLoc]);
     const size_t offset = (data_.size() - 2) - jumpLoc;
     if (offset > std::numeric_limits<uint16_t>::max()) {
@@ -146,7 +133,8 @@ void BytecodeBuilder::visit(ast::VariadicLambda& node)
 void BytecodeBuilder::visit(ast::Application& node)
 {
     if (auto lval = dynamic_cast<ast::LValue*>(node.toApply_.get())) {
-        const bool isTopLevel = lval->cachedVarInfo_.owner_->getParent() == nullptr;
+        const bool isTopLevel =
+            lval->cachedVarInfo_.owner_->getParent() == nullptr;
         if (isTopLevel) {
             if (lval->name_ == "cons") {
                 if (node.args_.size() not_eq 2) {
@@ -154,21 +142,21 @@ void BytecodeBuilder::visit(ast::Application& node)
                 }
                 node.args_[0]->visit(*this);
                 node.args_[1]->visit(*this);
-                data_.push_back((uint8_t)Opcode::Cons);
+                writeOp<Opcode::Cons>(data_);
                 return;
             } else if (lval->name_ == "car") {
                 if (node.args_.size() not_eq 1) {
                     throw std::runtime_error("wrong number of args to car");
                 }
                 node.args_[0]->visit(*this);
-                data_.push_back((uint8_t)Opcode::Car);
+                writeOp<Opcode::Car>(data_);
                 return;
             } else if (lval->name_ == "cdr") {
                 if (node.args_.size() not_eq 1) {
                     throw std::runtime_error("wrong number of args to cdr");
                 }
                 node.args_[0]->visit(*this);
-                data_.push_back((uint8_t)Opcode::Cdr);
+                writeOp<Opcode::Cdr>(data_);
                 return;
             }
         }
@@ -177,7 +165,7 @@ void BytecodeBuilder::visit(ast::Application& node)
         arg->visit(*this);
     }
     node.toApply_->visit(*this);
-    data_.push_back((uint8_t)Opcode::Call);
+    writeOp<Opcode::Call>(data_);
     assert(node.args_.size() < 256);
     data_.push_back((uint8_t)node.args_.size());
 }
@@ -187,17 +175,17 @@ void BytecodeBuilder::visit(ast::Let& node)
     if (not fnContexts.empty()) {
         ++fnContexts.back().letCount_;
     }
-    data_.push_back((uint8_t)Opcode::EnterLet);
+    writeOp<Opcode::EnterLet>(data_);
     for (auto& binding : node.bindings_) {
         binding.value_->visit(*this);
-        data_.push_back((uint8_t)Opcode::Store);
+        writeOp<Opcode::Store>(data_);
     }
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Discard);
+        writeOp<Opcode::Discard>(data_);
     }
     data_.pop_back();
-    data_.push_back((uint8_t)Opcode::ExitLet);
+    writeOp<Opcode::ExitLet>(data_);
     if (not fnContexts.empty()) {
         --fnContexts.back().letCount_;
     }
@@ -207,7 +195,7 @@ void BytecodeBuilder::visit(ast::TopLevel& node)
 {
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Discard);
+        writeOp<Opcode::Discard>(data_);
     }
 }
 
@@ -215,7 +203,7 @@ void BytecodeBuilder::visit(ast::Namespace& node)
 {
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Discard);
+        writeOp<Opcode::Discard>(data_);
     }
     data_.pop_back();
 }
@@ -224,7 +212,7 @@ void BytecodeBuilder::visit(ast::Begin& node)
 {
     for (auto& st : node.statements_) {
         st->visit(*this);
-        data_.push_back((uint8_t)Opcode::Discard);
+        writeOp<Opcode::Discard>(data_);
     }
     // A begin expression needs to return a value, so remove the last
     // Opcode::Pop, in order to keep the result on the operand stack.
@@ -235,12 +223,12 @@ void BytecodeBuilder::visit(ast::If& node)
 {
     // Condition, then conditionally branch over the true block
     node.condition_->visit(*this);
-    data_.push_back((uint8_t)Opcode::JumpIfFalse);
+    writeOp<Opcode::JumpIfFalse>(data_);
     const size_t jumpOffset1Loc = data_.size();
     writeParam(data_, (uint16_t)0);
     // True block, then unconditionally branch over the false block
     node.trueBranch_->visit(*this);
-    data_.push_back((uint8_t)Opcode::Jump);
+    writeOp<Opcode::Jump>(data_);
     const size_t jumpOffset2Loc = data_.size();
     writeParam(data_, (uint16_t)0);
     // False block
@@ -259,11 +247,6 @@ void BytecodeBuilder::visit(ast::If& node)
     *jumpOffset2 = j2result;
 }
 
-void BytecodeBuilder::visit(ast::Cond& node)
-{
-    throw std::runtime_error("cond unimplemented");
-}
-
 void BytecodeBuilder::visit(ast::Or& node)
 {
     throw std::runtime_error("or unimplemented");
@@ -277,8 +260,8 @@ void BytecodeBuilder::visit(ast::And& node)
 void BytecodeBuilder::visit(ast::Def& node)
 {
     node.value_->visit(*this);
-    data_.push_back((uint8_t)Opcode::Store);
-    data_.push_back((uint8_t)Opcode::PushNull);
+    writeOp<Opcode::Store>(data_);
+    writeOp<Opcode::PushNull>(data_);
 }
 
 void BytecodeBuilder::visit(ast::Recur& node)
@@ -290,20 +273,20 @@ void BytecodeBuilder::visit(ast::Recur& node)
     // function, we need to exit the nested environments before
     // re-playing the function.
     for (size_t i = 0; i < fnContexts.back().letCount_; ++i) {
-        data_.push_back((uint8_t)Opcode::ExitLet);
+        writeOp<Opcode::ExitLet>(data_);
     }
-    data_.push_back((uint8_t)Opcode::Recur);
+    writeOp<Opcode::Recur>(data_);
 }
 
 void BytecodeBuilder::visit(ast::UserObject& node)
 {
-    data_.push_back((uint8_t)Opcode::PushI);
+    writeOp<Opcode::PushI>(data_);
     writeParam(data_, node.varLoc_);
 }
 
 void BytecodeBuilder::unusedExpr()
 {
-    data_.push_back((uint8_t)Opcode::Discard);
+    writeOp<Opcode::Discard>(data_);
 }
 
 } // namespace lisp

@@ -1,8 +1,8 @@
-#include <stddef.h>
+#include "macros.hpp"
 #include <array>
 #include <cassert>
-#include "macros.hpp"
 #include <mutex>
+#include <stddef.h>
 
 namespace lisp {
 
@@ -10,9 +10,7 @@ namespace lisp {
 // intent of this class is specifically for use with allocate_shared,
 // for allocating environment frames.
 
-template<typename T>
-struct PoolAllocator
-{
+template <typename T> struct PoolAllocator {
     typedef T value_type;
 
     class Pool {
@@ -67,8 +65,8 @@ struct PoolAllocator
 
     PoolAllocator() noexcept {};
 
-    template<typename U>
-    PoolAllocator(const PoolAllocator<U>& other) throw() {};
+    template <typename U>
+    PoolAllocator(const PoolAllocator<U>& other) throw(){};
 
     T* allocate(size_t n, const void* hint = 0)
     {
@@ -81,17 +79,16 @@ struct PoolAllocator
     }
 };
 
-template <typename T>
-typename PoolAllocator<T>::Pool PoolAllocator<T>::pool;
+template <typename T> typename PoolAllocator<T>::Pool PoolAllocator<T>::pool;
 
 template <typename T, typename U>
-inline bool operator == (const PoolAllocator<T>&, const PoolAllocator<U>&)
+inline bool operator==(const PoolAllocator<T>&, const PoolAllocator<U>&)
 {
     return true;
 }
 
 template <typename T, typename U>
-inline bool operator != (const PoolAllocator<T>& a, const PoolAllocator<U>& b)
+inline bool operator!=(const PoolAllocator<T>& a, const PoolAllocator<U>& b)
 {
     return !(a == b);
 }

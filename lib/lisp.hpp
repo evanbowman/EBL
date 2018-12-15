@@ -4,6 +4,5 @@
 
 namespace lisp {
 
-    void print(Environment& env, ObjectPtr obj, std::ostream& out,
-               bool showQuotes);
+void print(Environment& env, ObjectPtr obj, std::ostream& out, bool showQuotes);
 }

@@ -7,7 +7,6 @@
 #include <chrono>
 #include <fstream>
 #include <iomanip>
-#include <cassert>
 
 namespace lisp {
 
@@ -17,7 +16,8 @@ ObjectPtr Environment::getGlobal(const std::string& key)
     return context_->topLevel_->load(loc);
 }
 
-static ast::Ptr<ast::Def> makeUoDef(Context* ctx, const std::string& key, ObjectPtr value)
+static ast::Ptr<ast::Def> makeUoDef(Context* ctx, const std::string& key,
+                                    ObjectPtr value)
 {
     const auto id = ctx->immediates().size();
     ctx->immediates().push_back(value);
@@ -43,11 +43,11 @@ void Environment::setGlobal(const std::string& key,
     context_->astRoot_->statements_.back()->visit(builder);
 
     auto newCode = builder.result();
-    std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+    std::copy(newCode.begin(), newCode.end(),
+              std::back_inserter(context_->program_));
     context_->callStack().push_back({0, 0, context_->topLevel().reference()});
     VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
     context_->callStack().pop_back();
-
 }
 
 void Environment::setGlobal(const std::string& key, ObjectPtr value)
@@ -61,7 +61,8 @@ void Environment::setGlobal(const std::string& key, ObjectPtr value)
     context_->astRoot_->statements_.back()->visit(builder);
     builder.unusedExpr();
     auto newCode = builder.result();
-    std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+    std::copy(newCode.begin(), newCode.end(),
+              std::back_inserter(context_->program_));
     context_->callStack().push_back({0, 0, context_->topLevel().reference()});
     VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
     context_->callStack().pop_back();
@@ -131,40 +132,19 @@ const Context::Configuration& Context::defaultConfig()
     return defaults;
 }
 
-const char* utilities =
-    "\n"
-    "(namespace std\n"
-    "  (defn some (pred lat)\n"
-    "    \"[pred list] -> first list element that satisfies pred, otherwise false\"\n"
-    "    (if (null? lat)\n"
-    "        false\n"
-    "        (if (pred (car lat))\n"
-    "            (car lat)\n"
-    "            (recur pred (cdr lat))))))\n"
-    "\n"
-    "(def require\n"
-    "     ((lambda ()\n"
-    "        (def-mut required-set null)\n"
-    "        (lambda (file-name)\n"
-    "          (let ((found (std::some (lambda (n)\n"
-    "                                    (equal? n file-name)) required-set)))\n"
-    "            (if found\n"
-    "                null\n"
-    "                (begin\n"
-    "                  (load file-name)\n"
-    "                  (set required-set (cons file-name required-set)))))))))\n"
-    "";
+#include "onloads.hpp"
 
 Context::Context(const Configuration& config)
     : heap_(config.heapSize_, 0),
-      topLevel_(std::allocate_shared<Environment>(PoolAllocator<Environment>{}, this, nullptr)),
+      topLevel_(std::allocate_shared<Environment>(PoolAllocator<Environment>{},
+                                                  this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
 {
     initBuiltins(*topLevel_);
     callStack_.push_back({0, 0, topLevel_});
-    topLevel_->exec(utilities);
+    topLevel_->exec(onloads);
 }
 
 Context::~Context()
@@ -177,7 +157,7 @@ Context::~Context()
     // For debugging
     std::ofstream bc("bc", std::ofstream::binary);
     bc.write((const char*)program_.data(), program_.size());
- }
+}
 
 ObjectPtr Context::loadI(ImmediateId immediate)
 {
@@ -203,7 +183,8 @@ ObjectPtr Environment::exec(const std::string& code)
                                                          *context_->astRoot_);
             context_->astRoot_->statements_.back()->visit(builder);
             auto newCode = builder.result();
-            std::copy(newCode.begin(), newCode.end(), std::back_inserter(context_->program_));
+            std::copy(newCode.begin(), newCode.end(),
+                      std::back_inserter(context_->program_));
             context_->callStack().push_back({0, 0, context_->topLevel_});
             VM::execute(*context_->topLevel_, context_->program_, lastExecuted);
             context_->callStack().pop_back();

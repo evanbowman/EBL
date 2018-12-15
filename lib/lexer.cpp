@@ -22,6 +22,9 @@ Lexer::Token Lexer::lex()
                     goto RETRY;
                 }
             }
+        case '.':
+            position_++;
+            return Token::DOT;
         case ' ':
         case '\n':
         case '\r':

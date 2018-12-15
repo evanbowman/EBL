@@ -12,6 +12,7 @@ public:
         RPAREN,
         SYMBOL,
         QUOTE,
+        DOT,
         INTEGER,
         FLOAT,
         STRING,

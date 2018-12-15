@@ -8,7 +8,7 @@ int main(int argc, char** argv)
     Context context;
     std::string input;
     auto& env = context.topLevel();
-    env.setGlobal("quit", env.create<Function>(env.getNull(), Function::ArgCount(0),
+    env.setGlobal("quit", env.create<Function>(env.getNull(), size_t(0),
                                                [](Environment& env, const Arguments&) {
                                                    exit(0);
                                                    return env.getNull();

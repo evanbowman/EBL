@@ -1,5 +1,3 @@
-(require "lisp/stdstr.ebl")
-(require "lisp/stdfs.ebl")
 
 (namespace csv
   (defn read (file-name)

@@ -3,10 +3,10 @@
 #include "common.hpp"
 #include "memory.hpp"
 #include "utility.hpp"
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
-#include <limits>
 
 namespace lisp {
 
@@ -98,41 +98,62 @@ struct Value : Statement {
 };
 
 
-struct Integer : Value {
+struct Literal : Value {
+    ImmediateId cachedVal_;
+
+    void visit(Visitor& visitor) override;
+};
+
+
+struct Integer : Literal {
     using Rep = int32_t;
     Rep value_;
-    ImmediateId cachedVal_;
 
-    void visit(Visitor& visitor) override;
     void init(Environment& env, Scope& scope) override;
 };
 
 
-struct Double : Value {
+struct Double : Literal {
     using Rep = double;
     Rep value_;
-    ImmediateId cachedVal_;
 
-    void visit(Visitor& visitor) override;
     void init(Environment& env, Scope& scope) override;
 };
 
 
-struct Character : Value {
+struct Character : Literal {
     using Rep = WideChar;
     Rep value_;
-    ImmediateId cachedVal_;
 
-    void visit(Visitor& visitor) override;
     void init(Environment& env, Scope& scope) override;
 };
 
 
-struct String : Value {
+struct String : Literal {
     StrVal value_;
-    ImmediateId cachedVal_;
 
-    void visit(Visitor& visitor) override;
+    void init(Environment& env, Scope& scope) override;
+};
+
+
+struct Symbol : Literal {
+    StrVal value_;
+
+    void init(Environment& env, Scope& scope) override;
+};
+
+
+struct List : Literal {
+    std::vector<ast::Ptr<Literal>> contents_;
+
+    void init(Environment& env, Scope& scope) override;
+};
+
+
+struct Pair : Literal {
+    ast::Ptr<Literal> first_;
+    ast::Ptr<Literal> second_;
+
     void init(Environment& env, Scope& scope) override;
 };
 
@@ -212,6 +233,11 @@ struct Let : Expr, Scope {
 };
 
 
+struct LetMut : Let {
+    void init(Environment& env, Scope& scope) override;
+};
+
+
 struct Begin : Expr {
     Vector<Ptr<Statement>> statements_;
 
@@ -238,19 +264,6 @@ struct If : Expr {
 
 struct Recur : Expr {
     Vector<Ptr<Statement>> args_;
-
-    void visit(Visitor& visitor) override;
-    void init(Environment& env, Scope& scope) override;
-};
-
-
-struct Cond : Expr {
-    struct Case {
-        Ptr<Statement> condition_;
-        std::vector<Ptr<Statement>> body_;
-    };
-
-    std::vector<Case> cases_;
 
     void visit(Visitor& visitor) override;
     void init(Environment& env, Scope& scope) override;
@@ -317,10 +330,7 @@ public:
     }
 
     virtual void visit(Namespace& node) = 0;
-    virtual void visit(Integer& node) = 0;
-    virtual void visit(Double& node) = 0;
-    virtual void visit(Character& node) = 0;
-    virtual void visit(String& node) = 0;
+    virtual void visit(Literal& node) = 0;
     virtual void visit(Null& node) = 0;
     virtual void visit(True& node) = 0;
     virtual void visit(False& node) = 0;
@@ -333,7 +343,6 @@ public:
     virtual void visit(Begin& node) = 0;
     virtual void visit(If& node) = 0;
     virtual void visit(Recur& node) = 0;
-    virtual void visit(Cond& node) = 0;
     virtual void visit(Or& node) = 0;
     virtual void visit(And& node) = 0;
     virtual void visit(Def& node) = 0;

@@ -11,9 +11,9 @@
 #include <vector>
 
 #include "extlib/smallVector.hpp"
+#include "macros.hpp"
 #include "memory.hpp"
 #include "utility.hpp"
-#include "macros.hpp"
 
 namespace lisp {
 
@@ -55,6 +55,32 @@ public:
 };
 
 
+using ObjectPtr = Heap::Ptr<Object>;
+
+
+template <typename T> class Persistent {
+public:
+    Persistent(Heap::Ptr<T> obj) : obj_(obj)
+    {
+        throw std::runtime_error("TODO: implement me!");
+    }
+
+    Persistent(const Persistent&) = delete;
+
+    ~Persistent()
+    {
+    }
+
+    Heap::Ptr<T> get() const
+    {
+        return obj_;
+    }
+
+private:
+    Heap::Ptr<T> obj_;
+};
+
+
 template <typename T> class ObjectTemplate : public Object {
 public:
     ObjectTemplate();
@@ -79,9 +105,6 @@ public:
         ((T*)buffer.data())->~T();
     }
 };
-
-
-using ObjectPtr = Heap::Ptr<Object>;
 
 
 struct EqualTo {
@@ -311,7 +334,9 @@ private:
 
 class Symbol : public ObjectTemplate<Symbol> {
 public:
-    inline Symbol(Heap::Ptr<String> str) : str_(str)
+    using Input = Heap::Ptr<String>;
+
+    inline Symbol(Input str) : str_(str)
     {
     }
 
@@ -397,12 +422,10 @@ struct InvalidArgumentError : std::runtime_error {
 
 class Function : public ObjectTemplate<Function> {
 public:
-    using ArgCount = uint32_t;
-
-    Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
+    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
              CFunction cFn);
 
-    Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
+    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
              size_t bytecodeAddress);
 
     static constexpr const char* name()
@@ -420,7 +443,7 @@ public:
     // looking for.
     inline ObjectPtr directCall(Arguments& params)
     {
-        if (UNLIKELY(params.count() < static_cast<size_t>(requiredArgs_))) {
+        if (UNLIKELY(params.count() < requiredArgs_)) {
             throw InvalidArgumentError("too few args, expected " +
                                        std::to_string(requiredArgs_) + " got " +
                                        std::to_string(params.count()));
@@ -443,7 +466,7 @@ public:
         docstring_ = val;
     }
 
-    inline ArgCount argCount()
+    inline size_t argCount()
     {
         return requiredArgs_;
     }
@@ -454,8 +477,8 @@ public:
     }
 
 private:
-    ArgCount requiredArgs_;
     ObjectPtr docstring_;
+    size_t requiredArgs_;
     CFunction nativeFn_;
     size_t bytecodeAddress_;
     EnvPtr envPtr_;
@@ -504,15 +527,13 @@ constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
     typeInfoTable;
 
 
-template <typename Ptr>
-const TypeInfo& typeInfo(Ptr obj)
+template <typename Ptr> const TypeInfo& typeInfo(Ptr obj)
 {
     return typeInfoTable[obj->typeId()];
 }
 
 
-template <typename T>
-constexpr TypeId typeId()
+template <typename T> constexpr TypeId typeId()
 {
     return typeInfoTable.typeId<T>();
 }

@@ -1,8 +1,8 @@
 #include "types.hpp"
+#include "bytecode.hpp"
 #include "lisp.hpp"
 #include "utility.hpp"
 #include "vm.hpp"
-#include "bytecode.hpp"
 #include <map>
 #include <memory>
 
@@ -17,7 +17,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         return false;
     }
 #define LISP_EQ_CASE(T)                                                        \
-    case typeId<T>():                                                 \
+    case typeId<T>():                                                          \
         return lhs.cast<T>()->value() == rhs.cast<T>()->value();
     switch (type) {
         LISP_EQ_CASE(Integer);
@@ -42,8 +42,8 @@ ObjectPtr Function::call(Arguments& params)
         }
         Context* const ctx = envPtr_->getContext();
         auto derived = envPtr_->derive();
-        ctx->callStack().push_back({ctx->getProgram().size() - 1,
-                                    bytecodeAddress_, derived});
+        ctx->callStack().push_back(
+            {ctx->getProgram().size() - 1, bytecodeAddress_, derived});
         VM::execute(*derived, ctx->getProgram(), bytecodeAddress_);
         auto ret = ctx->operandStack().back();
         // The bytecode function would have taken the args off of the
@@ -61,23 +61,23 @@ ObjectPtr Function::call(Arguments& params)
     return (*nativeFn_)(*envPtr_, params);
 }
 
-Function::Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
+Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    CFunction impl)
-    : requiredArgs_(requiredArgs), docstring_(docstring), nativeFn_(impl),
+    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(impl),
       bytecodeAddress_(0), envPtr_(env.reference())
 {
 }
 
-Function::Function(Environment& env, ObjectPtr docstring, ArgCount requiredArgs,
+Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    size_t bytecodeAddress)
-    : requiredArgs_(requiredArgs), docstring_(docstring), nativeFn_(),
+    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(),
       bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
 {
 }
 
 TypeError::TypeError(TypeId t, const std::string& reason)
-    : std::runtime_error(std::string("for type ") + typeInfoTable[t].name_ + ": " +
-                         reason)
+    : std::runtime_error(std::string("for type ") + typeInfoTable[t].name_ +
+                         ": " + reason)
 {
 }
 

@@ -2,6 +2,10 @@
 #include "lexer.hpp"
 #include "utility.hpp"
 
+// This parser could be better... I'm considering rewriting the
+// compiler in EBL anyway, so I haven't decided whether to clean this
+// up yet.
+
 namespace lisp {
 
 template <Lexer::Token TOK> Lexer::Token expect(Lexer& lexer, const char* ctx)
@@ -37,6 +41,100 @@ ast::Ptr<ast::Value> parseValue(const std::string& name)
     }
 }
 
+ast::Ptr<ast::Literal> parseLiteral(Lexer::Token tok, const std::string& strval)
+{
+    switch (tok) {
+    case Lexer::Token::INTEGER: {
+        auto ret = make_unique<ast::Integer>();
+        ret->value_ = std::stoi(strval);
+        return ret;
+    }
+    case Lexer::Token::SYMBOL: {
+        auto ret = make_unique<ast::Symbol>();
+        ret->value_ = strval;
+        return ret;
+    }
+    case Lexer::Token::STRING: {
+        auto ret = make_unique<ast::String>();
+        ret->value_ = strval;
+        return ret;
+    }
+    case Lexer::Token::FLOAT: {
+        auto ret = make_unique<ast::Double>();
+        ret->value_ = std::stod(strval);
+        return ret;
+    }
+    default:
+        throw std::runtime_error("invalid literal");
+    }
+}
+
+ast::Ptr<ast::Literal> parseListLiteral(Lexer& lexer)
+{
+    auto list = make_unique<ast::List>();
+    while (true) {
+        switch (const auto tok = lexer.lex()) {
+        case Lexer::Token::LPAREN:
+            list->contents_.push_back(parseListLiteral(lexer));
+            break;
+
+        case Lexer::Token::STRING:
+        case Lexer::Token::SYMBOL:
+        case Lexer::Token::INTEGER:
+        case Lexer::Token::FLOAT:
+            list->contents_.push_back(parseLiteral(tok, lexer.rdbuf()));
+            break;
+
+        case Lexer::Token::DOT: {
+            auto pair = make_unique<ast::Pair>();
+            if (list->contents_.size() > 1) {
+                throw std::runtime_error("list has too many elements to be a "
+                                         "dotted pair!");
+            }
+            pair->first_ = std::move(list->contents_.front());
+            switch (const auto tok = lexer.lex()) {
+            case Lexer::Token::INTEGER:
+            case Lexer::Token::SYMBOL:
+            case Lexer::Token::STRING:
+            case Lexer::Token::FLOAT:
+                pair->second_ = parseLiteral(tok, lexer.rdbuf());
+                break;
+
+            default:
+                throw std::runtime_error("invalid token in dotted pair");
+            }
+            expect<Lexer::Token::RPAREN>(lexer, "in parse dotted pair");
+            return ast::Ptr<ast::Literal>(pair.release());
+        } break;
+
+        case Lexer::Token::RPAREN:
+            return ast::Ptr<ast::Literal>(list.release());
+
+        default:
+            throw std::runtime_error(
+                "TODO: list literal parsing doesn\' support all types");
+        }
+    }
+}
+
+ast::Ptr<ast::Statement> parseQuoted(Lexer& lexer)
+{
+    const auto tok = lexer.lex();
+    switch (tok) {
+    case Lexer::Token::LPAREN:
+        return parseListLiteral(lexer);
+
+    case Lexer::Token::STRING:
+    case Lexer::Token::SYMBOL:
+    case Lexer::Token::INTEGER:
+    case Lexer::Token::FLOAT:
+        return parseLiteral(tok, lexer.rdbuf());
+
+    default:
+        throw std::runtime_error("TODO: support non-list quoted values");
+    }
+}
+
 ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
 {
     const auto tok = lexer.lex();
@@ -64,6 +162,9 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
         ret->value_ = std::stod(lexer.rdbuf());
         return std::move(ret);
     }
+
+    case Lexer::Token::QUOTE:
+        return parseQuoted(lexer);
 
     case Lexer::Token::STRING: {
         auto ret = make_unique<ast::String>();
@@ -243,9 +344,13 @@ ast::Ptr<ast::Namespace> parseNamespace(Lexer& lexer)
 }
 
 
-ast::Ptr<ast::Cond> parseCond(Lexer& lexer)
+ast::Ptr<ast::If> parseCond(Lexer& lexer)
 {
-    auto cond = make_unique<ast::Cond>();
+    struct Case {
+        ast::Ptr<ast::Statement> condition_;
+        std::vector<ast::Ptr<ast::Statement>> body_;
+    };
+    std::vector<Case> cases;
     while (true) {
         auto tok = lexer.lex();
         if (tok == Lexer::Token::LPAREN) {
@@ -254,14 +359,35 @@ ast::Ptr<ast::Cond> parseCond(Lexer& lexer)
             if (statements.empty()) {
                 throw std::runtime_error("empty cond case!");
             }
-            ast::Cond::Case c;
+            Case c;
             c.condition_ = std::move(statements.front());
             for (size_t i = 1; i < statements.size(); ++i) {
                 c.body_.push_back(std::move(statements[i]));
             }
-            cond->cases_.push_back(std::move(c));
+            cases.push_back(std::move(c));
         } else if (tok == Lexer::Token::RPAREN) {
-            return cond;
+            if (cases.empty()) {
+                throw std::runtime_error("cond contains no expressions!");
+            }
+            // Build a chain of nested ifs for the branch arms.
+            auto exprRoot = make_unique<ast::If>();
+            ast::If* current = exprRoot.get();
+            current->condition_ = make_unique<ast::True>();
+            for (size_t i = 0; i < cases.size(); ++i) {
+                auto detachedCond = std::move(current->condition_);
+                current->condition_ = std::move(cases[i].condition_);
+                auto begin = make_unique<ast::Begin>();
+                begin->statements_ = std::move(cases[i].body_);
+                current->trueBranch_ = std::move(begin);
+                if (i == cases.size() - 1) {
+                    current->falseBranch_ = make_unique<ast::Null>();
+                } else {
+                    current->falseBranch_ = make_unique<ast::If>();
+                    current = (ast::If*)current->falseBranch_.get();
+                    current->condition_ = std::move(detachedCond);
+                }
+            }
+            return exprRoot;
         } else {
             throw std::runtime_error("unexpected token in cond");
         }
@@ -269,9 +395,9 @@ ast::Ptr<ast::Cond> parseCond(Lexer& lexer)
 }
 
 
-ast::Ptr<ast::Let> parseLet(Lexer& lexer)
+ast::Ptr<ast::Let> parseLetImpl(Lexer& lexer, ast::Ptr<ast::Let> val)
 {
-    auto let = make_unique<ast::Let>();
+    auto let = std::move(val);
     expect<Lexer::Token::LPAREN>(lexer, "in parse let");
     while (true) {
         switch (lexer.lex()) {
@@ -297,6 +423,19 @@ BODY:
     return let;
 }
 
+
+ast::Ptr<ast::Let> parseLet(Lexer& lexer)
+{
+    return parseLetImpl(lexer, make_unique<ast::Let>());
+}
+
+
+ast::Ptr<ast::Let> parseLetMut(Lexer& lexer)
+{
+    return parseLetImpl(lexer, std::unique_ptr<ast::Let>(new ast::LetMut));
+}
+
+
 ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
 {
     auto apply = make_unique<ast::Application>();
@@ -314,6 +453,8 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
             return parseLambda(lexer);
         } else if (symb == "let") {
             return parseLet(lexer);
+        } else if (symb == "let-mut") {
+            return parseLetMut(lexer);
         } else if (symb == "if") {
             return parseIf(lexer);
         } else if (symb == "cond") {
@@ -374,6 +515,11 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
             apply->args_.push_back(std::move(param));
             break;
         }
+
+        case Lexer::Token::QUOTE:
+            apply->args_.push_back(parseQuoted(lexer));
+            break;
+
 
         case Lexer::Token::CHAR: {
             auto param = make_unique<ast::Character>();

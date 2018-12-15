@@ -1,12 +1,12 @@
 #pragma once
 
+#include <cstring>
 #include <stddef.h>
 #include <stdexcept>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string>
 #include <type_traits>
-#include <cstring>
 
 namespace lisp {
 

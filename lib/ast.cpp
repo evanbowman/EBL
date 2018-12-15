@@ -30,7 +30,8 @@ Scope::FindResult Scope::find(const Vector<StrVal>& varNamePatterns,
     }
 }
 
-Scope::FindResult Scope::find(const StrVal& varNamePath, FrameDist traversed) const
+Scope::FindResult Scope::find(const StrVal& varNamePath,
+                              FrameDist traversed) const
 {
     for (StackLoc i = 0; i < variables_.size(); ++i) {
         if (variables_[i].name_ == varNamePath) {
@@ -48,22 +49,7 @@ Scope::FindResult Scope::find(const StrVal& varNamePath, FrameDist traversed) co
 
 using ExecutionFailure = std::runtime_error;
 
-void Integer::visit(Visitor& visitor)
-{
-    visitor.visit(*this);
-}
-
-void Double::visit(Visitor& visitor)
-{
-    visitor.visit(*this);
-}
-
-void Character::visit(Visitor& visitor)
-{
-    visitor.visit(*this);
-}
-
-void String::visit(Visitor& visitor)
+void Literal::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }
@@ -133,11 +119,6 @@ void Recur::visit(Visitor& visitor)
     visitor.visit(*this);
 }
 
-void Cond::visit(Visitor& visitor)
-{
-    visitor.visit(*this);
-}
-
 void Or::visit(Visitor& visitor)
 {
     visitor.visit(*this);
@@ -185,6 +166,38 @@ void Character::init(Environment& env, Scope& scope)
 void String::init(Environment& env, Scope& scope)
 {
     cachedVal_ = env.getContext()->storeI<lisp::String>(value_);
+}
+
+void Symbol::init(Environment& env, Scope& scope)
+{
+    auto strLoc = env.getContext()->storeI<lisp::String>(value_);
+    auto str = env.getContext()->immediates()[strLoc];
+    cachedVal_ =
+        env.getContext()->storeI<lisp::Symbol>(str.cast<lisp::String>());
+}
+
+
+void List::init(Environment& env, Scope& scope)
+{
+    LazyListBuilder builder(env);
+    for (auto& element : contents_) {
+        element->init(env, scope);
+        builder.pushBack(env.getContext()->immediates()[element->cachedVal_]);
+    }
+    cachedVal_ = env.getContext()->immediates().size();
+    env.getContext()->immediates().push_back(builder.result());
+}
+
+
+void Pair::init(Environment& env, Scope& scope)
+{
+    first_->init(env, scope);
+    second_->init(env, scope);
+    auto ctx = env.getContext();
+    cachedVal_ = ctx->immediates().size();
+    auto p = env.create<lisp::Pair>(ctx->immediates()[first_->cachedVal_],
+                                    ctx->immediates()[second_->cachedVal_]);
+    env.getContext()->immediates().push_back(p);
 }
 
 
@@ -241,7 +254,8 @@ void Lambda::init(Environment& env, Scope& scope)
     dynamicWind(
         [&] {
             if (not docstring_.empty()) {
-                cachedDocstringLoc_ = env.getContext()->storeI<lisp::String>(docstring_);
+                cachedDocstringLoc_ =
+                    env.getContext()->storeI<lisp::String>(docstring_);
             }
             Scope::setParent(&scope);
             for (auto it = argNames_.rbegin(); it != argNames_.rend(); ++it) {
@@ -252,9 +266,7 @@ void Lambda::init(Environment& env, Scope& scope)
                 statement->init(env, *this);
             }
         },
-        [&] {
-            currentFunction.pop_back();
-        });
+        [&] { currentFunction.pop_back(); });
 }
 
 
@@ -272,6 +284,19 @@ void Let::init(Environment& env, Scope& scope)
     Scope::setParent(&scope);
     for (const auto& binding : bindings_) {
         Scope::insert(binding.name_);
+        binding.value_->init(env, *this);
+    }
+    for (const auto& statement : statements_) {
+        statement->init(env, *this);
+    }
+}
+
+
+void LetMut::init(Environment& env, Scope& scope)
+{
+    Scope::setParent(&scope);
+    for (const auto& binding : bindings_) {
+        Scope::insert(binding.name_, true);
         binding.value_->init(env, *this);
     }
     for (const auto& statement : statements_) {
@@ -306,17 +331,6 @@ void Recur::init(Environment& env, Scope& scope)
     }
     for (auto& arg : args_) {
         arg->init(env, scope);
-    }
-}
-
-
-void Cond::init(Environment& env, Scope& scope)
-{
-    for (auto& cCase : cases_) {
-        cCase.condition_->init(env, scope);
-        for (auto& st : cCase.body_) {
-            st->init(env, scope);
-        }
     }
 }
 
@@ -370,7 +384,8 @@ void Set::init(Environment& env, Scope& scope)
     const auto patterns = makeNsPatterns(name_);
     auto found = scope.find(patterns);
     if (not found.isMutable_) {
-        throw std::runtime_error("failed to rebind immutable variable " + name_);
+        throw std::runtime_error("failed to rebind immutable variable " +
+                                 name_);
     }
     cachedVarLoc_ = found.varLoc_;
     value_->init(env, scope);

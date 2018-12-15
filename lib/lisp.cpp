@@ -102,11 +102,23 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
 struct BuiltinFunctionInfo {
     const char* name;
     const char* docstring;
-    Function::ArgCount requiredArgs;
+    size_t requiredArgs;
     CFunction impl;
 };
 
 static const BuiltinFunctionInfo builtins[] = {
+    {"cons", "[car cdr] -> create a pair from car and cdr", 2,
+     [](Environment& env, const Arguments& args) -> ObjectPtr {
+         return env.create<Pair>(args[0], args[1]);
+     }},
+    {"car", "[pair] -> get the first element of pair", 1,
+     [](Environment& env, const Arguments& args) {
+         return checkedCast<Pair>(args[0])->getCar();
+     }},
+    {"cdr", "[pair] -> get the second element of pair", 1,
+     [](Environment& env, const Arguments& args) {
+         return checkedCast<Pair>(args[0])->getCdr();
+     }},
     {"symbol", "[string] -> get symbol for string", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          const auto target = checkedCast<String>(args[0]);
@@ -134,18 +146,6 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          throw std::runtime_error(
              checkedCast<String>(args[0])->value().toAscii());
-     }},
-    {"cons", "[car cdr] -> create a pair from car and cdr", 2,
-     [](Environment& env, const Arguments& args) -> ObjectPtr {
-         return env.create<Pair>(args[0], args[1]);
-     }},
-    {"car", "[pair] -> get the first element of pair", 1,
-     [](Environment& env, const Arguments& args) {
-         return checkedCast<Pair>(args[0])->getCar();
-     }},
-    {"cdr", "[pair] -> get the second element of pair", 1,
-     [](Environment& env, const Arguments& args) {
-         return checkedCast<Pair>(args[0])->getCdr();
      }},
     {"length", "[obj] -> get the length of a list or string", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
@@ -447,8 +447,7 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.create<Integer>(
                  Integer::Rep(args[0].cast<Double>()->value()));
          default:
-             throw ConversionError(args[0]->typeId(),
-                                   typeId<Integer>());
+             throw ConversionError(args[0]->typeId(), typeId<Integer>());
          }
      }},
     {"double", "[integer-or-string] -> double precision float", 1,
@@ -464,8 +463,7 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.create<Double>(
                  Double::Rep(args[0].cast<Integer>()->value()));
          default:
-             throw ConversionError(args[0]->typeId(),
-                                   typeId<Double>());
+             throw ConversionError(args[0]->typeId(), typeId<Double>());
          }
      }},
     {"character", "[ascii-integer-value] -> character", 1,
