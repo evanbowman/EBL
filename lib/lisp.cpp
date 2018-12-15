@@ -78,8 +78,8 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         }
         break;
 
-    case typeId<Double>():
-        out << obj.cast<Double>()->value();
+    case typeId<Float>():
+        out << obj.cast<Float>()->value();
         break;
 
     case typeId<Complex>():
@@ -179,7 +179,7 @@ static const BuiltinFunctionInfo builtins[] = {
     LISP_TYPE_PROC("pair?", Pair),
     LISP_TYPE_PROC("boolean?", Boolean),
     LISP_TYPE_PROC("integer?", Integer),
-    LISP_TYPE_PROC("double?", Double),
+    LISP_TYPE_PROC("float?", Float),
     LISP_TYPE_PROC("complex?", Complex),
     LISP_TYPE_PROC("string?", String),
     LISP_TYPE_PROC("character?", Character),
@@ -238,15 +238,15 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          Integer::Rep iSum = 0;
          Complex::Rep cSum;
-         Double::Rep dSum = 0.0;
+         Float::Rep dSum = 0.0;
          for (size_t i = 0; i < args.count(); ++i) {
              switch (args[i]->typeId()) {
              case typeId<Integer>():
                  iSum += args[i].cast<Integer>()->value();
                  break;
 
-             case typeId<Double>():
-                 dSum += args[i].cast<Double>()->value();
+             case typeId<Float>():
+                 dSum += args[i].cast<Float>()->value();
                  break;
 
              case typeId<Complex>():
@@ -259,9 +259,9 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          if (cSum not_eq Complex::Rep{0.0, 0.0}) {
              return env.create<Complex>(cSum + dSum +
-                                        static_cast<Double::Rep>(iSum));
+                                        static_cast<Float::Rep>(iSum));
          } else if (dSum) {
-             return env.create<Double>(dSum + iSum);
+             return env.create<Float>(dSum + iSum);
          }
          return env.create<Integer>(iSum);
      }},
@@ -274,26 +274,26 @@ static const BuiltinFunctionInfo builtins[] = {
              case typeId<Integer>():
                  return env.create<Integer>(args[0].cast<Integer>()->value() -
                                             args[1].cast<Integer>()->value());
-             case typeId<Double>():
-                 return env.create<Double>(args[0].cast<Integer>()->value() -
-                                           args[1].cast<Double>()->value());
+             case typeId<Float>():
+                 return env.create<Float>(args[0].cast<Integer>()->value() -
+                                           args[1].cast<Float>()->value());
              default:
                  throw std::runtime_error("issue during subtraction");
              }
 
-         case typeId<Double>():
+         case typeId<Float>():
              switch (args[1]->typeId()) {
              case typeId<Integer>():
-                 return env.create<Double>(args[0].cast<Double>()->value() -
+                 return env.create<Float>(args[0].cast<Float>()->value() -
                                            args[1].cast<Integer>()->value());
-             case typeId<Double>():
-                 return env.create<Double>(args[0].cast<Double>()->value() -
-                                           args[1].cast<Double>()->value());
+             case typeId<Float>():
+                 return env.create<Float>(args[0].cast<Float>()->value() -
+                                           args[1].cast<Float>()->value());
              default:
                  throw std::runtime_error("issue during subtraction");
              }
-             return env.create<Double>(args[0].cast<Double>()->value() -
-                                       checkedCast<Double>(args[1])->value());
+             return env.create<Float>(args[0].cast<Float>()->value() -
+                                       checkedCast<Float>(args[1])->value());
 
          case typeId<Complex>():
              return env.create<Complex>(args[0].cast<Complex>()->value() -
@@ -305,7 +305,7 @@ static const BuiltinFunctionInfo builtins[] = {
     {"*", "[...] -> the result of multiplying each arg in ...", 0,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          Integer::Rep iProd = 1;
-         Double::Rep dProd = 1.0;
+         Float::Rep dProd = 1.0;
          Complex::Rep cProd(1.0);
          for (size_t i = 0; i < args.count(); ++i) {
              switch (args[i]->typeId()) {
@@ -313,8 +313,8 @@ static const BuiltinFunctionInfo builtins[] = {
                  iProd *= args[i].cast<Integer>()->value();
                  break;
 
-             case typeId<Double>():
-                 dProd *= args[i].cast<Double>()->value();
+             case typeId<Float>():
+                 dProd *= args[i].cast<Float>()->value();
                  break;
 
              case typeId<Complex>():
@@ -324,9 +324,9 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          if (cProd not_eq Complex::Rep{1.0}) {
              return env.create<Complex>(cProd * dProd *
-                                        static_cast<Double::Rep>(iProd));
+                                        static_cast<Float::Rep>(iProd));
          } else if (dProd not_eq 1.0) {
-             return env.create<Double>(dProd * iProd);
+             return env.create<Float>(dProd * iProd);
          }
          return env.create<Integer>(iProd);
      }},
@@ -338,9 +338,9 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.create<Integer>(args[0].cast<Integer>()->value() /
                                         checkedCast<Integer>(args[1])->value());
 
-         case typeId<Double>():
-             return env.create<Double>(args[0].cast<Double>()->value() /
-                                       checkedCast<Double>(args[1])->value());
+         case typeId<Float>():
+             return env.create<Float>(args[0].cast<Float>()->value() /
+                                       checkedCast<Float>(args[1])->value());
 
          case typeId<Complex>():
              return env.create<Complex>(args[0].cast<Complex>()->value() /
@@ -356,9 +356,9 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.getBool(args[0].cast<Integer>()->value() >
                                 checkedCast<Integer>(args[1])->value());
 
-         case typeId<Double>():
-             return env.getBool(args[0].cast<Double>()->value() >
-                                checkedCast<Double>(args[1])->value());
+         case typeId<Float>():
+             return env.getBool(args[0].cast<Float>()->value() >
+                                checkedCast<Float>(args[1])->value());
 
          case typeId<Complex>():
              throw TypeError(typeId<Complex>(),
@@ -376,9 +376,9 @@ static const BuiltinFunctionInfo builtins[] = {
              return env.getBool(args[0].cast<Integer>()->value() <
                                 checkedCast<Integer>(args[1])->value());
 
-         case typeId<Double>():
-             return env.getBool(args[0].cast<Double>()->value() <
-                                checkedCast<Double>(args[1])->value());
+         case typeId<Float>():
+             return env.getBool(args[0].cast<Float>()->value() <
+                                checkedCast<Float>(args[1])->value());
 
          case typeId<Complex>():
              throw TypeError(typeId<Complex>(),
@@ -402,18 +402,18 @@ static const BuiltinFunctionInfo builtins[] = {
              }
              break;
 
-         case typeId<Double>():
-             if (inp.cast<Double>()->value() > 0.0) {
+         case typeId<Float>():
+             if (inp.cast<Float>()->value() > 0.0) {
                  return inp;
              } else {
-                 const auto result = std::abs(inp.cast<Double>()->value());
-                 return env.create<Double>(result);
+                 const auto result = std::abs(inp.cast<Float>()->value());
+                 return env.create<Float>(result);
              }
              break;
 
          case typeId<Complex>(): {
              const auto result = std::abs(inp.cast<Complex>()->value());
-             return env.create<Double>(result);
+             return env.create<Float>(result);
          }
 
          default:
@@ -422,8 +422,8 @@ static const BuiltinFunctionInfo builtins[] = {
      }},
     {"complex", "[real imag] -> complex number from real + (b x imag)", 2,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
-         const auto real = checkedCast<Double>(args[0])->value();
-         const auto imag = checkedCast<Double>(args[1])->value();
+         const auto real = checkedCast<Float>(args[0])->value();
+         const auto imag = checkedCast<Float>(args[1])->value();
          return env.create<Complex>(Complex::Rep(real, imag));
      }},
     {"string-ref", "[str index] -> character at index in str", 2,
@@ -439,7 +439,7 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return env.create<String>(builder.str());
      }},
-    {"integer", "[string-or-double] -> integer conversion of the input", 1,
+    {"integer", "[string-or-float] -> integer conversion of the input", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
          case typeId<Integer>():
@@ -448,27 +448,27 @@ static const BuiltinFunctionInfo builtins[] = {
              Integer::Rep i = std::stoi(args[0].cast<String>()->toAscii());
              return env.create<Integer>(i);
          }
-         case typeId<Double>():
+         case typeId<Float>():
              return env.create<Integer>(
-                 Integer::Rep(args[0].cast<Double>()->value()));
+                 Integer::Rep(args[0].cast<Float>()->value()));
          default:
              throw ConversionError(args[0]->typeId(), typeId<Integer>());
          }
      }},
-    {"double", "[integer-or-string] -> double precision float", 1,
+    {"float", "[integer-or-string] -> double precision float", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          switch (args[0]->typeId()) {
-         case typeId<Double>():
+         case typeId<Float>():
              return args[0];
          case typeId<String>(): {
-             Double::Rep d = std::stod(args[0].cast<String>()->toAscii());
-             return env.create<Double>(d);
+             Float::Rep d = std::stod(args[0].cast<String>()->toAscii());
+             return env.create<Float>(d);
          }
          case typeId<Integer>():
-             return env.create<Double>(
-                 Double::Rep(args[0].cast<Integer>()->value()));
+             return env.create<Float>(
+                 Float::Rep(args[0].cast<Integer>()->value()));
          default:
-             throw ConversionError(args[0]->typeId(), typeId<Double>());
+             throw ConversionError(args[0]->typeId(), typeId<Float>());
          }
      }},
     {"character", "[ascii-integer-value] -> character", 1,

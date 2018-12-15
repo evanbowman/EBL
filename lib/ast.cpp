@@ -207,9 +207,9 @@ void Integer::init(Environment& env, Scope& scope)
 }
 
 
-void Double::init(Environment& env, Scope& scope)
+void Float::init(Environment& env, Scope& scope)
 {
-    cachedVal_ = env.getContext()->storeI<lisp::Double>(value_);
+    cachedVal_ = env.getContext()->storeI<lisp::Float>(value_);
 }
 
 // This is a potential area for improvement. In order to look up a variable, we

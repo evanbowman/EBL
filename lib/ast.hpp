@@ -113,7 +113,7 @@ struct Integer : Literal {
 };
 
 
-struct Double : Literal {
+struct Float : Literal {
     using Rep = double;
     Rep value_;
 

@@ -203,18 +203,18 @@ private:
 };
 
 
-class Double : public ObjectTemplate<Double> {
+class Float : public ObjectTemplate<Float> {
 public:
     using Rep = double;
     using Input = Rep;
 
-    inline Double(Input value) : value_(value)
+    inline Float(Input value) : value_(value)
     {
     }
 
     static constexpr const char* name()
     {
-        return "<Double>";
+        return "<Float>";
     }
 
     inline Rep value() const
@@ -499,7 +499,7 @@ template <typename... Builtins> struct TypeInfoTable {
 };
 
 
-constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Double, Complex, String,
+constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Float, Complex, String,
                         Character, Symbol, RawPointer, Function>
     typeInfoTable;
 

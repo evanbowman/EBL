@@ -21,7 +21,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
         return lhs.cast<T>()->value() == rhs.cast<T>()->value();
     switch (type) {
         LISP_EQ_CASE(Integer);
-        LISP_EQ_CASE(Double);
+        LISP_EQ_CASE(Float);
         LISP_EQ_CASE(String);
         LISP_EQ_CASE(Boolean);
         LISP_EQ_CASE(Complex);

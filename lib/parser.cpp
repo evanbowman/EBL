@@ -60,7 +60,7 @@ ast::Ptr<ast::Literal> parseLiteral(Lexer::Token tok, const std::string& strval)
         return ret;
     }
     case Lexer::Token::FLOAT: {
-        auto ret = make_unique<ast::Double>();
+        auto ret = make_unique<ast::Float>();
         ret->value_ = std::stod(strval);
         return ret;
     }
@@ -158,7 +158,7 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
     }
 
     case Lexer::Token::FLOAT: {
-        auto ret = make_unique<ast::Double>();
+        auto ret = make_unique<ast::Float>();
         ret->value_ = std::stod(lexer.rdbuf());
         return std::move(ret);
     }
@@ -503,7 +503,7 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         }
 
         case Lexer::Token::FLOAT: {
-            auto param = make_unique<ast::Double>();
+            auto param = make_unique<ast::Float>();
             param->value_ = std::stod(lexer.rdbuf());
             apply->args_.push_back(std::move(param));
             break;
