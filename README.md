@@ -1,11 +1,22 @@
 # EB LISP
 
 ## Introduction
-EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. The GC uses a mark-compact algorithm, but the collector is modular and you can override it with your own (in C++). EBL supports first class lexical closures.
+EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. In terms of mutability, data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to certain variables. Variables defined with `def` or `let` are immutable, but you can use `def-mut` or `let-mut` to create mutable bindings. The language intentionally does not support automatic tail call optimization for a number of reasons, but still enables space-efficient manual optimization with the `recur` special form.
 
-This particular lisp dialect enables efficient tail recursion through the `recur` special form (like clojure). I prefer a `recur` keyword to automatic TCO for a number of reasons, foremost that it's explicit and allows recursion in anonomous lambdas.
+#### Implementation status
+- [x] First-class functions and closures
+- [x] Compacting GC
+- [x] Bytecode VM
+- [x] Unicode Chars, and Strings, and Identifiers
+- [x] Complex numbers
+- [x] Eval
+- [x] Basic File I/O
+- [x] Namespaces
+- [x] Docstrings
+- [ ] Filesystem Library
+- [ ] Network Library
+- [ ] Variadic Functions
 
-Mutability: data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to certain variables. Variables defined with `def` or `let` are immutable, but you can use `def-mut` or `let-mut` to create mutable bindings.
 
 #### Builtin unicode
 ```scheme
