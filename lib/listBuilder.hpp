@@ -2,6 +2,7 @@
 
 #include "extlib/optional.hpp"
 #include "extlib/smallVector.hpp"
+#include "persistent.hpp"
 #include "types.hpp"
 
 
@@ -9,20 +10,16 @@ namespace lisp {
 
 class Environment;
 
-// FIXME!!! ListBuilder is no longer memory-safe, and as a result, the
-// GC needs to be temporarily disabled in order to use it. The issue,
-// is that the collector might move the list out from under the
-// builder.
 class ListBuilder {
 public:
     ListBuilder(Environment& env, ObjectPtr first);
-    void pushFront(ObjectPtr value);
+    // void pushFront(ObjectPtr value);
     void pushBack(ObjectPtr value);
     ObjectPtr result();
 
 private:
     Environment& env_;
-    Heap::Ptr<Pair> front_;
+    Persistent<Pair> front_;
     Heap::Ptr<Pair> back_;
 };
 
@@ -31,7 +28,7 @@ private:
 class LazyListBuilder {
 public:
     LazyListBuilder(Environment& env);
-    void pushFront(ObjectPtr value);
+    // void pushFront(ObjectPtr value);
     void pushBack(ObjectPtr value);
     ObjectPtr result();
 

@@ -31,5 +31,5 @@
           (print "*")
           (print " ")))
     (car data-mat))
-   (print std::line-feed))
+   (print std::chars::line-feed))
  (cdr data-mat))

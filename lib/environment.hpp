@@ -97,6 +97,9 @@ namespace ast {
 struct TopLevel;
 }
 
+class PersistentBase;
+
+
 class Context {
 public:
     struct Configuration {
@@ -156,6 +159,11 @@ public:
         return program_;
     }
 
+    PersistentBase*& getPersistentsList()
+    {
+        return persistentsList_;
+    }
+
 private:
     template <typename T, typename... Args>
     Heap::Ptr<T> create(Environment& env, Args&&... args)
@@ -191,6 +199,7 @@ private:
     Bytecode program_;
     std::unique_ptr<GC> collector_;
     CallStack callStack_;
+    PersistentBase* persistentsList_;
 };
 
 template <typename T, typename... Args>

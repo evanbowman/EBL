@@ -140,7 +140,8 @@ Context::Context(const Configuration& config)
                                                   this, nullptr)),
       booleans_{{topLevel_->create<Boolean>(false)},
                 {topLevel_->create<Boolean>(true)}},
-      nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact}
+      nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact},
+      persistentsList_(nullptr)
 {
     initBuiltins(*topLevel_);
     callStack_.push_back({0, 0, topLevel_});

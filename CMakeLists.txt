@@ -22,6 +22,7 @@ project(ebl-lisp)
 add_library(ebl-lisp SHARED
   lib/environment.cpp
   lib/listBuilder.cpp
+  lib/persistent.cpp
   lib/bytecode.cpp
   lib/memory.cpp
   lib/parser.cpp

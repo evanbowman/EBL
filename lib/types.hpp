@@ -58,29 +58,6 @@ public:
 using ObjectPtr = Heap::Ptr<Object>;
 
 
-template <typename T> class Persistent {
-public:
-    Persistent(Heap::Ptr<T> obj) : obj_(obj)
-    {
-        throw std::runtime_error("TODO: implement me!");
-    }
-
-    Persistent(const Persistent&) = delete;
-
-    ~Persistent()
-    {
-    }
-
-    Heap::Ptr<T> get() const
-    {
-        return obj_;
-    }
-
-private:
-    Heap::Ptr<T> obj_;
-};
-
-
 template <typename T> class ObjectTemplate : public Object {
 public:
     ObjectTemplate();

@@ -1,6 +1,7 @@
 #include "gc.hpp"
 #include "environment.hpp"
 #include "memory.hpp"
+#include "persistent.hpp"
 #include <deque>
 #include <set>
 
@@ -49,6 +50,11 @@ void MarkCompact::mark(Environment& env)
     for (auto& obj : env.getContext()->operandStack()) {
         markObject(obj);
     }
+    auto plist = env.getContext()->getPersistentsList();
+    while (plist) {
+        markObject(plist->getUntypedObj());
+        plist = plist->next();
+    }
     env.getBool(true)->mark();
     env.getBool(false)->mark();
     env.getNull()->mark();
@@ -73,7 +79,7 @@ thread_local std::set<Environment*> frameSet;
 static void remapFrame(Environment& frame, const BreakList& breaks)
 {
     for (auto& obj : frame.getVars()) {
-        obj.overwrite(remapObjectAddress(obj.handle(), breaks));
+        obj.UNSAFE_overwrite(remapObjectAddress(obj.handle(), breaks));
     }
 }
 
@@ -93,8 +99,8 @@ static void remapInternalPointers(Object* obj, const BreakList& breaks)
         auto p = (Pair*)obj;
         auto car = p->getCar();
         auto cdr = p->getCdr();
-        car.overwrite(remapObjectAddress(car.handle(), breaks));
-        cdr.overwrite(remapObjectAddress(cdr.handle(), breaks));
+        car.UNSAFE_overwrite(remapObjectAddress(car.handle(), breaks));
+        cdr.UNSAFE_overwrite(remapObjectAddress(cdr.handle(), breaks));
         p->setCar(car);
         p->setCdr(cdr);
     } break;
@@ -102,14 +108,14 @@ static void remapInternalPointers(Object* obj, const BreakList& breaks)
     case typeId<Symbol>(): {
         auto s = (Symbol*)obj;
         auto val = s->value();
-        val.overwrite(remapObjectAddress(val.handle(), breaks));
+        val.UNSAFE_overwrite(remapObjectAddress(val.handle(), breaks));
         s->set(val);
     } break;
 
     case typeId<Function>(): {
         auto f = (Function*)obj;
         auto doc = f->getDocstring();
-        doc.overwrite(remapObjectAddress(doc.handle(), breaks));
+        doc.UNSAFE_overwrite(remapObjectAddress(doc.handle(), breaks));
         f->setDocstring(doc);
         gatherFrames(*f->definitionEnvironment());
         break;
@@ -171,11 +177,19 @@ void MarkCompact::compact(Environment& env, Heap& heap)
     frameSet.clear();
     for (auto& obj : env.getContext()->immediates()) {
         auto target = remapObjectAddress(obj.handle(), breakList);
-        obj.overwrite(target);
+        obj.UNSAFE_overwrite(target);
     }
     for (auto& obj : env.getContext()->operandStack()) {
         auto target = remapObjectAddress(obj.handle(), breakList);
-        obj.overwrite(target);
+        obj.UNSAFE_overwrite(target);
+    }
+    auto plist = env.getContext()->getPersistentsList();
+    while (plist) {
+        auto obj = plist->getUntypedObj();
+        auto target = remapObjectAddress(obj.handle(), breakList);
+        obj.UNSAFE_overwrite(target);
+        plist->UNSAFE_overwrite(obj);
+        plist = plist->next();
     }
 }
 

@@ -130,7 +130,7 @@ public:
     // NOTE: overwrite is meant for the GC to use when moving objects
     // around. If you call this function manually, you could break
     // things.
-    void overwrite(void* val)
+    void UNSAFE_overwrite(void* val)
     {
         handle_ = (HandleType)val;
     }
