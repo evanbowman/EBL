@@ -59,6 +59,13 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             operandStack.push_back(result);
         } break;
 
+        case Opcode::IsNull: {
+            ++ip;
+            auto result = env->getBool(isType<Null>(operandStack.back()));
+            operandStack.pop_back();
+            operandStack.push_back(result);
+        } break;
+
         case Opcode::Call: {
             ++ip;
             auto argc = readParam<uint8_t>(bc, ip);

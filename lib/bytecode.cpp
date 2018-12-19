@@ -158,6 +158,13 @@ void BytecodeBuilder::visit(ast::Application& node)
                 node.args_[0]->visit(*this);
                 writeOp<Opcode::Cdr>(data_);
                 return;
+            } else if (lval->name_ == "null?") {
+                if (node.args_.size() not_eq 1) {
+                    throw std::runtime_error("wrong number of args to null?");
+                }
+                node.args_[0]->visit(*this);
+                writeOp<Opcode::IsNull>(data_);
+                return;
             }
         }
     }

@@ -124,6 +124,14 @@ static const BuiltinFunctionInfo builtins[] = {
      [](Environment& env, const Arguments& args) {
          return checkedCast<Pair>(args[0])->getCdr();
      }},
+    {"list", "[...] -> list containing args", 0,
+     [](Environment& env, const Arguments& args) {
+         LazyListBuilder builder(env);
+         for (auto& arg : args) {
+             builder.pushBack(arg);
+         }
+         return builder.result();
+     }},
     {"symbol", "[string] -> get symbol for string", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          const auto target = checkedCast<String>(args[0]);

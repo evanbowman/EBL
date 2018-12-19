@@ -118,7 +118,8 @@ enum class Opcode : uint8_t {
     // INLINED FUNCTION CALLS
     Cons,
     Car,
-    Cdr
+    Cdr,
+    IsNull
 };
 
 } // namespace lisp
