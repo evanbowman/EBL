@@ -119,7 +119,9 @@ enum class Opcode : uint8_t {
     Cons,
     Car,
     Cdr,
-    IsNull
+    IsNull,
+
+    Count
 };
 
 } // namespace lisp
