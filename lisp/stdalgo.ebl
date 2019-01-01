@@ -22,6 +22,18 @@
            "[list] -> reversed list"
            (reverse-helper lat null))))
 
+  (def flatten
+       (let ((impl (lambda (in out)
+                     (if (pair? in)
+                         (let ((new-out (impl (car in) out)))
+                           (if (null? (cdr in))
+                               new-out
+                               (recur (cdr in) new-out)))
+                         (cons in out)))))
+         (lambda (input)
+           "[input] -> result list S.T. sublists are expanded into input"
+           (std::reverse (impl input null)))))
+
   (def map
        (let ((impl
               (lambda (f lat result)
@@ -84,4 +96,12 @@
                     (recur (cdr from) (cons (car from) to))))))
          (lambda (l1 l2)
            "[l1 l2] -> l2 appended to l1"
-           (append-impl (reverse l1) l2)))))
+           (append-impl (reverse l1) l2))))
+
+  (defn remove (lat q pred)
+    ((lambda (result lat)
+       (cond
+        ((null? lat) result)
+        ((pred (car lat) q) (detail::append-impl result (cdr lat)))
+        (true (recur (cons (car lat) result) (cdr lat)))))
+     null lat)))
