@@ -1,7 +1,7 @@
 # EB LISP
 
 ## Introduction
-EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. In terms of mutability, data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to certain variables. Variables defined with `def` or `let` are immutable, but you can use `def-mut` or `let-mut` to create mutable bindings. The language intentionally does not support automatic tail call optimization for a number of reasons, but still enables space-efficient manual optimization with the `recur` special form.
+EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient (but not yet optimized) bytecode. In terms of mutability, data itself (numbers, lists, strings, etc.) is immutable, but you can rebind new data to certain variables. The language intentionally does not support automatic tail call optimization for a number of reasons, but still enables space-efficient manual optimization with the `recur` special form.
 
 #### Implementation status
 - [x] First-class functions and closures
