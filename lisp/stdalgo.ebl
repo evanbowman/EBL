@@ -88,15 +88,15 @@
             (equal? (car elem) key))
           lat))
 
-  (def append
-       (let ((append-impl
-              (lambda (from to)
-                (if (null? from)
-                    to
-                    (recur (cdr from) (cons (car from) to))))))
-         (lambda (l1 l2)
-           "[l1 l2] -> l2 appended to l1"
-           (append-impl (reverse l1) l2))))
+  (namespace detail
+    (defn append-impl (from to)
+      (if (null? from)
+          to
+          (recur (cdr from) (cons (car from) to)))))
+
+  (defn append (l1 l2)
+    "[l1 l2] -> l2 appended to l1"
+    (detail::append-impl (reverse l1) l2))
 
   (defn remove (lat q pred)
     ((lambda (result lat)
@@ -104,4 +104,11 @@
         ((null? lat) result)
         ((pred (car lat) q) (detail::append-impl result (cdr lat)))
         (true (recur (cons (car lat) result) (cdr lat)))))
-     null lat)))
+     null lat))
+
+  (defn generate (n proc)
+    ((lambda (i result)
+       (if (equal? i 0)
+           (cons (proc 0) result)
+           (recur (- i 1) (cons (proc i) result))))
+     (- n 1) null)))
