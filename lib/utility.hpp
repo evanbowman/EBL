@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <type_traits>
 
+namespace lisp {
+
 template <typename...> struct Index;
 
 template <typename T, typename... R>
@@ -79,4 +81,6 @@ inline size_t utf8Len(const char* data, size_t len)
     size_t ret = 0;
     foreachUtf8Glyph([&ret](const WideChar&) { ++ret; }, data, len);
     return ret;
+}
+
 }

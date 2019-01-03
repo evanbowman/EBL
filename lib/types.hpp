@@ -10,7 +10,9 @@
 #include <tuple>
 #include <vector>
 
-#include "extlib/smallVector.hpp"
+// FIXME!!!
+#include "../extlib/smallVector.hpp"
+
 #include "macros.hpp"
 #include "memory.hpp"
 #include "utility.hpp"
@@ -33,7 +35,7 @@ private:
     } header_;
 
 public:
-    inline Object(TypeId id) : header_{id, 0}
+    inline Object(TypeId id) : header_{id, 0, 0}
     {
     }
     inline TypeId typeId() const
@@ -490,7 +492,7 @@ template <typename... Builtins> struct TypeInfoTable {
         static_assert(sizeof...(Builtins) < std::numeric_limits<TypeId>::max(),
                       "TypeInfoTable parameter count exhausts the range of "
                       "TypeId");
-        return ::Index<T, Builtins...>::value;
+        return ::lisp::Index<T, Builtins...>::value;
     }
     constexpr TypeInfoTable() : table{makeInfo<Builtins>()...}
     {

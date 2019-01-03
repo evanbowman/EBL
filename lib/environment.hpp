@@ -11,7 +11,10 @@
 
 #include "common.hpp"
 #include "dll.hpp"
-#include "extlib/smallVector.hpp"
+
+// FIXME!!!
+#include "../extlib/smallVector.hpp"
+
 #include "gc.hpp"
 #include "memory.hpp"
 #include "types.hpp"
@@ -77,7 +80,7 @@ private:
 
 template <typename T> struct ConstructImpl {
     template <typename... Args>
-    static void construct(T* mem, Environment& env, Args&&... args)
+    static void construct(T* mem, Environment&, Args&&... args)
     {
         new (mem) T{std::forward<Args>(args)...};
     }

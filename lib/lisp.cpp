@@ -132,6 +132,11 @@ static const BuiltinFunctionInfo builtins[] = {
          }
          return builder.result();
      }},
+    {"list-ref", "[list index] -> value at index in list", 2,
+     [](Environment&, const Arguments& args) {
+         return listRef(checkedCast<Pair>(args[0]),
+                        checkedCast<Integer>(args[1])->value());
+     }},
     {"symbol", "[string] -> get symbol for string", 1,
      [](Environment& env, const Arguments& args) -> ObjectPtr {
          const auto target = checkedCast<String>(args[0]);
