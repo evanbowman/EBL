@@ -15,4 +15,4 @@ inline ObjectPtr listRef(Heap::Ptr<Pair> p, size_t index)
     return p->getCar();
 }
 
-}
+} // namespace lisp

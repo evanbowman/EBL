@@ -4,7 +4,7 @@
 (defn mandelbrot (z c iter-depth)
   (if (> iter-depth 0)
       (if (< (abs z) 2.0)
-          (recur (+ (* z z) c) c (- iter-depth 1))
+          (recur (+ (* z z) c) c (decr iter-depth))
           false)
       true))
 

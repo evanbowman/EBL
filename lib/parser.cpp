@@ -436,6 +436,39 @@ ast::Ptr<ast::Let> parseLetMut(Lexer& lexer)
 }
 
 
+ast::Ptr<ast::Lambda> makeDelay(ast::Ptr<ast::Statement> delayed)
+{
+    auto lambda = make_unique<ast::Lambda>();
+    lambda->statements_.push_back(std::move(delayed));
+    return lambda;
+}
+
+
+// TODO: "delay" can be replaced with a macro in lisp code, once I add macros to
+// the parser.
+ast::Ptr<ast::Lambda> parseDelay(Lexer& lexer)
+{
+    auto lambda = makeDelay(parseStatement(lexer));
+    expect<Lexer::Token::RPAREN>(lexer, "in parse delay");
+    return lambda;
+}
+
+
+// TODO: "stream-cons" can be replaced with a macro in lisp code, once I add
+// macros to the parser.
+ast::Ptr<ast::Application> parseStreamCons(Lexer& lexer)
+{
+    auto app = make_unique<ast::Application>();
+    auto cons = make_unique<ast::LValue>();
+    cons->name_ = "cons";
+    app->toApply_ = std::move(cons);
+    app->args_.push_back(parseStatement(lexer));
+    app->args_.push_back(makeDelay(parseStatement(lexer)));
+    expect<Lexer::Token::RPAREN>(lexer, "in parse stream-cons");
+    return app;
+}
+
+
 ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
 {
     auto apply = make_unique<ast::Application>();
@@ -471,6 +504,10 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
             return parseSet(lexer);
         } else if (symb == "recur") {
             return parseRecur(lexer);
+        } else if (symb == "delay") {
+            return parseDelay(lexer);
+        } else if (symb == "stream-cons") {
+            return parseStreamCons(lexer);
         } else {
             apply->toApply_ = parseValue(lexer.rdbuf());
         }

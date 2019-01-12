@@ -59,7 +59,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstddef>
+#include <stddef.h>
 #include <cstdlib>
 #include <cstring>
 #include <iterator>

@@ -32,7 +32,7 @@
                          (cons in out)))))
          (lambda (input)
            "[input] -> result list S.T. sublists are expanded into input"
-           (std::reverse (impl input null)))))
+           (reverse (impl input null)))))
 
   (def map
        (let ((impl
@@ -110,5 +110,5 @@
     ((lambda (i result)
        (if (equal? i 0)
            (cons (proc 0) result)
-           (recur (- i 1) (cons (proc i) result))))
-     (- n 1) null)))
+           (recur (decr i) (cons (proc i) result))))
+     (decr n) null)))

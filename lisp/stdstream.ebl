@@ -1,0 +1,48 @@
+;;;
+;;; Stream library
+;;;
+
+(defn force (delayed-obj)
+  (delayed-obj))
+
+(defn stream-car (stream)
+  (car stream))
+
+(defn stream-cdr (stream)
+  (force (cdr stream)))
+
+(defn stream-null? (stream)
+  (null? stream))
+
+(defn stream-map (proc stream)
+  (if (stream-null? stream)
+      null
+      (stream-cons (proc (stream-car stream))
+                   (stream-map proc (stream-cdr stream)))))
+
+(defn stream-ref (stream n)
+  (if (equal? n 0)
+      (stream-car stream)
+      (recur (stream-cdr stream) (decr n))))
+
+(defn stream-enumerate (low high)
+  (if (> low high)
+      null
+      (stream-cons
+       low
+       (stream-enumerate (incr low) high))))
+
+(defn stream-filter (pred stream)
+  (cond
+   ((stream-null? stream) null)
+   ((pred (stream-car stream))
+    (stream-cons (stream-car stream)
+                 (stream-filter pred
+                                (stream-cdr stream))))
+   (true (stream-filter pred (stream-cdr stream)))))
+
+(defn stream-foreach (proc stream)
+  (if (stream-null? stream)
+      null
+      (begin (proc (stream-car stream))
+             (recur proc (stream-cdr stream)))))

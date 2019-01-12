@@ -11,8 +11,7 @@
            ((lambda (index lat)
               (if (equal? index first)
                   lat
-                  (begin
-                    (def next (- index 1))
+                  (let ((next (decr index)))
                     (recur next (cons (string-ref str next) lat)))))
             last null)))
 
@@ -25,8 +24,8 @@
                result)
            (let ((current (string-ref str index)))
              (if (equal? current delim)
-                 (recur (- index 1) null (cons (apply string partial) result))
-                 (recur (- index 1) (cons current partial) result)))))
+                 (recur (decr index) null (cons (apply string partial) result))
+                 (recur (decr index) (cons current partial) result)))))
      (- (length str) 1) null null))
 
   (defn join (lat delim)

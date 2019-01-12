@@ -1,8 +1,8 @@
 #pragma once
 
 // FIXME!!!
-#include "../extlib/smallVector.hpp"
 #include "../extlib/optional.hpp"
+#include "../extlib/smallVector.hpp"
 
 #include "persistent.hpp"
 #include "types.hpp"
@@ -26,7 +26,9 @@ private:
 };
 
 
-// More overhead, but doesn't require an initial element like ListBuilder
+// More overhead, but doesn't require an initial element like
+// ListBuilder. Note: this does not build LazyLists, the builder is
+// Lazy :)
 class LazyListBuilder {
 public:
     LazyListBuilder(Environment& env);

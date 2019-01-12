@@ -3,6 +3,7 @@
 ;;;
 
 (require "lisp/stdutil.ebl")
+(require "lisp/stdstream.ebl")
 (require "lisp/stdalgo.ebl")
 (require "lisp/stdstr.ebl")
 (require "lisp/stdfs.ebl")

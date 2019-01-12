@@ -253,4 +253,64 @@ size_t Arguments::count() const
     return count_;
 }
 
+Heap::Ptr<Null> Null::clone(Environment& env) const
+{
+    return env.getNull().cast<Null>();
+}
+
+Heap::Ptr<Pair> Pair::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for Pair");
+}
+
+Heap::Ptr<Boolean> Boolean::clone(Environment& env) const
+{
+    return env.getBool(value_).cast<Boolean>();
+}
+
+Heap::Ptr<Integer> Integer::clone(Environment& env) const
+{
+    return env.create<Integer>(value_);
+}
+
+Heap::Ptr<Float> Float::clone(Environment& env) const
+{
+    return env.create<Float>(value_);
+}
+
+Heap::Ptr<Complex> Complex::clone(Environment& env) const
+{
+    return env.create<Complex>(value_);
+}
+
+Heap::Ptr<Character> Character::clone(Environment& env) const
+{
+    return env.create<Character>(value_);
+}
+
+Heap::Ptr<String> String::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for String");
+}
+
+Heap::Ptr<Symbol> Symbol::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for Symbol");
+}
+
+Heap::Ptr<RawPointer> RawPointer::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for RawPointer");
+}
+
+Heap::Ptr<Function> Function::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for Function");
+}
+
+Heap::Ptr<Channel> Channel::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for Channel");
+}
+
 } // namespace lisp
