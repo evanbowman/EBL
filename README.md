@@ -12,7 +12,7 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 - [x] Eval
 - [x] Namespaces
 - [x] Docstrings
-- [ ] Variadic Functions
+- [x] Variadic Functions
 - [ ] Macros
 
 #### Library status

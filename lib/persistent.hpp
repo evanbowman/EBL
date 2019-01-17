@@ -59,6 +59,11 @@ public:
     {
         return obj_.cast<T>();
     }
+
+    void set(Heap::Ptr<T> obj)
+    {
+        obj_ = obj;
+    }
 };
 
 } // namespace lisp

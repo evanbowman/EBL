@@ -118,11 +118,11 @@ static const BuiltinFunctionInfo builtins[] =
           return env.create<Pair>(args[0], args[1]);
       }},
      {"car", "[pair] -> get the first element of pair", 1,
-      [](Environment& env, const Arguments& args) {
+      [](Environment&, const Arguments& args) {
           return checkedCast<Pair>(args[0])->getCar();
       }},
      {"cdr", "[pair] -> get the second element of pair", 1,
-      [](Environment& env, const Arguments& args) {
+      [](Environment&, const Arguments& args) {
           return checkedCast<Pair>(args[0])->getCdr();
       }},
      {"list", "[...] -> list containing args", 0,
@@ -133,17 +133,12 @@ static const BuiltinFunctionInfo builtins[] =
           }
           return builder.result();
       }},
-     {"list-ref", "[list index] -> value at index in list", 2,
-      [](Environment&, const Arguments& args) {
-          return listRef(checkedCast<Pair>(args[0]),
-                         checkedCast<Integer>(args[1])->value());
-      }},
      {"symbol", "[string] -> get symbol for string", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           const auto target = checkedCast<String>(args[0]);
           for (const auto& im : env.getContext()->immediates()) {
               if (isType<Symbol>(im)) {
-                  if (im.cast<Symbol>()->value()->value() == target->value()) {
+                  if (*im.cast<Symbol>()->value() == *target) {
                       return im;
                   }
               }
@@ -152,17 +147,28 @@ static const BuiltinFunctionInfo builtins[] =
           env.getContext()->immediates().push_back(symb);
           return symb;
       }},
-     {"collect-garbage", "[] -> run the gc", 0,
+     {"addr", "", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
+          return env.create<RawPointer>(args[0].handle());
+      }},
+     {"collect-garbage", "[] -> run the gc", 0,
+      [](Environment& env, const Arguments&) -> ObjectPtr {
           env.getContext()->runGC(env);
           return env.getNull();
+      }},
+     {"memory-stats", "[] -> (used-memory . remaining-memory)", 0,
+      [](Environment& env, const Arguments&) -> ObjectPtr {
+          const auto stat = env.getContext()->memoryStat();
+          return env.create<Pair>(
+              env.create<Integer>((Integer::Rep)stat.used_),
+              env.create<Integer>((Integer::Rep)stat.remaining_));
       }},
      {"sizeof", "[obj] -> number of bytes that obj occupies in memory", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Integer>(Integer::Rep(typeInfo(args[0]).size_));
       }},
      {"error", "[string] -> raise error string and terminate", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment&, const Arguments& args) -> ObjectPtr {
           throw std::runtime_error(
               checkedCast<String>(args[0])->value().toAscii());
       }},
@@ -179,6 +185,22 @@ static const BuiltinFunctionInfo builtins[] =
           case typeId<String>():
               return env.create<Integer>(
                   (Integer::Rep)args[0].cast<String>()->value().length());
+          default:
+              throw TypeError(args[0]->typeId(), "invalid type");
+          }
+      }},
+     {"get", "[obj index] -> get element at index in list or string", 2,
+      [](Environment&, const Arguments& args) -> ObjectPtr {
+          switch (args[0]->typeId()) {
+          case typeId<String>():
+              return (
+                  *args[0]
+                       .cast<String>())[checkedCast<Integer>(args[1])->value()];
+
+          case typeId<Pair>():
+              return listRef(args[0].cast<Pair>(),
+                             checkedCast<Integer>(args[1])->value());
+
           default:
               throw TypeError(args[0]->typeId(), "invalid type");
           }
@@ -477,11 +499,6 @@ static const BuiltinFunctionInfo builtins[] =
           const auto imag = checkedCast<Float>(args[1])->value();
           return env.create<Complex>(Complex::Rep(real, imag));
       }},
-     {"string-ref", "[str index] -> character at index in str", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
-          return (*checkedCast<String>(
-              args[0]))[checkedCast<Integer>(args[1])->value()];
-      }},
      {"string", "[...] -> string constructed from all the args", 0,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           std::stringstream builder;
@@ -490,7 +507,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
           return env.create<String>(builder.str());
       }},
-     {"integer", "[string-or-float] -> integer conversion of the input", 1,
+     {"integer", "[obj] -> integer conversion of the input", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           switch (args[0]->typeId()) {
           case typeId<Integer>():
@@ -502,6 +519,10 @@ static const BuiltinFunctionInfo builtins[] =
           case typeId<Float>():
               return env.create<Integer>(
                   Integer::Rep(args[0].cast<Float>()->value()));
+          case typeId<Character>():
+              // FIXME!!!
+              return env.create<Integer>(
+                  Integer::Rep(args[0].cast<Character>()->value()[0]));
           default:
               throw ConversionError(args[0]->typeId(), typeId<Integer>());
           }
@@ -526,7 +547,8 @@ static const BuiltinFunctionInfo builtins[] =
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           const auto val = checkedCast<Integer>(args[0])->value();
           if (val > -127 and val < 127) {
-              return env.create<Character>(Character::Rep{(char)val, 0, 0, 0});
+              return env.create<Character>(
+                  Character::Rep{{(char)val, 0, 0, 0}});
           }
           return env.getNull();
       }},
@@ -561,17 +583,8 @@ void initBuiltins(Environment& env)
                     env.create<String>(info.docstring, strlen(info.docstring));
             }
             auto fn = env.create<Function>(doc, info.requiredArgs, info.impl);
-            env.push(fn);
+            env.setGlobal(info.name, fn);
         });
-}
-
-std::vector<std::string> getBuiltinList()
-{
-    std::vector<std::string> ret;
-    std::for_each(
-        std::begin(builtins), std::end(builtins),
-        [&](const BuiltinFunctionInfo& info) { ret.push_back(info.name); });
-    return ret;
 }
 
 } // namespace lisp

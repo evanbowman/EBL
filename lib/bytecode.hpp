@@ -108,6 +108,7 @@ enum class Opcode : uint8_t {
     PushFalse,            // PUSHFALSE : push the false constant onto the stack
     PushLambda,           // PUSHLAMBDA(u8 argc)
     PushDocumentedLambda, // PUSHDOCUMENTEDLAMBDA(u8 argc, u16 id)
+    PushVariadicLambda,   // PUSHVARIADICLAMBDA(u8 argc)
 
     Discard, // DISCARD : pop the top of the operand stack, i.e. toss out the
              // result of the last expression.

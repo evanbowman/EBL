@@ -23,6 +23,12 @@ Lexer::Token Lexer::lex()
                 }
             }
         case '.':
+            if (position_ + 1 < input_.size()) {
+                if (input_[position_ + 1] == '.') {
+                    inputBuffer_.clear();
+                    goto TOKENIZE_SYMBOL;
+                }
+            }
             position_++;
             return Token::DOT;
         case ' ':

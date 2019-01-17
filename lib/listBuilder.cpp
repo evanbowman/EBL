@@ -10,10 +10,10 @@ ListBuilder::ListBuilder(Environment& env, ObjectPtr first)
 }
 
 
-// void ListBuilder::pushFront(ObjectPtr value)
-// {
-//     front_ = env_.create<Pair>(value, front_);
-// }
+void ListBuilder::pushFront(ObjectPtr value)
+{
+    front_.set(env_.create<Pair>(value, front_.get()));
+}
 
 
 void ListBuilder::pushBack(ObjectPtr value)
@@ -35,10 +35,10 @@ LazyListBuilder::LazyListBuilder(Environment& env) : env_(env)
 }
 
 
-// void LazyListBuilder::pushFront(ObjectPtr value)
-// {
-//     push(value, [&](ListBuilder& builder) { builder.pushFront(value); });
-// }
+void LazyListBuilder::pushFront(ObjectPtr value)
+{
+    push(value, [&](ListBuilder& builder) { builder.pushFront(value); });
+}
 
 
 void LazyListBuilder::pushBack(ObjectPtr value)

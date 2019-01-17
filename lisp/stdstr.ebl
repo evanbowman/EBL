@@ -12,7 +12,7 @@
               (if (equal? index first)
                   lat
                   (let ((next (decr index)))
-                    (recur next (cons (string-ref str next) lat)))))
+                    (recur next (cons (get str next) lat)))))
             last null)))
 
   (defn split (str delim)
@@ -22,7 +22,7 @@
            (if partial
                (cons (apply string partial) result)
                result)
-           (let ((current (string-ref str index)))
+           (let ((current (get str index)))
              (if (equal? current delim)
                  (recur (decr index) null (cons (apply string partial) result))
                  (recur (decr index) (cons current partial) result)))))

@@ -15,7 +15,7 @@ class Environment;
 class ListBuilder {
 public:
     ListBuilder(Environment& env, ObjectPtr first);
-    // void pushFront(ObjectPtr value);
+    void pushFront(ObjectPtr value);
     void pushBack(ObjectPtr value);
     ObjectPtr result();
 
@@ -32,7 +32,7 @@ private:
 class LazyListBuilder {
 public:
     LazyListBuilder(Environment& env);
-    // void pushFront(ObjectPtr value);
+    void pushFront(ObjectPtr value);
     void pushBack(ObjectPtr value);
     ObjectPtr result();
 

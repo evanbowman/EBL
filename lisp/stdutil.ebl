@@ -7,7 +7,10 @@
   (namespace chars
     (def line-feed (character 10))
     (def l-paren (character 40))
-    (def r-paren (character 41)))
+    (def r-paren (character 41))
+    (def l-brace (character 91))
+    (def r-brace (character 93))
+    (def space (character 32)))
 
   (defn identity (x) "[x] -> x" x)
 

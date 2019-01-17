@@ -94,7 +94,6 @@ template <> struct ConstructImpl<Function> {
     }
 };
 
-std::vector<std::string> getBuiltinList();
 
 namespace ast {
 struct TopLevel;
@@ -165,6 +164,16 @@ public:
     PersistentBase*& getPersistentsList()
     {
         return persistentsList_;
+    }
+
+    struct MemoryStat {
+        size_t used_;
+        size_t remaining_;
+    };
+
+    MemoryStat memoryStat() const
+    {
+        return {heap_.size(), heap_.capacity() - heap_.size()};
     }
 
 private:

@@ -143,6 +143,7 @@ Context::Context(const Configuration& config)
       nullValue_{topLevel_->create<Null>()}, collector_{new MarkCompact},
       persistentsList_(nullptr)
 {
+    topLevel_->exec("");
     initBuiltins(*topLevel_);
     callStack_.push_back({0, 0, topLevel_});
     topLevel_->exec(onloads);

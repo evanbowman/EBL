@@ -1,6 +1,9 @@
 #include "vm.hpp"
 #include "bytecode.hpp"
 #include "environment.hpp"
+#include "listBuilder.hpp"
+#include "persistent.hpp"
+
 
 namespace lisp {
 
@@ -36,13 +39,34 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
     size_t ip = start;
 #ifndef NO_DIRECT_THREADING
     static const std::array<void*, (uint8_t)Opcode::Count> labels = {
-        &&Exit,     &&Call,        &&Return,     &&Recur,
-        &&Jump,     &&JumpIfFalse, &&Load,       &&Load0,
-        &&Load1,    &&Load2,       &&Load0Fast,  &&Load1Fast,
-        &&Store,    &&Rebind,      &&PushI,      &&PushNull,
-        &&PushTrue, &&PushFalse,   &&PushLambda, &&PushDocumentedLambda,
-        &&Discard,  &&EnterLet,    &&ExitLet,    &&Cons,
-        &&Car,      &&Cdr,         &&IsNull};
+        &&Exit,
+        &&Call,
+        &&Return,
+        &&Recur,
+        &&Jump,
+        &&JumpIfFalse,
+        &&Load,
+        &&Load0,
+        &&Load1,
+        &&Load2,
+        &&Load0Fast,
+        &&Load1Fast,
+        &&Store,
+        &&Rebind,
+        &&PushI,
+        &&PushNull,
+        &&PushTrue,
+        &&PushFalse,
+        &&PushLambda,
+        &&PushDocumentedLambda,
+        &&PushVariadicLambda,
+        &&Discard,
+        &&EnterLet,
+        &&ExitLet,
+        &&Cons,
+        &&Car,
+        &&Cdr,
+        &&IsNull};
 #define VM_DISPATCH_BEGIN() goto* labels[bc[ip]];
 #define VM_DISPATCH_END() ;
 #define VM_BLOCK_BEGIN(IDENTIFIER)                                             \
@@ -115,19 +139,19 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
         auto argc = readParam<uint8_t>(bc, ip);
         auto target = operandStack.back();
         auto fn = checkedCast<Function>(target);
-        if (auto addr = fn->getBytecodeAddress()) {
+        switch (fn->getInvocationModel()) {
+        case Function::InvocationModel::Bytecode: {
+            const auto addr = fn->getBytecodeAddress();
             if (UNLIKELY(argc not_eq fn->argCount())) {
-                if (argc < fn->argCount()) {
-                    throw std::runtime_error("too few arguments");
-                } else if (argc > fn->argCount()) {
-                    throw std::runtime_error("too many arguments");
-                }
+                throw std::runtime_error("wrong number of arguments");
             }
             operandStack.pop_back();
             env = fn->definitionEnvironment()->derive();
             callStack.push_back({ip, addr, env});
             ip = addr;
-        } else {
+        } break;
+
+        case Function::InvocationModel::Wrapped: {
             auto result = env->getNull();
             {
                 Arguments args(*env, argc);
@@ -135,6 +159,27 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
                 result = fn->directCall(args);
             }
             operandStack.push_back(result);
+        } break;
+
+        case Function::InvocationModel::BytecodeVariadic: {
+            const auto addr = fn->getBytecodeAddress();
+            Persistent<Function> toCall(*env, fn);
+            operandStack.pop_back();
+            if (UNLIKELY(argc < fn->argCount())) {
+                throw std::runtime_error("insufficient arguments to VA fn");
+            }
+            {
+                LazyListBuilder builder(*env);
+                for (size_t i = 0; i < argc - (fn->argCount() - 1); ++i) {
+                    builder.pushFront(operandStack.back());
+                    operandStack.pop_back();
+                }
+                operandStack.push_back(builder.result());
+            }
+            env = toCall.get()->definitionEnvironment()->derive();
+            callStack.push_back({ip, addr, env});
+            ip = addr;
+        } break;
         }
     }
     VM_BLOCK_END();
@@ -290,6 +335,18 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
         auto argc = readParam<uint8_t>(bc, ip);
         const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
         auto lambda = env->create<Function>(env->getNull(), (size_t)argc, addr);
+        operandStack.push_back(lambda);
+    }
+    VM_BLOCK_END();
+
+
+    VM_BLOCK_BEGIN(PushVariadicLambda)
+    {
+        ++ip;
+        auto argc = readParam<uint8_t>(bc, ip);
+        const size_t addr = ip + sizeof(Opcode::Jump) + sizeof(uint16_t);
+        auto lambda =
+            env->create<Function>(env->getNull(), (size_t)argc, addr, true);
         operandStack.push_back(lambda);
     }
     VM_BLOCK_END();

@@ -36,7 +36,8 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
 
 ObjectPtr Function::call(Arguments& params)
 {
-    if (bytecodeAddress_) {
+    switch (model_) {
+    case InvocationModel::Bytecode: {
         if (UNLIKELY(params.count() != requiredArgs_)) {
             throw std::runtime_error("wrong number of args");
         }
@@ -52,28 +53,52 @@ ObjectPtr Function::call(Arguments& params)
         ctx->operandStack().pop_back();
         params.consumed();
         return ret;
+    } break;
+
+    case InvocationModel::BytecodeVariadic:
+        throw std::runtime_error("TODO: support VA calls from native code");
+
+    case InvocationModel::Wrapped: {
+        if (UNLIKELY(params.count() < requiredArgs_)) {
+            throw InvalidArgumentError("too few args, expected " +
+                                       std::to_string(requiredArgs_) + " got " +
+                                       std::to_string(params.count()));
+        }
+        return (*nativeFn_)(*envPtr_, params);
+    } break;
     }
-    if (params.count() < requiredArgs_) {
-        throw InvalidArgumentError("too few args, expected " +
-                                   std::to_string(requiredArgs_) + " got " +
-                                   std::to_string(params.count()));
-    }
-    return (*nativeFn_)(*envPtr_, params);
 }
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    CFunction impl)
-    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(impl),
-      bytecodeAddress_(0), envPtr_(env.reference())
+    : model_(InvocationModel::Wrapped), docstring_(docstring),
+      requiredArgs_(requiredArgs), nativeFn_(impl), bytecodeAddress_(0),
+      envPtr_(env.reference())
 {
 }
 
 Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
                    size_t bytecodeAddress)
-    : docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(),
+    : model_(InvocationModel::Bytecode), docstring_(docstring),
+      requiredArgs_(requiredArgs), nativeFn_(),
       bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
 {
 }
+
+Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+                   size_t bytecodeAddress, bool variadic)
+    : model_([variadic] {
+          if (variadic) {
+              return InvocationModel::BytecodeVariadic;
+          } else {
+              return InvocationModel::Bytecode;
+          }
+      }()),
+      docstring_(docstring), requiredArgs_(requiredArgs), nativeFn_(),
+      bytecodeAddress_(bytecodeAddress), envPtr_(env.reference())
+{
+}
+
 
 TypeError::TypeError(TypeId t, const std::string& reason)
     : std::runtime_error(std::string("for type ") + typeInfoTable[t].name_ +
@@ -306,11 +331,6 @@ Heap::Ptr<RawPointer> RawPointer::clone(Environment& env) const
 Heap::Ptr<Function> Function::clone(Environment& env) const
 {
     throw std::runtime_error("Deep clone unimplemented for Function");
-}
-
-Heap::Ptr<Channel> Channel::clone(Environment& env) const
-{
-    throw std::runtime_error("Deep clone unimplemented for Channel");
 }
 
 } // namespace lisp

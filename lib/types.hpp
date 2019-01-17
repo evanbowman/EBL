@@ -383,21 +383,6 @@ private:
 };
 
 
-class Channel : public ObjectTemplate<Channel> {
-public:
-    inline Channel()
-    {
-    }
-
-    static constexpr const char* name()
-    {
-        return "<Channel>";
-    }
-
-    Heap::Ptr<Channel> clone(Environment& env) const;
-};
-
-
 // IMPORTANT: You should not associate multiple Arguments with the same
 // environment at the same time, and doing so is undefined behavior. In terms of
 // implementation, Arguments is an adaptor that places the inputs onto the
@@ -444,6 +429,9 @@ public:
 
     Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
              size_t bytecodeAddress);
+
+    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+             size_t bytecodeAddress, bool variadic);
 
     static constexpr const char* name()
     {
@@ -495,7 +483,15 @@ public:
 
     Heap::Ptr<Function> clone(Environment& env) const;
 
+    enum InvocationModel { Wrapped, Bytecode, BytecodeVariadic };
+
+    InvocationModel getInvocationModel() const
+    {
+        return model_;
+    }
+
 private:
+    InvocationModel model_;
     ObjectPtr docstring_;
     size_t requiredArgs_;
     CFunction nativeFn_;
@@ -544,7 +540,7 @@ template <typename... Builtins> struct TypeInfoTable {
 
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Float, Complex, String,
-                        Character, Symbol, RawPointer, Function, Channel>
+                        Character, Symbol, RawPointer, Function>
     typeInfoTable;
 
 

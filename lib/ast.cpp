@@ -395,10 +395,10 @@ void Set::init(Environment& env, Scope& scope)
 void TopLevel::init(Environment& env, Scope& scope)
 {
     // The builtin functions wouldn't be visible to the compiler otherwise.
-    const auto names = getBuiltinList();
-    for (auto& name : names) {
-        scope.insert(name);
-    }
+    // const auto names = getBuiltinList();
+    // for (auto& name : names) {
+    //     scope.insert(name);
+    // }
     Begin::init(env, scope);
 }
 

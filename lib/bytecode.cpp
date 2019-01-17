@@ -125,8 +125,36 @@ void BytecodeBuilder::visit(ast::Lambda& node)
 
 void BytecodeBuilder::visit(ast::VariadicLambda& node)
 {
-    throw std::runtime_error("unimplemented");
+    // FIXME: This is mostly a shameless copy-paste, refactor!
     fnContexts.push_back({0});
+    assert(node.argNames_.size() < 256);
+    if (node.docstring_.empty()) {
+        writeOp<Opcode::PushVariadicLambda>(data_);
+        data_.push_back((uint8_t)node.argNames_.size());
+    } else {
+        throw std::runtime_error("TODO: documentedVariadicLambda");
+        writeOp<Opcode::PushDocumentedLambda>(data_);
+        data_.push_back((uint8_t)node.argNames_.size());
+        writeParam(data_, node.cachedDocstringLoc_);
+    }
+    writeOp<Opcode::Jump>(data_);
+    size_t jumpLoc = data_.size();
+    writeParam(data_, (uint16_t)0);
+    for (size_t i = 0; i < node.argNames_.size(); ++i) {
+        writeOp<Opcode::Store>(data_);
+    }
+    for (auto& statement : node.statements_) {
+        statement->visit(*this);
+        writeOp<Opcode::Discard>(data_);
+    }
+    data_.pop_back();
+    writeOp<Opcode::Return>(data_);
+    uint16_t* jumpOffset = (uint16_t*)(&data_[jumpLoc]);
+    const size_t offset = (data_.size() - 2) - jumpLoc;
+    if (offset > std::numeric_limits<uint16_t>::max()) {
+        throw std::runtime_error("jump offset exceeds allowed size");
+    }
+    *jumpOffset = offset;
     fnContexts.pop_back();
 }
 
