@@ -7,17 +7,20 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 - [x] First-class functions and closures
 - [x] Compacting GC
 - [x] Bytecode VM
-- [x] Streams
 - [x] Unicode Chars, and Strings, and Identifiers
 - [x] Complex numbers
 - [x] Eval
-- [x] Basic File I/O
 - [x] Namespaces
 - [x] Docstrings
-- [ ] Filesystem Library
-- [ ] Network Library
 - [ ] Variadic Functions
 - [ ] Macros
+
+#### Library status
+- [x] Basic File I/O
+- [x] Streams
+- [x] JSON
+- [ ] Filesystem Library
+- [ ] Network Library
 
 #### Builtin unicode
 ```scheme
@@ -29,18 +32,16 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 
 #### Namespaces
 ```scheme
-(namespace math
-  (defn clamp (x lower upper)
-    (cond
-     ((< x lower) lower)
-     ((> x upper) upper)
-     (true x)))
+(namespace example
+  (defn f1 ()
+    1)
 
-  (defn smoothstep (edge0 edge1 x)
-    (let ((clamped (clamp (/ (- x edge0) (- edge1 edge0)) 0.0 1.0)))
-      (* clamped clamped (- 3.0 (* clamped 2.0))))))
+  (defn f2 ()
+    ;; Within a namespace, you can reference other variables directly
+    (f1)))
 
-(math::smoothstep 0.0 100.0 25.0) ;; 0.15625
+;; Outside the namespace, use the double-colon to refer to functions
+(example::f2) ;; 1
 ```
 
 #### Strings
