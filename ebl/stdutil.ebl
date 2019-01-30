@@ -1,0 +1,39 @@
+;;;
+;;; Misc. utilities
+;;;
+
+
+(namespace std
+  (namespace chars
+    (def line-feed (character 10))
+    (def l-paren (character 40))
+    (def r-paren (character 41))
+    (def l-brace (character 91))
+    (def r-brace (character 93))
+    (def space (character 32))
+    (def tab (character 9)))
+
+  (defn identity (x) "[x] -> x" x)
+
+  (defn negate (proc)
+    (lambda (...)
+      (not (apply proc ...))))
+
+  (defn curry (proc)
+    (let ((proc-arity (arity proc)))
+      (let ((get-rest
+             (lambda (n collected)
+               (if (equal? n proc-arity)
+                   (apply proc collected)
+                   (lambda (x)
+                     (get-rest (incr n) (cons x collected)))))))
+        (lambda (x)
+          (get-rest 1 (cons x null))))))
+
+  (defn println (...)
+    (apply print ...)
+    (print chars::line-feed))
+
+  ;; FIXME! Tokenizing negative numbers is broken right now, because '-', with
+  ;; nothing after it, has to also be a valid lvalue.
+  (def -1 (- 0 1)))

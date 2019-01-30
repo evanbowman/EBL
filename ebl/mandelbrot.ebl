@@ -1,0 +1,35 @@
+(require "ebl/stdlib.ebl")
+
+
+(defn mandelbrot (z c iter-depth)
+  (if (> iter-depth 0)
+      (if (< (abs z) 2.0)
+          (recur (+ (* z z) c) c (decr iter-depth))
+          false)
+      true))
+
+(def make-matrix
+     (let ((x-coeff (/ 3.5 100.0))
+           (y-coeff (/ 2.0 50.0)))
+       (lambda (xl yl n)
+         (if (< n 1)
+             (cons xl yl)
+             (begin
+               (def list-x (cons (- 1.0 (* n x-coeff)) xl))
+               (def list-y (if (< n 50)
+                               (cons (- 1.0 (* n y-coeff)) yl)
+                               yl))
+               (recur list-x list-y (- n 1)))))))
+
+(def data-mat (make-matrix null null 100))
+
+(std::dolist
+ (lambda (i)
+   (std::dolist
+    (lambda (r)
+      (if (mandelbrot (complex 0.0 0.0) (complex r i) 500)
+          (print "*")
+          (print " ")))
+    (car data-mat))
+   (print std::chars::line-feed))
+ (cdr data-mat))

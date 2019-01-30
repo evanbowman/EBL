@@ -17,24 +17,24 @@ include_directories(./)
 
 
 # The lisp runtime library.
-project(ebl-lisp)
+project(ebl-runtime)
 
-add_library(ebl-lisp SHARED
-  lib/environment.cpp
-  lib/listBuilder.cpp
-  lib/persistent.cpp
-  lib/bytecode.cpp
-  lib/memory.cpp
-  lib/parser.cpp
-  lib/types.cpp
-  lib/lexer.cpp
-  lib/lisp.cpp
-  lib/ast.cpp
-  lib/dll.cpp
-  lib/gc.cpp
-  lib/vm.cpp)
+add_library(ebl-runtime SHARED
+  runtime/environment.cpp
+  runtime/listBuilder.cpp
+  runtime/persistent.cpp
+  runtime/builtins.cpp
+  runtime/bytecode.cpp
+  runtime/memory.cpp
+  runtime/parser.cpp
+  runtime/types.cpp
+  runtime/lexer.cpp
+  runtime/ast.cpp
+  runtime/dll.cpp
+  runtime/gc.cpp
+  runtime/vm.cpp)
 
-target_link_libraries(ebl-lisp
+target_link_libraries(ebl-runtime
   dl)
 
 
@@ -43,7 +43,7 @@ add_executable(ebl-repl
   tools/repl.cpp)
 
 target_link_libraries(ebl-repl
-  ebl-lisp)
+  ebl-runtime)
 
 
 # Execute a script file.
@@ -51,7 +51,7 @@ add_executable(ebl-dofile
   tools/dofile.cpp)
 
 target_link_libraries(ebl-dofile
-  ebl-lisp)
+  ebl-runtime)
 
 # Run the unit tests
 # add_custom_command(TARGET ebl-dofile POST_BUILD
@@ -60,9 +60,13 @@ target_link_libraries(ebl-dofile
 
 # Build extensions
 add_library(fs SHARED dll/fs.cpp)
-target_link_libraries(fs ebl-lisp)
+target_link_libraries(fs ebl-runtime)
 set_target_properties(fs PROPERTIES SUFFIX "")
 
 add_library(sys SHARED dll/sys.cpp)
-target_link_libraries(sys ebl-lisp)
+target_link_libraries(sys ebl-runtime)
 set_target_properties(sys PROPERTIES SUFFIX "")
+
+add_library(debug SHARED dll/debug.cpp)
+target_link_libraries(debug ebl-runtime)
+set_target_properties(debug PROPERTIES SUFFIX "")

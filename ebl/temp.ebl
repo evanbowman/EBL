@@ -1,0 +1,14 @@
+
+(def require
+     (let ((loaded null))
+       (lambda (fname)
+         (def found false)
+         (dolist (lambda (l)
+                   (if (equal? l fname)
+                       (set found true)))
+                 loaded)
+         (if (not found)
+             (begin
+               (let ((up (load fname)))
+                 (set loaded (cons fname loaded))
+                 up))))))

@@ -1,0 +1,26 @@
+;;;
+;;; Proc for functional currying
+;;;
+
+(require "ebl/stdalgo.ebl")
+
+(namespace std
+  (defn curry (proc)
+    "[proc] -> curried proc"
+    (def proc-arity (arity proc))
+    (cond
+     ((equal? proc-arity 0)
+      (error "curried function with zero arity makes little sense"))
+     ((equal? proc-arity 1)
+      (lambda (x) (proc x)))
+     (true
+      (let ((get-rest
+             (lambda (n collected)
+               (if (equal? n proc-arity)
+                   (apply proc (reverse collected))
+                   (lambda (x)
+                     (get-rest (incr n) (cons x collected)))))))
+        (lambda (x)
+          (if (equal? proc-arity 1)
+              (proc x)
+              (get-rest 1 (cons x null)))))))))

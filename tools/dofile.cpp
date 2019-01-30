@@ -2,7 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <chrono>
-#include "lib/lisp.hpp"
+#include "runtime/ebl.hpp"
 
 
 int main(int argc, char** argv)
@@ -10,7 +10,7 @@ int main(int argc, char** argv)
     if (argc != 2) {
         std::cout << "usage: dofile <fname>" << std::endl;
     }
-    lisp::Context context;
+    ebl::Context context;
     auto& env = context.topLevel();
     std::ifstream t(argv[1]);
     std::stringstream buffer;

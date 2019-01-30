@@ -1,0 +1,29 @@
+;;;
+;;; A few functions, including 'require', ship with the runtime, so that they're
+;;; always available. A script, format-onloads.ebl, will convert the file to a C
+;;; string literal, to be included by the VM during compilation.
+;;;
+
+(namespace std
+  (defn some (pred lat)
+    (if (null? lat)
+        false
+        (if (pred (car lat))
+            (car lat)
+            (recur pred (cdr lat))))))
+
+(def require
+     ((lambda ()
+        (def-mut required-set null)
+        (lambda (file-name)
+          (let ((found (std::some (lambda (n)
+                                    (equal? n file-name)) required-set)))
+            (if found
+                null
+                (begin
+                  (load file-name)
+                  (set required-set (cons file-name required-set)))))))))
+
+(defn list (...)
+  "[...] -> list containing the arguments"
+  ...)

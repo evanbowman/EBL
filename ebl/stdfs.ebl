@@ -1,0 +1,28 @@
+;;;
+;;; Filesystem procedures
+;;;
+;;; Part of the filesystem module is imported from a DLL, see fs.cpp
+;;;
+
+(require "ebl/stdalgo.ebl")
+
+(namespace fs
+  (defn map-lines (f file-name)
+    "[f file-name] -> result similar to std::map, but for lines of a file"
+    (open file-name "r"
+          (lambda (file)
+            ((lambda (result)
+               (def line (getline file))
+               (if (not line)
+                   (std::reverse result)
+                   (recur (cons (f line) result))))
+             null))))
+
+  (defn open* (lat receiver)
+    (defn impl (lat files)
+      (if (null? lat)
+          (apply receiver (std::reverse files))
+          (open (car (car lat)) (cdr (car lat))
+                (lambda (file)
+                  (impl (cdr lat) (cons file files))))))
+    (impl lat null)))

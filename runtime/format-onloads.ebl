@@ -1,0 +1,16 @@
+(require "ebl/stdfs.ebl")
+
+(def lf (character 10))
+(def quot (character 34))
+
+(fs::open* '(("lib/onload-stub.ebl" . "r")
+             ("lib/onloads.hpp" . "w"))
+           (lambda (stub-file out-file)
+             (fs::write out-file "static const char* onloads =" lf)
+             ((lambda ()
+                (def line (fs::getline stub-file))
+                (if line
+                    (begin
+                      (fs::write out-file quot line "\n" quot lf)
+                      (recur))
+                    (fs::write out-file ";"))))))
