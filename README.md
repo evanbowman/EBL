@@ -28,4 +28,4 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 For Emacs users, there's a hack of scheme-mode in the emacs/ directory that highlights EBL keywords
 
 ## Further Reading
-For more examples, see the code in the lisp/ directory. The standard library in file stdlib.ebl is a good place to start, and there's another example in mandelbrot.lisp, which computes mandelbrot sets.
+For more examples, see the code in the ebl/ directory. The standard library in file stdlib.ebl is a good place to start, and there's another example in mandelbrot.ebl, which computes mandelbrot sets.
