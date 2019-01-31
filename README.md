@@ -1,7 +1,7 @@
 # EB LISP
 
 ## Introduction
-EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient bytecode. Language specification.
+EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient bytecode.
 
 #### Implementation status
 - [x] First-class functions and closures
