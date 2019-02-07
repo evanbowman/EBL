@@ -24,6 +24,4 @@
                   (load file-name)
                   (set required-set (cons file-name required-set)))))))))
 
-(defn list (...)
-  "[...] -> list containing the arguments"
-  ...)
+(defn list (...) ...)
