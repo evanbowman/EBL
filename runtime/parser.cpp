@@ -577,7 +577,7 @@ ast::Ptr<ast::Expr> parseExpr(Lexer& lexer)
         }
     }
 DONE:
-    return apply;
+    return std::move(apply);
 }
 
 ast::Ptr<ast::TopLevel> parse(const std::string& code)
