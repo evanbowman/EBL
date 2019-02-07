@@ -47,22 +47,22 @@ ast::Ptr<ast::Literal> parseLiteral(Lexer::Token tok, const std::string& strval)
     case Lexer::Token::INTEGER: {
         auto ret = make_unique<ast::Integer>();
         ret->value_ = std::stoi(strval);
-        return ret;
+        return std::move(ret);
     }
     case Lexer::Token::SYMBOL: {
         auto ret = make_unique<ast::Symbol>();
         ret->value_ = strval;
-        return ret;
+        return std::move(ret);
     }
     case Lexer::Token::STRING: {
         auto ret = make_unique<ast::String>();
         ret->value_ = strval;
-        return ret;
+        return std::move(ret);
     }
     case Lexer::Token::FLOAT: {
         auto ret = make_unique<ast::Float>();
         ret->value_ = std::stod(strval);
-        return ret;
+        return std::move(ret);
     }
     default:
         throw std::runtime_error("invalid literal");
@@ -181,7 +181,7 @@ ast::Ptr<ast::Statement> parseStatement(Lexer& lexer)
         for (size_t i = 0; i < lexer.rdbuf().length(); ++i) {
             ret->value_[i] = lexer.rdbuf()[i];
         }
-        return ret;
+        return std::move(ret);
     }
 
     default:
