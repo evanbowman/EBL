@@ -1,3 +1,5 @@
+(require "ebl/stdfs.ebl")
+(require "ebl/stdstr.ebl")
 
 (namespace csv
   (defn read (file-name)
