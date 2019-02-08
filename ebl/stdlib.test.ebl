@@ -1,0 +1,34 @@
+(require "ebl/unit-test.ebl")
+(require "ebl/stdalgo.ebl")
+
+(namespace unit
+  (def dataset (list 1 2 3 4))
+
+  (test-case "reverse"
+             (lambda (assert)
+               (def result (std::reverse dataset))
+               (assert "result head does not equal source tail"
+                       (lambda ()
+                         (equal? (car result) 4)))
+               (assert "result tail does not equal source head"
+                       (lambda ()
+                         (equal? (car (cdr (cdr (cdr result)))) 1)))))
+
+  (test-case "flatten"
+             (lambda (assert)
+               (assert "result list checksum invalid"
+                       (lambda ()
+                         (equal? 30
+                                 (apply + (std::flatten (list dataset
+                                                              dataset
+                                                              dataset))))))))
+
+  (test-case "map"
+             (lambda (assert)
+               (let ((result (std::map incr dataset)))
+                 (assert "result length invalid"
+                         (lambda ()
+                           (equal? (length result) 4)))
+                 (assert "result checksum invalid"
+                         (lambda ()
+                           (equal? (apply + result) 14)))))))

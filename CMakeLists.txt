@@ -54,9 +54,11 @@ target_link_libraries(ebl-dofile
   ebl-runtime)
 
 # Run the unit tests
-# add_custom_command(TARGET ebl-dofile POST_BUILD
-#   COMMAND ./ebl-dofile lisp/unit-test.lisp)
-
+file(GLOB UNIT_TESTS "ebl/*.test.ebl")
+foreach(TEST ${UNIT_TESTS})
+  add_custom_command(TARGET ebl-dofile POST_BUILD
+    COMMAND ./ebl-dofile ${TEST})
+endforeach()
 
 # Build extensions
 add_library(fs SHARED dll/fs.cpp)

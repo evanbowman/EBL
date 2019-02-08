@@ -1,0 +1,16 @@
+(require "ebl/unit-test.ebl")
+
+(namespace unit
+  (test-case "closures"
+             (lambda (assert)
+               (def c (let-mut ((a 0))
+                        (lambda ()
+                          (set a (incr a))
+                          a)))
+               (c)
+               (c)
+               (c)
+               (let ((result (c)))
+                 (assert "broken closures"
+                         (lambda ()
+                           (equal? result 4)))))))
