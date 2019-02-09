@@ -1,2 +1,2 @@
 language: c++
-script: cmake . && make
+script: export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./ && cmake . && make
