@@ -23,6 +23,22 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 - [ ] Filesystem Library
 - [ ] Network Library
 
+## Example
+EBL is just as powerful as any other lisp, e.g. here's a recursive factorial computed from a y-combinator, without any direct recursion or local variables.
+```scheme
+(((lambda (f)
+    ((lambda (g)
+       (g g))
+     (lambda (g)
+       (f (lambda (...)
+            (apply (g g) ...))))))
+  (lambda (fact)
+    (lambda (n)
+      (if (equal? n 0)
+          1
+          (* n (fact (- n 1)))))))
+ 12)
+```
 
 ## Syntax Highlighting
 For Emacs users, there's a hack of scheme-mode in the emacs/ directory that highlights EBL keywords
