@@ -4,7 +4,7 @@
 EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient bytecode.
 
 #### Implementation status
-- [x] First-class functions and closures
+- [x] [First-class functions and closures ](#S-closures)
 - [x] Compacting GC
 - [x] Bytecode VM
 - [x] Unicode Chars, and Strings, and Identifiers
@@ -22,6 +22,9 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 - [x] JSON
 - [ ] Filesystem Library
 - [ ] Network Library
+
+## <a name="S-closures"></a>Closures
+
 
 ## Example
 EBL is just as powerful as any other lisp, e.g. here's a recursive factorial computed from a y-combinator, without any direct recursion or local variables.
