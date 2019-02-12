@@ -24,12 +24,18 @@ public:
     {
         return next_;
     }
+
     PersistentBase* prev() const
     {
         return prev_;
     }
 
     ObjectPtr getUntypedObj() const
+    {
+        return obj_;
+    }
+
+    operator ObjectPtr()
     {
         return obj_;
     }
@@ -54,15 +60,27 @@ public:
     using PersistentBase::PersistentBase;
 
     Persistent(const Persistent&) = delete;
+    Persistent& operator=(const Persistent&) = delete;
 
-    Heap::Ptr<T> get() const
-    {
-        return obj_.cast<T>();
-    }
-
-    void set(Heap::Ptr<T> obj)
+    Persistent& operator=(Heap::Ptr<T> obj)
     {
         obj_ = obj;
+        return *this;
+    }
+
+    T& operator*() const
+    {
+        return *obj_.cast<T>().get();
+    }
+
+    T* operator->() const
+    {
+        return obj_.cast<T>().get();
+    }
+
+    operator Heap::Ptr<T>()
+    {
+        return obj_.cast<T>();
     }
 };
 

@@ -176,7 +176,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
                 }
                 operandStack.push_back(builder.result());
             }
-            env = toCall.get()->definitionEnvironment()->derive();
+            env = toCall->definitionEnvironment()->derive();
             callStack.push_back({ip, addr, env});
             ip = addr;
         } break;

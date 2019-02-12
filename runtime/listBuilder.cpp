@@ -5,14 +5,14 @@ namespace ebl {
 
 ListBuilder::ListBuilder(Environment& env, ObjectPtr first)
     : env_(env), front_(env, env.create<Pair>(first, env.getNull())),
-      back_(front_.get())
+      back_((Heap::Ptr<Pair>)front_)
 {
 }
 
 
 void ListBuilder::pushFront(ObjectPtr value)
 {
-    front_.set(env_.create<Pair>(value, front_.get()));
+    front_ = env_.create<Pair>(value, (Heap::Ptr<Pair>)front_);
 }
 
 
@@ -26,7 +26,7 @@ void ListBuilder::pushBack(ObjectPtr value)
 
 ObjectPtr ListBuilder::result()
 {
-    return front_.get();
+    return (Heap::Ptr<Pair>)front_;
 }
 
 

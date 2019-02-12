@@ -11,17 +11,18 @@
 
 namespace ebl {
 
-// FIXME: dolist isn't memory safe right now. Anything that causes an
-// allocation of lisp objects could trigger the GC, and possibly move
-// the list out from under our feet! So until it's fixed, don't use
-// Environment::create or call any lisp functions from here.
-template <typename Proc> void dolist(ObjectPtr list, Proc&& proc)
+template <typename Proc> void dolist(Environment& env,
+                                     ObjectPtr list,
+                                     Proc&& proc)
 {
-    Heap::Ptr<Pair> current = checkedCast<Pair>(list);
-    proc(current->getCar());
+    Persistent<Pair> current(env, checkedCast<Pair>(list));
+    Persistent<Object> car(env, env.getNull());
+    car = current->getCar();
+    proc(car);
     while (not isType<Null>(current->getCdr())) {
         current = checkedCast<Pair>(current->getCdr());
-        proc(current->getCar());
+        car = current->getCar();
+        proc(car);
     }
 }
 
@@ -142,7 +143,7 @@ static const BuiltinFunctionInfo builtins[] =
           case typeId<Pair>(): {
               Integer::Rep length = 0;
               if (not isType<Null>(args[0])) {
-                  dolist(args[0], [&](ObjectPtr) { ++length; });
+                  dolist(env, args[0], [&](ObjectPtr) { ++length; });
               }
               return env.create<Integer>(length);
           }
@@ -203,7 +204,7 @@ static const BuiltinFunctionInfo builtins[] =
       [](Environment& env, const Arguments& args) {
           Arguments params(env);
           if (not isType<Null>(args[1])) {
-              dolist(args[1], [&](ObjectPtr elem) { params.push(elem); });
+              dolist(env, args[1], [&](ObjectPtr elem) { params.push(elem); });
           }
           auto fn = checkedCast<Function>(args[0]);
           return fn->call(params);
