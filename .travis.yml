@@ -3,3 +3,4 @@ script:
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./
   - cmake .
   - make
+  - bash unit-test.sh
