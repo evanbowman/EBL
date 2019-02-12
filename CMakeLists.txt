@@ -53,13 +53,6 @@ add_executable(ebl-dofile
 target_link_libraries(ebl-dofile
   ebl-runtime)
 
-# Run the unit tests
-file(GLOB UNIT_TESTS "ebl/*.test.ebl")
-foreach(TEST ${UNIT_TESTS})
-  add_custom_command(TARGET ebl-dofile POST_BUILD
-    COMMAND ./ebl-dofile ${TEST})
-endforeach()
-
 # Build extensions
 add_library(fs SHARED dll/fs.cpp)
 target_link_libraries(fs ebl-runtime)
@@ -72,3 +65,11 @@ set_target_properties(sys PROPERTIES SUFFIX "")
 add_library(debug SHARED dll/debug.cpp)
 target_link_libraries(debug ebl-runtime)
 set_target_properties(debug PROPERTIES SUFFIX "")
+
+# Run the unit tests
+file(GLOB UNIT_TESTS "ebl/*.test.ebl")
+foreach(TEST ${UNIT_TESTS})
+  add_custom_command(TARGET ebl-dofile POST_BUILD
+    COMMAND ./ebl-dofile ${TEST})
+endforeach()
+
