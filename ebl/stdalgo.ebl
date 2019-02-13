@@ -1,5 +1,5 @@
 ;;;
-;;; Some common higher order list algorithms
+;;; Some common list algorithms
 ;;;
 
 
@@ -111,4 +111,46 @@
        (if (equal? i 0)
            (cons (proc 0) result)
            (recur (decr i) (cons (proc i) result))))
-     (decr n) null)))
+     (decr n) null))
+
+  (defn cddr (lat) (cdr (cdr lat)))
+
+  (def bisect
+       (let ((impl
+              (lambda (tortoise hare acc)
+                ;; The tortoise moves at a rate of 1, and the hare moves at a
+                ;; rate of 2 (skips every other pair). As the tortoise moves, it
+                ;; accumulates cons'es. When the hare finishes, the tortoise
+                ;; will have accumulated exactly the first half of the list, and
+                ;; its 'iterator' points to the second half of the list.
+                (cond
+                 ((null? hare)
+                  (cons (reverse acc) tortoise))
+                 ((null? (cdr hare))
+                  (cons (reverse acc) tortoise))
+                 (true
+                  (recur (cdr  tortoise)
+                         (cddr hare)
+                         (cons (car tortoise) acc)))))))
+         (lambda (lat)
+           (impl lat lat null))))
+
+  (def mergesort
+       (let ((merge
+              (lambda (a b)
+                (cond
+                 ((null? a) b)
+                 ((null? b) a)
+                 ((< (car a) (car b))
+                  (cons (car a) (merge (cdr a) b)))
+                 (true
+                  (cons (car b) (merge a (cdr b))))))))
+         (lambda (lat)
+           "[lat] -> sorted lat"
+           (if (null? (cdr lat))
+               lat
+               (let ((parted (bisect lat)))
+                 (merge (mergesort (car parted))
+                        (mergesort (cdr parted))))))))
+
+  (def sort mergesort))
