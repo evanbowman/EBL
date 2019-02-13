@@ -4,11 +4,11 @@
 EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient bytecode.
 
 #### Implementation status
-- [x] [First-class functions and closures ](#S-closures)
-- [x] [Unicode Chars, and Strings, and Identifiers](#S-unicode)
-- [x] [Docstrings](#S-docstrings)
-- [x] [Namespaces](#S-namespaces)
-- [x] [Variadic Functions](#S-variadic-functions)
+- [x] First-class functions and closures [-->](#S-closures)
+- [x] Unicode Chars, and Strings, and Identifiers [-->](#S-unicode)
+- [x] Docstrings [-->](#S-docstrings)
+- [x] Namespaces [-->](#S-namespaces)
+- [x] Variadic Functions [-->](#S-variadic-functions)
 - [x] Eval
 - [x] Complex numbers
 - [x] Manual TCO
