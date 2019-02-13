@@ -1,9 +1,0 @@
-diff a/lib/ast.hpp b/lib/ast.hpp	(rejected hunks)
-@@ -48,6 +48,7 @@ public:
- 
- 
-     VarLoc find(const Vector<StrVal>& varNamePatterns,
-+                bool bounded = false,
-                 FrameDist traversed = 0) const;
- 
- private:
