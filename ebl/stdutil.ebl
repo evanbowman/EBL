@@ -13,7 +13,7 @@
     (def space (character 32))
     (def tab (character 9)))
 
-  (defn identity (x) "[x] -> x" x)
+  (defn identity (x) "(identity x) -> x" x)
 
   (defn negate (proc)
     (lambda (...)

@@ -8,7 +8,7 @@
 
 (namespace fs
   (defn map-lines (f file-name)
-    "[f file-name] -> result similar to std::map, but for lines of a file"
+    "(map-lines f file-name) -> result similar to std::map, but for lines of a file"
     (open file-name "r"
           (lambda (file)
             ((lambda (result)

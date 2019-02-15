@@ -1,6 +1,6 @@
 #include "vm.hpp"
 #include "bytecode.hpp"
-#include "environment.hpp"
+#include "ebl.hpp"
 #include "listBuilder.hpp"
 #include "persistent.hpp"
 
@@ -29,6 +29,11 @@ template <> uint16_t readParam(const Bytecode& bc, size_t& ip)
 #if defined(_WIN32) or defined(_WIN64)
 #define NO_DIRECT_THREADING
 #endif
+
+void failedToApply(Environment& env,
+                   Function* function,
+                   size_t suppliedArgs,
+                   size_t expectedArgs);
 
 void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 {
@@ -143,7 +148,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
         case Function::InvocationModel::Bytecode: {
             const auto addr = fn->getBytecodeAddress();
             if (UNLIKELY(argc not_eq fn->argCount())) {
-                throw std::runtime_error("wrong number of arguments");
+                failedToApply(*env, fn.get(), argc, fn->argCount());
             }
             operandStack.pop_back();
             env = fn->definitionEnvironment()->derive();
@@ -166,6 +171,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             Persistent<Function> toCall(*env, fn);
             operandStack.pop_back();
             if (UNLIKELY(argc < fn->argCount())) {
+                failedToApply(*env, fn.get(), argc, fn->argCount());
                 throw std::runtime_error("insufficient arguments to VA fn");
             }
             {

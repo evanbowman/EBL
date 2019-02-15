@@ -26,6 +26,26 @@ template <typename Proc> void dolist(Environment& env,
     }
 }
 
+void failedToApply(Environment& env,
+                   Function* function,
+                   size_t suppliedArgs,
+                   size_t expectedArgs)
+{
+    std::stringstream format;
+    format << "failed to apply lambda\nsupplied argc: "
+           << suppliedArgs
+           << "\nexpected argc: "
+           << expectedArgs
+           << "\ndocstring: ";
+    if (isType<String>(function->getDocstring())) {
+        auto str = function->getDocstring().cast<String>();
+        print(env, str, format, false);
+    } else {
+        format << "<Null>";
+    }
+    throw std::runtime_error(format.str());
+}
+
 void print(Environment& env, ObjectPtr obj, std::ostream& out,
            bool showQuotes = false)
 {
@@ -114,30 +134,30 @@ struct BuiltinFunctionInfo {
 };
 
 static const BuiltinFunctionInfo builtins[] =
-    {{"cons", "[car cdr] -> create a pair from car and cdr", 2,
+    {{"cons", "(cons car cdr) -> create a pair from car and cdr", 2,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Pair>(args[0], args[1]);
       }},
-     {"car", "[pair] -> get the first element of pair", 1,
+     {"car", "(car pair) -> get the first element of pair", 1,
       [](Environment&, const Arguments& args) {
           return checkedCast<Pair>(args[0])->getCar();
       }},
-     {"cdr", "[pair] -> get the second element of pair", 1,
+     {"cdr", "(cdr pair) -> get the second element of pair", 1,
       [](Environment&, const Arguments& args) {
           return checkedCast<Pair>(args[0])->getCdr();
       }},
-     {"symbol", "[string] -> get symbol for string", 1,
+     {"symbol", "(symbol string) -> get symbol for string", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           const auto target = checkedCast<String>(args[0]);
           const auto symbLoc = storeI<Symbol>(*env.getContext(), target);
           return env.getContext()->immediates()[symbLoc];
       }},
-     {"error", "[string] -> raise error string and terminate", 1,
+     {"error", "(error string) -> raise error string and terminate", 1,
       [](Environment&, const Arguments& args) -> ObjectPtr {
           throw std::runtime_error(
               checkedCast<String>(args[0])->value().toAscii());
       }},
-     {"length", "[obj] -> get the length of a list or string", 1,
+     {"length", "(length obj) -> get the length of a list or string", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           switch (args[0]->typeId()) {
           case typeId<Pair>(): {
@@ -154,7 +174,7 @@ static const BuiltinFunctionInfo builtins[] =
               throw TypeError(args[0]->typeId(), "invalid type");
           }
       }},
-     {"get", "[obj index] -> get element at index in list or string", 2,
+     {"get", "(get obj index) -> get element at index in list or string", 2,
       [](Environment&, const Arguments& args) -> ObjectPtr {
           switch (args[0]->typeId()) {
           case typeId<String>():
@@ -187,20 +207,21 @@ static const BuiltinFunctionInfo builtins[] =
      EBL_TYPE_PROC("symbol?", Symbol),
      EBL_TYPE_PROC("pointer?", RawPointer),
      EBL_TYPE_PROC("function?", Function),
-     {"identical?", nullptr, 2,
+     {"identical?", "(identical o1 o2) -> "
+                    "true if o1 and o2 are the same object", 2,
       [](Environment& env, const Arguments& args) {
           return env.getBool(args[0] == args[1]);
       }},
-     {"equal?", nullptr, 2,
+     {"equal?", "(equal o1 o2) -> true if o1 and o2 have the same value", 2,
       [](Environment& env, const Arguments& args) {
           EqualTo eq;
           return env.getBool(eq(args[0], args[1]));
       }},
-     {"not", nullptr, 1,
+     {"not", "(not val) -> true if val is false, otherwise fales", 1,
       [](Environment& env, const Arguments& args) {
           return env.getBool(args[0] == env.getBool(false));
       }},
-     {"apply", nullptr, 2,
+     {"apply", "(apply fn list) -> call fn with list as arguments", 2,
       [](Environment& env, const Arguments& args) {
           Arguments params(env);
           if (not isType<Null>(args[1])) {
@@ -209,11 +230,11 @@ static const BuiltinFunctionInfo builtins[] =
           auto fn = checkedCast<Function>(args[0]);
           return fn->call(params);
       }},
-     {"arity", nullptr, 1,
+     {"arity", "(arity fn) -> number of required arguments for fn", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Integer>((Integer::Rep)checkedCast<Function>(args[0])->argCount());
       }},
-     {"help", "[fn] -> get the docstring for fn", 1,
+     {"help", "(help fn) -> get the docstring for fn", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           auto fn = checkedCast<Function>(args[0]);
           auto doc = fn->getDocstring();
@@ -222,7 +243,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
           return env.getNull();
       }},
-     {"print", "[...] -> print each arg in ...", 0,
+     {"print", "(print ...) -> print each arg in ... to sys::stdout", 0,
       [](Environment& env, const Arguments& args) {
           auto out = env.getGlobal("sys::stdout");
           auto write = env.getGlobal("fs::write");
@@ -234,46 +255,46 @@ static const BuiltinFunctionInfo builtins[] =
           checkedCast<Function>(write)->call(params);
           return env.getNull();
       }},
-     {"clone", "[obj] -> deep copy of obj", 1,
+     {"clone", "(clone obj) -> deep copy of obj", 1,
       [](Environment& env, const Arguments& args) {
           return clone(env, args[0]);
       }},
-     {"mod", "[integer] -> the modulus of integer", 2,
+     {"mod", "(mod integer) -> the modulus of integer", 2,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Integer>(checkedCast<Integer>(args[0])->value() %
                                      checkedCast<Integer>(args[1])->value());
       }},
-     {"f+", "[f-1 f-2] -> add floats f-1 and f-2", 2,
+     {"f+", "(f+ f-1 f-2) -> add floats f-1 and f-2", 2,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() +
                                    checkedCast<Float>(args[1])->value());
       }},
-     {"f-", "[f-1 f-2] -> subtract floats f-1 and f-2", 2,
+     {"f-", "(f- f-1 f-2) -> subtract floats f-1 and f-2", 2,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() -
                                    checkedCast<Float>(args[1])->value());
       }},
-     {"f*", "[f-1 f-2] -> multiply floats f-1 and f-2", 2,
+     {"f*", "(f* f-1 f-2) -> multiply floats f-1 and f-2", 2,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() *
                                    checkedCast<Float>(args[1])->value());
       }},
-     {"f/", "[f-1 f-2] -> divide floats f-1 and f-2", 2,
+     {"f/", "(f/ f-1 f-2) -> divide floats f-1 and f-2", 2,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() /
                                    checkedCast<Float>(args[1])->value());
       }},
-     {"incr", "[int] -> int + 1", 1,
+     {"incr", "(incr int) -> int + 1", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Integer>(checkedCast<Integer>(args[0])->value() +
                                      1);
       }},
-     {"decr", "[int] -> int - 1", 1,
+     {"decr", "(decr int) -> int - 1", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Integer>(checkedCast<Integer>(args[0])->value() -
                                      1);
       }},
-     {"+", "[...] -> the result of adding each arg in ...", 0,
+     {"+", "(+ ...) -> the result of adding each arg in ...", 0,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           Integer::Rep iSum = 0;
           Complex::Rep cSum;
@@ -342,7 +363,7 @@ static const BuiltinFunctionInfo builtins[] =
               throw TypeError(args[0]->typeId(), "not a number");
           }
       }},
-     {"*", "[...] -> the result of multiplying each arg in ...", 0,
+     {"*", "(* ...) -> the result of multiplying each arg in ...", 0,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           Integer::Rep iProd = 1;
           Float::Rep dProd = 1.0;
@@ -431,7 +452,7 @@ static const BuiltinFunctionInfo builtins[] =
               throw TypeError(args[0]->typeId(), "not a number");
           }
       }},
-     {"abs", "[number] -> absolute value of number", 1,
+     {"abs", "(abs number) -> absolute value of number", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           auto inp = args[0];
           switch (inp->typeId()) {
@@ -462,13 +483,13 @@ static const BuiltinFunctionInfo builtins[] =
               throw TypeError(inp->typeId(), "not a number");
           }
       }},
-     {"complex", "[real imag] -> complex number from real + (b x imag)", 2,
+     {"complex", "(complex real imag) -> complex number from real + (b x imag)", 2,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           const auto real = checkedCast<Float>(args[0])->value();
           const auto imag = checkedCast<Float>(args[1])->value();
           return env.create<Complex>(Complex::Rep(real, imag));
       }},
-     {"string", "[...] -> string constructed from all the args", 0,
+     {"string", "(string ...) -> string constructed from all the args", 0,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           std::stringstream builder;
           for (auto& arg : args) {
@@ -476,7 +497,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
           return env.create<String>(builder.str());
       }},
-     {"rstring", "[...] -> string constructed from args in reverse", 0,
+     {"rstring", "(rstring ...) -> string constructed from args in reverse", 0,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           std::stringstream builder;
           for (long i = args.count() - 1; i > -1; --i) {
@@ -484,7 +505,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
           return env.create<String>(builder.str());
       }},
-     {"integer", "[obj] -> integer conversion of the input", 1,
+     {"integer", "(integer obj) -> integer conversion of the input", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           switch (args[0]->typeId()) {
           case typeId<Integer>():
@@ -504,7 +525,7 @@ static const BuiltinFunctionInfo builtins[] =
               throw ConversionError(args[0]->typeId(), typeId<Integer>());
           }
       }},
-     {"float", "[integer-or-string] -> double precision float", 1,
+     {"float", "(float integer-or-string) -> double precision float", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           switch (args[0]->typeId()) {
           case typeId<Float>():
@@ -520,7 +541,7 @@ static const BuiltinFunctionInfo builtins[] =
               throw ConversionError(args[0]->typeId(), typeId<Float>());
           }
       }},
-     {"character", "[ascii-integer-value] -> character", 1,
+     {"character", "(character ascii-integer-value) -> character", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           const auto val = checkedCast<Integer>(args[0])->value();
           if (val > -127 and val < 127) {
@@ -529,7 +550,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
           return env.getNull();
       }},
-     {"load", "[file-path] -> load ebl code from file-path", 1,
+     {"load", "(load file-path) -> load ebl code from file-path", 1,
       [](Environment& env, const Arguments& args) {
           std::ifstream ifstream(
               checkedCast<String>(args[0])->value().toAscii());
@@ -537,13 +558,13 @@ static const BuiltinFunctionInfo builtins[] =
           buffer << ifstream.rdbuf();
           return env.exec(buffer.str());
       }},
-     {"eval", "[data] -> evaluate data as code", 1,
+     {"eval", "(eval data) -> evaluate data as code", 1,
       [](Environment& env, const Arguments& args) {
           std::stringstream buffer;
           print(env, checkedCast<Pair>(args[0]), buffer);
           return env.exec(buffer.str());
       }},
-     {"open-dll", "[dll] -> run dll in current environment", 1,
+     {"open-dll", "(open-dll dll-path) -> run dll in current environment", 1,
       [](Environment& env, const Arguments& args) {
           env.openDLL(checkedCast<String>(args[0])->value().toAscii());
           return env.getNull();

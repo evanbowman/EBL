@@ -12,7 +12,7 @@ static struct {
     const char* docstring_;
     ebl::CFunction impl_;
 } exports[] = {
-     {"open", 3, "[filename mode callback] -> result of invoking callback on opened file",
+     {"open", 3, "(open filename mode callback) -> result of invoking callback on opened file",
      [](ebl::Environment& env, const ebl::Arguments& args) {
          ebl::Arguments callbackArgs(env);
          const auto fname = ebl::checkedCast<ebl::String>(args[0])->toAscii();
@@ -23,7 +23,7 @@ static struct {
          fclose(file);
          return result;
      }},
-     {"slurp", 1, "[file-name] -> string containing entire file",
+     {"slurp", 1, "(slurp file-name) -> string containing entire file",
       [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ObjectPtr {
           std::ifstream t(ebl::checkedCast<ebl::String>(args[0])->toAscii());
           std::stringstream buffer;
@@ -31,7 +31,7 @@ static struct {
           auto result = buffer.str();
           return env.create<ebl::String>(result.c_str(), result.length());
       }},
-    {"getline", 1, "[file] -> string containing next line in the file",
+    {"getline", 1, "(getline file) -> string containing next line in the file",
      [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ObjectPtr {
          char* line = nullptr;
          size_t cap = 0;
@@ -48,7 +48,7 @@ static struct {
          free(line);
          return env.getNull();
      }},
-     {"write", 1, "[file obj ...] -> write representations of objects to file",
+     {"write", 1, "(write file obj ...) -> write representations of objects to file",
       [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ObjectPtr {
           auto file = ebl::checkedCast<ebl::RawPointer>(args[0])->value();
           std::stringstream format;

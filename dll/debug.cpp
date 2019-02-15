@@ -9,11 +9,11 @@ static struct {
     size_t argc_;
     ebl::CFunction impl_;
 } exports[] = {
-     {"addr", "", 1,
+     {"addr", "(addr obj) -> address of obj", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<RawPointer>(args[0].handle());
       }},
-     {"get-interns", "[] -> list of all values interned by the vm", 0,
+     {"get-interns", "(get-interns) -> list of all values interned by the vm", 0,
       [](Environment& env, const Arguments&) {
           LazyListBuilder builder(env);
           for (auto& var : env.getContext()->immediates()) {
@@ -21,19 +21,19 @@ static struct {
           }
           return builder.result();
       }},
-     {"collect-garbage", "[] -> run the gc", 0,
+     {"collect-garbage", "(collect-garbage) -> run the gc", 0,
       [](Environment& env, const Arguments&) -> ObjectPtr {
           env.getContext()->runGC(env);
           return env.getNull();
       }},
-     {"memory-stats", "[] -> (used-memory . remaining-memory)", 0,
+     {"memory-stats", "(memory-stats) -> (used-memory . remaining-memory)", 0,
       [](Environment& env, const Arguments&) -> ObjectPtr {
           const auto stat = env.getContext()->memoryStat();
           return env.create<Pair>(
               env.create<Integer>((Integer::Rep)stat.used_),
               env.create<Integer>((Integer::Rep)stat.remaining_));
       }},
-     {"sizeof", "[obj] -> number of bytes that obj occupies in memory", 1,
+     {"sizeof", "(sizeof obj) -> number of bytes that obj occupies in memory", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {
           return env.create<Integer>(Integer::Rep(typeInfo(args[0]).size_));
       }}

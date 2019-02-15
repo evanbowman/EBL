@@ -38,7 +38,7 @@ ObjectPtr Function::call(Arguments& params)
     switch (model_) {
     case InvocationModel::Bytecode: {
         if (UNLIKELY(params.count() != requiredArgs_)) {
-            throw std::runtime_error("wrong number of args");
+            failedToApply(*envPtr_, this, params.count(), requiredArgs_);
         }
         Context* const ctx = envPtr_->getContext();
         auto derived = envPtr_->derive();

@@ -48,7 +48,7 @@ EBL is just as powerful as any other lisp, e.g. here's a recursive factorial com
        (lambda ()
          (set a (incr a))
          a)))
-    
+
 (test) ;; 1
 (test) ;; 2
 (test) ;; 3
@@ -64,9 +64,9 @@ EBL is just as powerful as any other lisp, e.g. here's a recursive factorial com
 ### <a name="S-docstrings"></a>Docstrings
 ```clojure
 (defn foo ()
-  "[foo] -> the number one"
+  "(foo) -> the number one"
   1)
-  
+
 (help foo)           ;; "[foo] -> the number one"
 (string? (help foo)) ;; true
 ```
@@ -74,7 +74,7 @@ EBL is just as powerful as any other lisp, e.g. here's a recursive factorial com
 ### <a name="S-namespaces"></a>Namespaces
 ```clojure
 (namespace math
-  (defn square (n) 
+  (defn square (n)
     (* n n)))
 
 (math::square 5) ;; 25
@@ -83,12 +83,12 @@ EBL is just as powerful as any other lisp, e.g. here's a recursive factorial com
 ### <a name="S-variadic-functions"></a>Variadic Functions
 ```clojure
 ;; the runtime actually defines list this way!
-(defn list (...) 
+(defn list (...)
   ...)
-  
+
 (defn count-args (...)
   (length ...))
-  
+
 (count-args 1 2 3) ;; 3
 ```
 

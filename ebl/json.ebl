@@ -5,7 +5,7 @@
     (def-mut parse-value null)
 
     (defn find-char (input index)
-      "[input index] -> position of next non-whitespace char"
+      "(find-char input index) -> position of next non-whitespace char"
       (def current (get input index))
       (cond
        ((equal? current std::chars::tab)
@@ -18,7 +18,7 @@
         index)))
 
     (defn parse-string (input start)
-      "[input start] -> (string . chars-consumed)"
+      "(parse-string input start) -> (string . chars-consumed)"
       ((lambda (index)
          (if (equal? \" (get input index))
              (cons (std::substr input start index) (incr index))
@@ -31,17 +31,17 @@
          ((< ival 48) false)
          ((> ival 57) false)
          (true true))))
-    
+
     (defn parse-number (input start)
-      "[input start] -> (number . chars-consumed)"
+      "(parse-number input start) -> (number . chars-consumed)"
       ((lambda (index)
          (if (not (char-numeric? (get input index)))
              (cons (float (std::substr input start index)) index)
              (recur (incr index))))
        start))
-    
+
     (defn parse-array (input start)
-      "[input start] -> (list . chars-consumed)"
+      "(parse-array input start) -> (list . chars-consumed)"
       ((lambda (index result)
          (if (equal? (get input index) std::chars::r-brace)
              (cons (std::reverse result) (incr index))
@@ -59,7 +59,7 @@
        start null))
 
     (defn parse-map (input start)
-      "[input start] -> (assoc-list . chars-consumed)"
+      "(parse-map input start) -> (assoc-list . chars-consumed)"
       ((lambda (index result)
          (if (equal? (get input index) \})
              (cons result (incr index))
@@ -87,7 +87,7 @@
       (if (equal? constant (std::substr input start (+ start len)))
           (cons constant len)
           (error "...")))
-    
+
     (set parse-value
          (lambda (input start)
            (def current (get input start))

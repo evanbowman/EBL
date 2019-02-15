@@ -5,7 +5,7 @@
 
 (namespace std
   (defn dolist (f lat)
-    "[proc list] -> null, apply f to list for the side-effects"
+    "(dolist proc lat) -> null, apply f to lat for the side-effects"
     (if (null? lat)
         null
         (begin
@@ -19,7 +19,7 @@
                     result
                     (recur (cdr lat) (cons (car lat) result))))))
          (lambda (lat)
-           "[list] -> reversed list"
+           "(reverse lat) -> reversed lat"
            (reverse-helper lat null))))
 
   (def flatten
@@ -31,7 +31,7 @@
                                (recur (cdr in) new-out)))
                          (cons in out)))))
          (lambda (input)
-           "[input] -> result list S.T. sublists are expanded into input"
+           "(flatten input) -> result list S.T. sublists are expanded into input"
            (reverse (impl input null)))))
 
   (def map
@@ -41,7 +41,7 @@
                     (reverse result)
                     (recur f (cdr lat) (cons (f (car lat)) result))))))
          (lambda (f lat)
-           "[f list] -> list, from applying f to each element of input list"
+           "(map f lat) -> list, from applying f to each element of input lat"
            (impl f lat null))))
 
   (def filter
@@ -53,7 +53,7 @@
                         (recur pred (cdr lat) (cons (car lat) result))
                         (recur pred (cdr lat) result))))))
          (lambda (pred lat)
-           "[pred list] -> list of all elements of list that satisfy pred"
+           "(filter pred lat) -> list of all elements of lat that satisfy pred"
            (reverse (impl pred lat null)))))
 
   (def reduce
@@ -63,11 +63,11 @@
                     result
                     (recur f (cdr lat) (f result (car lat)))))))
          (lambda (f lat)
-           "[f list] -> reduction of list by left fold with f"
+           "(reduce f lat) -> reduction of lat by left fold with f"
            (impl f (cdr lat) (car lat)))))
 
   (defn zip (f lat1 lat2)
-    "[f list1 list2] -> element-wise combination of list1 and list2"
+    "(zip f list1 list2) -> element-wise combination of list1 and list2"
     (if (null? lat1)
         null
         (cons
@@ -75,7 +75,7 @@
          (zip f (cdr lat1) (cdr lat2)))))
 
   (defn every (pred lat)
-    "[pred list] -> true if pred is true for all elements, otherwise false"
+    "(every pred lat) -> true if pred is true for all elements, otherwise false"
     (if (null? lat)
         true
         (if (not (pred (car lat)))
@@ -83,7 +83,7 @@
             (recur pred (cdr lat)))))
 
   (defn assoc (lat key)
-    "[key list] -> element associated with key in list, otherwise false"
+    "(assoc key lat) -> element associated with key in lat, otherwise false"
     (some (lambda (elem)
             (equal? (car elem) key))
           lat))
@@ -95,7 +95,7 @@
           (recur (cdr from) (cons (car from) to)))))
 
   (defn append (l1 l2)
-    "[l1 l2] -> l2 appended to l1"
+    "(append l1 l2) -> l2 appended to l1"
     (detail::append-impl (reverse l1) l2))
 
   (defn remove (lat q pred)
@@ -146,7 +146,7 @@
                  (true
                   (cons (car b) (merge a (cdr b))))))))
          (lambda (lat)
-           "[lat] -> sorted lat"
+           "(mergesort lat) -> sorted lat"
            (if (null? (cdr lat))
                lat
                (let ((parted (bisect lat)))

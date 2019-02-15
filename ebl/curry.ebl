@@ -6,7 +6,7 @@
 
 (namespace std
   (defn curry (proc)
-    "[proc] -> curried proc"
+    "(curry proc) -> curried proc"
     (def proc-arity (arity proc))
     (cond
      ((equal? proc-arity 0)

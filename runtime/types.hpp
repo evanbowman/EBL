@@ -421,6 +421,12 @@ struct InvalidArgumentError : std::runtime_error {
     }
 };
 
+class Function;
+
+void failedToApply(Environment& env,
+                   Function* function,
+                   size_t suppliedArgs,
+                   size_t expectedArgs);
 
 class Function : public ObjectTemplate<Function> {
 public:
@@ -449,9 +455,7 @@ public:
     inline ObjectPtr directCall(Arguments& params)
     {
         if (UNLIKELY(params.count() < requiredArgs_)) {
-            throw InvalidArgumentError("too few args, expected " +
-                                       std::to_string(requiredArgs_) + " got " +
-                                       std::to_string(params.count()));
+            failedToApply(*envPtr_, this, params.count(), requiredArgs_);
         }
         return (*nativeFn_)(*envPtr_, params);
     }

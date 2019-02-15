@@ -6,7 +6,7 @@
 
 (namespace std
   (defn substr (str first last)
-    "[str begin end] -> substring from [begin, end)"
+    "(substr str begin end) -> substring from (begin, end)"
     (apply string
            ((lambda (index lat)
               (if (equal? index first)
@@ -16,7 +16,7 @@
             last null)))
 
   (defn split (str delim)
-    "[str delim] -> list of substrings, by cleaving str at delim"
+    "(split str delim) -> list of substrings, by cleaving str at delim"
     ((lambda (index partial result)
        (if (equal? index -1)
            (if partial
@@ -29,7 +29,7 @@
      (- (length str) 1) null null))
 
   (defn join (lat delim)
-    "[list delim] -> string, by concatenating each elem in list, with delim in between"
+    "(join list delim) -> string, by concatenating each elem in list, with delim in between"
     ((lambda (lat result)
        (if (null? lat)
            result
