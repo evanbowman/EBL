@@ -1,4 +1,4 @@
-(require "test-case.ebl")
+(require "unit-test.ebl")
 (require "json.ebl")
 (require "std/util.ebl")
 
