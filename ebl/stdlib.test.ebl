@@ -1,5 +1,5 @@
-(require "ebl/unit-test.ebl")
-(require "ebl/stdalgo.ebl")
+(require "unit-test.ebl")
+(require "std/algo.ebl")
 
 (namespace unit
   (def dataset (list 1 2 3 4))

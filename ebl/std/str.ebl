@@ -2,7 +2,7 @@
 ;;; String algorithms
 ;;;
 
-(require "ebl/stdutil.ebl")
+(require "std/util.ebl")
 
 (namespace std
   (defn substr (str first last)

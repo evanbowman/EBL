@@ -4,7 +4,7 @@
 ;;; Part of the filesystem module is imported from a DLL, see fs.cpp
 ;;;
 
-(require "ebl/stdalgo.ebl")
+(require "std/algo.ebl")
 
 (namespace fs
   (defn map-lines (f file-name)

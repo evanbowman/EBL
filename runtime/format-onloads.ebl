@@ -1,10 +1,10 @@
-(require "ebl/stdfs.ebl")
+(require "std/fs.ebl")
 
 (def lf (character 10))
 (def quot (character 34))
 
-(fs::open* '(("runtime/onload-stub.ebl" . "r")
-             ("runtime/onloads.hpp" . "w"))
+(fs::open* (list (cons "runtime/onload-stub.ebl" "r")
+                 (cons "runtime/onloads.hpp" "w"))
            (lambda (stub-file out-file)
              (fs::write out-file "static const char* onloads =" lf)
              ((lambda ()

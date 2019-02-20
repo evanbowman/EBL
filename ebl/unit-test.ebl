@@ -1,4 +1,4 @@
-(require "ebl/stdutil.ebl")
+(require "std/util.ebl")
 
 (namespace unit
   (defn test-case (name body)

@@ -1,9 +1,0 @@
-;;;
-;;; A standard library
-;;;
-
-(require "ebl/stdutil.ebl")
-(require "ebl/stdstream.ebl")
-(require "ebl/stdalgo.ebl")
-(require "ebl/stdstr.ebl")
-(require "ebl/stdfs.ebl")

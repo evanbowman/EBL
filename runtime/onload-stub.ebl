@@ -1,7 +1,9 @@
 ;;;
 ;;; A few functions, including 'require', ship with the runtime, so that they're
-;;; always available. A script, format-onloads.ebl, will convert the file to a C
-;;; string literal, to be included by the VM during compilation.
+;;; always available. These are functions that could be written in C++, but due
+;;; to either data dependencies, or conciseness, they're easier to write in
+;;; EBL. A script, format-onloads.ebl, will convert the file to a C string
+;;; literal, to be included by the VM during compilation.
 ;;;
 
 (namespace std
@@ -12,16 +14,28 @@
             (car lat)
             (recur pred (cdr lat))))))
 
-(def require
-     ((lambda ()
-        (def-mut required-set null)
-        (lambda (file-name)
-          (let ((found (std::some (lambda (n)
-                                    (equal? n file-name)) required-set)))
-            (if found
-                null
-                (begin
-                  (load file-name)
-                  (set required-set (cons file-name required-set)))))))))
+(namespace sys
+  ;; NOTE: When deciding between a mutable global variable and a mutable setter,
+  ;; the setter is better for sandboxing. We want users to be able to change the
+  ;; load path, but also want to make it possible for users to disable
+  ;; mutability (by overwriting the lambda bound to the base path setter).
+  (def-mut set-require-base-path! null)
+
+  (def require
+       (let-mut ((base-path (string 'ebl/)))
+         (set set-require-base-path! (lambda (str) (set base-path str)))
+         ((lambda ()
+            (def-mut required-set null)
+            (lambda (file-name)
+              (def full-path (string base-path file-name))
+              (let ((found (std::some (lambda (n)
+                                        (equal? n full-path)) required-set)))
+                (if found
+                    null
+                    (begin
+                      (load full-path)
+                      (set required-set (cons full-path required-set)))))))))))
+
+(def require sys::require)
 
 (defn list (...) ...)

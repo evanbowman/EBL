@@ -1,4 +1,4 @@
-(require "ebl/unit-test.ebl")
+(require "unit-test.ebl")
 
 (namespace unit
   (test-case "closures"

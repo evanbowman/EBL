@@ -1,0 +1,9 @@
+;;;
+;;; A standard library
+;;;
+
+(require "std/util.ebl")
+(require "std/stream.ebl")
+(require "std/algo.ebl")
+(require "std/str.ebl")
+(require "std/fs.ebl")

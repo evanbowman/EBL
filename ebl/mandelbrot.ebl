@@ -1,4 +1,4 @@
-(require "ebl/stdlib.ebl")
+(require "std/lib.ebl")
 
 
 (defn mandelbrot (z c iter-depth)

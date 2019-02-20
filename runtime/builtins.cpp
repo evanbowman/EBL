@@ -552,8 +552,11 @@ static const BuiltinFunctionInfo builtins[] =
       }},
      {"load", "(load file-path) -> load ebl code from file-path", 1,
       [](Environment& env, const Arguments& args) {
-          std::ifstream ifstream(
-              checkedCast<String>(args[0])->value().toAscii());
+          const auto path = checkedCast<String>(args[0])->value().toAscii();
+          std::ifstream ifstream(path);
+          if (not ifstream) {
+              throw std::runtime_error("failed to load \'" + path + '\'');
+          }
           std::stringstream buffer;
           buffer << ifstream.rdbuf();
           return env.exec(buffer.str());
