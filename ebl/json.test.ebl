@@ -1,0 +1,41 @@
+(require "test-case.ebl")
+(require "json.ebl")
+(require "std/util.ebl")
+
+(namespace unit
+  (test-case "parser"
+             (lambda (assert)
+               (def parsed (json::parse (fs::slurp "ebl/data/sample.json")))
+
+               (assert "dict parsed incorrectly"
+                       (lambda () (json::object? parsed)))
+
+               (let ((glossary (json::get parsed 'glossary)))
+                 (assert "root object missing member" (lambda () glossary))
+
+                 (let ((gloss-div (json::get glossary 'GlossDiv)))
+                   (assert "glossary missing member" (lambda () gloss-div))
+
+                   (assert "div key incorrect"
+                           (lambda ()
+                             (equal? (json::get gloss-div 'title) "S")))
+
+                   (let ((gloss-list (json::get gloss-div 'GlossList))
+                         (gloss-ent (json::get gloss-list 'GlossEntry))
+                         (gloss-def (json::get gloss-ent 'GlossDef))
+                         (gloss-see-also (json::get gloss-def 'GlossSeeAlso)))
+                     (assert "expected array is not an array"
+                             (lambda () (json::array? gloss-see-also)))
+
+                     (assert "parsed array length incorrect"
+                             (lambda ()
+                               (equal? (length gloss-see-also) 2)))
+
+                     (assert "parsed array contents incorrect"
+                             (lambda ()
+                               (cond
+                                ((not (equal? (get gloss-see-also 0) "GML"))
+                                 false)
+                                ((not (equal? (get gloss-see-also 1) "XML"))
+                                 false)
+                                (true true))))))))))
