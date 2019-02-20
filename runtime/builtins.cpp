@@ -567,6 +567,12 @@ static const BuiltinFunctionInfo builtins[] =
           print(env, checkedCast<Pair>(args[0]), buffer);
           return env.exec(buffer.str());
       }},
+     {"eval-string", "(eval-string string) -> evaluate string as code", 1,
+      [](Environment& env, const Arguments& args) {
+          std::stringstream buffer;
+          print(env, checkedCast<String>(args[0]), buffer, false);
+          return env.exec(buffer.str());
+      }},
      {"open-dll", "(open-dll dll-path) -> run dll in current environment", 1,
       [](Environment& env, const Arguments& args) {
           env.openDLL(checkedCast<String>(args[0])->value().toAscii());

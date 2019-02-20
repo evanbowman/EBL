@@ -1,0 +1,11 @@
+(require "std/util.ebl")
+
+((lambda ()
+   (print "> ")
+   (let ((line (fs::getline sys::stdin)))
+     (if line
+         (if (< 0 (length line))
+             (begin
+               (std::println (eval-string line))
+               (recur))
+             (recur))))))

@@ -38,14 +38,6 @@ target_link_libraries(ebl-runtime
   dl)
 
 
-# A repl.
-add_executable(ebl-repl
-  tools/repl.cpp)
-
-target_link_libraries(ebl-repl
-  ebl-runtime)
-
-
 # Execute a script file.
 add_executable(ebl-dofile
   tools/dofile.cpp)
