@@ -1,7 +1,7 @@
 # EB LISP [![Build Status](https://travis-ci.org/evanbowman/EBL.svg?branch=master)](https://travis-ci.org/evanbowman/EBL)
 
 ## Introduction
-EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient bytecode.
+EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a scripting language for C++, the environment also supports an interactive top level. EBL compiles fast, to efficient bytecode. If you'd like to give the system a try, build with cmake, then run `ebl-dofile ebl/repl.ebl` to start an interactive shell.
 
 #### Implementation status
 - [x] First-class functions and closures [-->](#S-closures)
@@ -25,21 +25,6 @@ EBL is a LISP dialect, inspired by Scheme and Clojure. Easily embeddable as a sc
 
 
 ## Examples
-EBL is just as powerful as any other lisp, e.g. here's a recursive factorial computed from a y-combinator, without any direct recursion or local variables.
-```scheme
-(((lambda (f)
-    ((lambda (g)
-       (g g))
-     (lambda (g)
-       (f (lambda (...)
-            (apply (g g) ...))))))
-  (lambda (fact)
-    (lambda (n)
-      (if (equal? n 0)
-          1
-          (* n (fact (- n 1)))))))
- 12)
-```
 
 ### <a name="S-closures"></a>Closures
 ```clojure
