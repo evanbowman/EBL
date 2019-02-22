@@ -76,6 +76,12 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         out << ")";
     } break;
 
+    case typeId<Box>():
+        out << "Box{";
+        print(env, obj.cast<Box>()->get(), out);
+        out << "}";
+        break;
+
     case typeId<Integer>():
         out << obj.cast<Integer>()->value();
         break;
@@ -145,6 +151,19 @@ static const BuiltinFunctionInfo builtins[] =
      {"cdr", "(cdr pair) -> get the second element of pair", 1,
       [](Environment&, const Arguments& args) {
           return checkedCast<Pair>(args[0])->getCdr();
+      }},
+     {"box", "(box value) -> create box containing value", 1,
+      [](Environment& env, const Arguments& args) -> ObjectPtr {
+          return env.create<Box>(args[0]);
+      }},
+     {"set-box!", "(set-box! box value) -> box with overwritten contents", 2,
+      [](Environment&, const Arguments& args) -> ObjectPtr {
+          checkedCast<Box>(args[0])->set(args[1]);
+          return args[0];
+      }},
+     {"unbox", "(unbox box) -> value stored in box", 1,
+      [](Environment&, const Arguments& args) {
+          return checkedCast<Box>(args[0])->get();
       }},
      {"symbol", "(symbol string) -> get symbol for string", 1,
       [](Environment& env, const Arguments& args) -> ObjectPtr {

@@ -284,7 +284,14 @@ Heap::Ptr<Null> Null::clone(Environment& env) const
 
 Heap::Ptr<Pair> Pair::clone(Environment& env) const
 {
+    // Be careful when implementing clone for pair, the gc could move
+    // stuff around during allocation, leaving the parameters invalid.
     throw std::runtime_error("Deep clone unimplemented for Pair");
+}
+
+Heap::Ptr<Box> Box::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for Box");
 }
 
 Heap::Ptr<Boolean> Boolean::clone(Environment& env) const

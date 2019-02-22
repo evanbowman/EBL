@@ -162,6 +162,35 @@ private:
 };
 
 
+class alignas(8) Box : public ObjectTemplate<Box> {
+ public:
+    inline Box(ObjectPtr value) : value_(value)
+    {
+
+    }
+
+    static constexpr const char* name()
+    {
+        return "<Box>";
+    }
+
+    void set(ObjectPtr value)
+    {
+        value_ = value;
+    }
+
+    ObjectPtr get() const
+    {
+        return value_;
+    }
+
+    Heap::Ptr<Box> clone(Environment& env) const;
+
+ private:
+    ObjectPtr value_;
+};
+
+
 class alignas(8) Boolean : public ObjectTemplate<Boolean> {
 public:
     inline Boolean(bool value) : value_(value)
@@ -544,7 +573,7 @@ template <typename... Builtins> struct TypeInfoTable {
 
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Float, Complex, String,
-                        Character, Symbol, RawPointer, Function>
+                        Character, Symbol, RawPointer, Function, Box>
     typeInfoTable;
 
 

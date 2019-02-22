@@ -33,6 +33,10 @@ static void markObject(ObjectPtr obj)
     case typeId<Symbol>():
         markObject(obj.cast<Symbol>()->value());
         break;
+
+    case typeId<Box>():
+        markObject(obj.cast<Box>()->get());
+        break;
     }
 }
 
@@ -114,6 +118,13 @@ static void remapInternalPointers(Object* obj, const BreakList& breaks)
         auto val = s->value();
         val.UNSAFE_overwrite(remapObjectAddress(val.handle(), breaks));
         s->set(val);
+    } break;
+
+    case typeId<Box>(): {
+        auto b = (Box*)obj;
+        auto val = b->get();
+        val.UNSAFE_overwrite(remapObjectAddress(val.handle(), breaks));
+        b->set(val);
     } break;
 
     case typeId<Function>(): {
