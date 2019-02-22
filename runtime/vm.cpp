@@ -170,7 +170,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
             const auto addr = fn->getBytecodeAddress();
             Persistent<Function> toCall(*env, fn);
             operandStack.pop_back();
-            if (UNLIKELY(argc < fn->argCount())) {
+            if (UNLIKELY(argc < fn->argCount() - 1)) {
                 failedToApply(*env, fn.get(), argc, fn->argCount());
                 throw std::runtime_error("insufficient arguments to VA fn");
             }
