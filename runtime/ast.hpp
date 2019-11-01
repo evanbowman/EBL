@@ -10,7 +10,7 @@
 
 namespace ebl {
 
-class Object;
+class Value;
 
 namespace ast {
 
@@ -311,10 +311,10 @@ struct Set : Expr {
 
 // Users of the library might want to push their own data into the environment,
 // but
-struct UserObject : Statement {
+struct UserValue : Statement {
     ImmediateId varLoc_;
 
-    UserObject(ImmediateId loc) : varLoc_(loc)
+    UserValue(ImmediateId loc) : varLoc_(loc)
     {
     }
 
@@ -347,7 +347,7 @@ public:
     virtual void visit(And& node) = 0;
     virtual void visit(Def& node) = 0;
     virtual void visit(Set& node) = 0;
-    virtual void visit(UserObject& node) = 0;
+    virtual void visit(UserValue& node) = 0;
 };
 
 } // namespace ast

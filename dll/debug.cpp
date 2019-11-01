@@ -10,7 +10,7 @@ static struct {
     ebl::CFunction impl_;
 } exports[] = {
      {"addr", "(addr obj) -> address of obj", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<RawPointer>(args[0].handle());
       }},
      {"get-interns", "(get-interns) -> list of all values interned by the vm", 0,
@@ -22,19 +22,19 @@ static struct {
           return builder.result();
       }},
      {"collect-garbage", "(collect-garbage) -> run the gc", 0,
-      [](Environment& env, const Arguments&) -> ObjectPtr {
+      [](Environment& env, const Arguments&) -> ValuePtr {
           env.getContext()->runGC(env);
           return env.getNull();
       }},
      {"memory-stats", "(memory-stats) -> (used-memory . remaining-memory)", 0,
-      [](Environment& env, const Arguments&) -> ObjectPtr {
+      [](Environment& env, const Arguments&) -> ValuePtr {
           const auto stat = env.getContext()->memoryStat();
           return env.create<Pair>(
               env.create<Integer>((Integer::Rep)stat.used_),
               env.create<Integer>((Integer::Rep)stat.remaining_));
       }},
      {"sizeof", "(sizeof obj) -> number of bytes that obj occupies in memory", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Integer>(Integer::Rep(typeInfo(args[0]).size_));
       }}
 };

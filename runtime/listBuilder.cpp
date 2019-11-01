@@ -3,20 +3,20 @@
 
 namespace ebl {
 
-ListBuilder::ListBuilder(Environment& env, ObjectPtr first)
+ListBuilder::ListBuilder(Environment& env, ValuePtr first)
     : env_(env), front_(env, env.create<Pair>(first, env.getNull())),
       back_((Heap::Ptr<Pair>)front_)
 {
 }
 
 
-void ListBuilder::pushFront(ObjectPtr value)
+void ListBuilder::pushFront(ValuePtr value)
 {
     front_ = env_.create<Pair>(value, (Heap::Ptr<Pair>)front_);
 }
 
 
-void ListBuilder::pushBack(ObjectPtr value)
+void ListBuilder::pushBack(ValuePtr value)
 {
     auto next = env_.create<Pair>(value, env_.getNull());
     back_->setCdr(next);
@@ -24,7 +24,7 @@ void ListBuilder::pushBack(ObjectPtr value)
 }
 
 
-ObjectPtr ListBuilder::result()
+ValuePtr ListBuilder::result()
 {
     return (Heap::Ptr<Pair>)front_;
 }
@@ -35,19 +35,19 @@ LazyListBuilder::LazyListBuilder(Environment& env) : env_(env)
 }
 
 
-void LazyListBuilder::pushFront(ObjectPtr value)
+void LazyListBuilder::pushFront(ValuePtr value)
 {
     push(value, [&](ListBuilder& builder) { builder.pushFront(value); });
 }
 
 
-void LazyListBuilder::pushBack(ObjectPtr value)
+void LazyListBuilder::pushBack(ValuePtr value)
 {
     push(value, [&](ListBuilder& builder) { builder.pushBack(value); });
 }
 
 
-ObjectPtr LazyListBuilder::result()
+ValuePtr LazyListBuilder::result()
 {
     if (builder_)
         return builder_->result();

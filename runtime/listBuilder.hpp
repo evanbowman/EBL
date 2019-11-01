@@ -14,10 +14,10 @@ class Environment;
 
 class ListBuilder {
 public:
-    ListBuilder(Environment& env, ObjectPtr first);
-    void pushFront(ObjectPtr value);
-    void pushBack(ObjectPtr value);
-    ObjectPtr result();
+    ListBuilder(Environment& env, ValuePtr first);
+    void pushFront(ValuePtr value);
+    void pushBack(ValuePtr value);
+    ValuePtr result();
 
 private:
     Environment& env_;
@@ -32,12 +32,12 @@ private:
 class LazyListBuilder {
 public:
     LazyListBuilder(Environment& env);
-    void pushFront(ObjectPtr value);
-    void pushBack(ObjectPtr value);
-    ObjectPtr result();
+    void pushFront(ValuePtr value);
+    void pushBack(ValuePtr value);
+    ValuePtr result();
 
 private:
-    template <typename F> void push(ObjectPtr value, F&& callback)
+    template <typename F> void push(ValuePtr value, F&& callback)
     {
         if (not builder_)
             builder_.emplace(env_, value);

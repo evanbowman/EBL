@@ -313,7 +313,7 @@ void BytecodeBuilder::visit(ast::Recur& node)
     writeOp<Opcode::Recur>(data_);
 }
 
-void BytecodeBuilder::visit(ast::UserObject& node)
+void BytecodeBuilder::visit(ast::UserValue& node)
 {
     writeOp<Opcode::PushI>(data_);
     writeParam(data_, node.varLoc_);

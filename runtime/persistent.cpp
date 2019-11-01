@@ -4,8 +4,8 @@
 
 namespace ebl {
 
-PersistentBase::PersistentBase(Environment& env, ObjectPtr obj)
-    : obj_(obj), next_(nullptr)
+PersistentBase::PersistentBase(Environment& env, ValuePtr val)
+    : val_(val), next_(nullptr)
 {
     auto& plist = env.getContext()->getPersistentsList();
     if (plist) {

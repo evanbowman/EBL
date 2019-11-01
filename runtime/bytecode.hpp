@@ -28,7 +28,7 @@ public:
     void visit(ast::And& node) override;
     void visit(ast::Def& node) override;
     void visit(ast::Set& node) override;
-    void visit(ast::UserObject& node) override;
+    void visit(ast::UserValue& node) override;
     void visit(ast::Recur& node) override;
 
     void unusedExpr();

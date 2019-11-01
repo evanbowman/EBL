@@ -9,7 +9,7 @@
 
 namespace ebl {
 
-bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
+bool EqualTo::operator()(ValuePtr lhs, ValuePtr rhs) const
 {
     const auto type = lhs->typeId();
     if (type not_eq rhs->typeId()) {
@@ -33,7 +33,7 @@ bool EqualTo::operator()(ObjectPtr lhs, ObjectPtr rhs) const
     return true;
 }
 
-ObjectPtr Function::call(Arguments& params)
+ValuePtr Function::call(Arguments& params)
 {
     switch (model_) {
     case InvocationModel::Bytecode: {
@@ -68,7 +68,7 @@ ObjectPtr Function::call(Arguments& params)
     }
 }
 
-Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+Function::Function(Environment& env, ValuePtr docstring, size_t requiredArgs,
                    CFunction impl)
     : model_(InvocationModel::Wrapped), docstring_(docstring),
       requiredArgs_(requiredArgs), nativeFn_(impl), bytecodeAddress_(0),
@@ -76,7 +76,7 @@ Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
 {
 }
 
-Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+Function::Function(Environment& env, ValuePtr docstring, size_t requiredArgs,
                    size_t bytecodeAddress)
     : model_(InvocationModel::Bytecode), docstring_(docstring),
       requiredArgs_(requiredArgs), nativeFn_(),
@@ -84,7 +84,7 @@ Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
 {
 }
 
-Function::Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+Function::Function(Environment& env, ValuePtr docstring, size_t requiredArgs,
                    size_t bytecodeAddress, bool variadic)
     : model_([variadic] {
           if (variadic) {
@@ -251,23 +251,23 @@ void Arguments::consumed()
     count_ = 0;
 }
 
-void Arguments::push(ObjectPtr arg)
+void Arguments::push(ValuePtr arg)
 {
     ctx_->operandStack().push_back(arg);
     ++count_;
 }
 
-std::vector<ObjectPtr>::iterator Arguments::begin() const
+std::vector<ValuePtr>::iterator Arguments::begin() const
 {
     return ctx_->operandStack().begin() + startIdx_;
 }
 
-std::vector<ObjectPtr>::iterator Arguments::end() const
+std::vector<ValuePtr>::iterator Arguments::end() const
 {
     return begin() + count_;
 }
 
-ObjectPtr Arguments::operator[](size_t index) const
+ValuePtr Arguments::operator[](size_t index) const
 {
     return ctx_->operandStack()[startIdx_ + index];
 }

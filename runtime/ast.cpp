@@ -139,7 +139,7 @@ void Set::visit(Visitor& visitor)
     visitor.visit(*this);
 }
 
-void UserObject::visit(Visitor& visitor)
+void UserValue::visit(Visitor& visitor)
 {
     visitor.visit(*this);
 }

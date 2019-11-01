@@ -39,22 +39,22 @@ public:
     template <typename T, typename... Args> Heap::Ptr<T> create(Args&&... args);
 
     // Load/store a variable in the root environment.
-    ObjectPtr getGlobal(const std::string& key);
-    void setGlobal(const std::string& key, ObjectPtr value);
+    ValuePtr getGlobal(const std::string& key);
+    void setGlobal(const std::string& key, ValuePtr value);
     void setGlobal(const std::string& key, const std::string& nameSpace,
-                   ObjectPtr value);
+                   ValuePtr value);
 
     // Compile and execute ebl code
-    ObjectPtr exec(const std::string& code);
+    ValuePtr exec(const std::string& code);
 
-    ObjectPtr getNull();
-    ObjectPtr getBool(bool trueOrFalse);
+    ValuePtr getNull();
+    ValuePtr getBool(bool trueOrFalse);
 
     // For storing and loading from an environment's stack. Only meant to be
     // called by the runtime or the vm.
-    void push(ObjectPtr value);
-    void store(VarLoc loc, ObjectPtr value);
-    ObjectPtr load(VarLoc loc);
+    void push(ValuePtr value);
+    void store(VarLoc loc, ValuePtr value);
+    ValuePtr load(VarLoc loc);
 
     void openDLL(const std::string& name);
 
@@ -64,7 +64,7 @@ public:
 
     Context* getContext();
 
-    using Variables = Ogre::SmallVector<ObjectPtr, 6>;
+    using Variables = Ogre::SmallVector<ValuePtr, 6>;
     Variables& getVars()
     {
         return vars_;
@@ -100,8 +100,8 @@ struct TopLevel;
 }
 
 class PersistentBase;
-    
-    
+
+
 class Context {
 public:
     struct Configuration {
@@ -112,16 +112,16 @@ public:
     Context(const Context&) = delete;
     ~Context();
 
-    std::vector<ObjectPtr>& immediates()
+    std::vector<ValuePtr>& immediates()
     {
         return immediates_;
     }
 
-    std::vector<ObjectPtr>& operandStack()
+    std::vector<ValuePtr>& operandStack()
     {
         return operandStack_;
     }
-    
+
     Environment& topLevel()
     {
         return *topLevel_;
@@ -164,8 +164,8 @@ private:
     template <typename T, typename... Args>
     Heap::Ptr<T> create(Environment& env, Args&&... args)
     {
-        auto allocObj = [&] { return heap_.alloc<T>().template cast<T>(); };
-        auto mem = alloc<T>(env, allocObj);
+        auto allocVal = [&] { return heap_.alloc<T>().template cast<T>(); };
+        auto mem = alloc<T>(env, allocVal);
         ConstructImpl<T>::construct(mem.get(), env,
                                     std::forward<Args>(args)...);
         return mem;
@@ -188,8 +188,8 @@ private:
     EnvPtr topLevel_;
     Heap::Ptr<Boolean> booleans_[2];
     Heap::Ptr<Null> nullValue_;
-    std::vector<ObjectPtr> immediates_;
-    std::vector<ObjectPtr> operandStack_;
+    std::vector<ValuePtr> immediates_;
+    std::vector<ValuePtr> operandStack_;
     std::vector<DLL> dlls_;
     ast::TopLevel* astRoot_ = nullptr;
     Bytecode program_;

@@ -127,7 +127,7 @@ public:
         return handle_ == other.handle_;
     }
 
-    // NOTE: overwrite is meant for the GC to use when moving objects
+    // NOTE: overwrite is meant for the GC to use when moving values
     // around. If you call this function manually, you could break
     // things.
     void UNSAFE_overwrite(void* val)

@@ -10,26 +10,26 @@
 
 namespace ebl {
 
-ObjectPtr Environment::getGlobal(const std::string& key)
+ValuePtr Environment::getGlobal(const std::string& key)
 {
     auto loc = context_->astRoot_->find(key).varLoc_;
     return context_->topLevel_->load(loc);
 }
 
 static ast::Ptr<ast::Def> makeUoDef(Context* ctx, const std::string& key,
-                                    ObjectPtr value)
+                                    ValuePtr value)
 {
     const auto id = ctx->immediates().size();
     ctx->immediates().push_back(value);
     auto def = make_unique<ast::Def>();
-    auto obj = make_unique<ast::UserObject>(id);
+    auto val = make_unique<ast::UserValue>(id);
     def->name_ = key;
-    def->value_ = std::move(obj);
+    def->value_ = std::move(val);
     return def;
 }
 
 void Environment::setGlobal(const std::string& key,
-                            const std::string& nameSpace, ObjectPtr value)
+                            const std::string& nameSpace, ValuePtr value)
 {
     assert(context_->astRoot_);
     auto newNs = make_unique<ast::Namespace>();
@@ -50,7 +50,7 @@ void Environment::setGlobal(const std::string& key,
     context_->callStack().pop_back();
 }
 
-void Environment::setGlobal(const std::string& key, ObjectPtr value)
+void Environment::setGlobal(const std::string& key, ValuePtr value)
 {
     assert(context_->astRoot_);
     context_->astRoot_->statements_.push_back(makeUoDef(context_, key, value));
@@ -68,7 +68,7 @@ void Environment::setGlobal(const std::string& key, ObjectPtr value)
     context_->callStack().pop_back();
 }
 
-void Environment::push(ObjectPtr value)
+void Environment::push(ValuePtr value)
 {
     vars_.push_back(value);
 }
@@ -85,22 +85,22 @@ Environment& Environment::getFrame(VarLoc loc)
     return *frame;
 }
 
-ObjectPtr Environment::load(VarLoc loc)
+ValuePtr Environment::load(VarLoc loc)
 {
     return getFrame(loc).vars_[loc.offset_];
 }
 
-void Environment::store(VarLoc loc, ObjectPtr value)
+void Environment::store(VarLoc loc, ValuePtr value)
 {
     getFrame(loc).vars_[loc.offset_] = value;
 }
 
-ObjectPtr Environment::getNull()
+ValuePtr Environment::getNull()
 {
     return context_->nullValue_;
 }
 
-ObjectPtr Environment::getBool(bool trueOrFalse)
+ValuePtr Environment::getBool(bool trueOrFalse)
 {
     return context_->booleans_[trueOrFalse];
 }
@@ -161,7 +161,7 @@ Context* Environment::getContext()
     return context_;
 }
 
-ObjectPtr Environment::exec(const std::string& code)
+ValuePtr Environment::exec(const std::string& code)
 {
     auto root = ebl::parse(code);
     auto result = getNull();

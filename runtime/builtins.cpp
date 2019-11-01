@@ -12,11 +12,11 @@
 namespace ebl {
 
 template <typename Proc> void dolist(Environment& env,
-                                     ObjectPtr list,
+                                     ValuePtr list,
                                      Proc&& proc)
 {
     Persistent<Pair> current(env, checkedCast<Pair>(list));
-    Persistent<Object> car(env, env.getNull());
+    Persistent<Value> car(env, env.getNull());
     car = current->getCar();
     proc(car);
     while (not isType<Null>(current->getCdr())) {
@@ -46,12 +46,12 @@ void failedToApply(Environment& env,
     throw std::runtime_error(format.str());
 }
 
-void print(Environment& env, ObjectPtr obj, std::ostream& out,
+void print(Environment& env, ValuePtr val, std::ostream& out,
            bool showQuotes = false)
 {
-    switch (obj->typeId()) {
+    switch (val->typeId()) {
     case typeId<Pair>(): {
-        auto pair = obj.cast<Pair>();
+        auto pair = val.cast<Pair>();
         out << "(";
         print(env, pair->getCar(), out, true);
         if (not isType<Pair>(pair->getCdr())) {
@@ -78,12 +78,12 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
 
     case typeId<Box>():
         out << "Box{";
-        print(env, obj.cast<Box>()->get(), out);
+        print(env, val.cast<Box>()->get(), out);
         out << "}";
         break;
 
     case typeId<Integer>():
-        out << obj.cast<Integer>()->value();
+        out << val.cast<Integer>()->value();
         break;
 
     case typeId<Null>():
@@ -91,43 +91,43 @@ void print(Environment& env, ObjectPtr obj, std::ostream& out,
         break;
 
     case typeId<Boolean>():
-        out << ((obj == env.getBool(true)) ? "true" : "false");
+        out << ((val == env.getBool(true)) ? "true" : "false");
         break;
 
     case typeId<Function>():
-        out << "lambda<" << obj.cast<Function>()->argCount() << ">";
+        out << "lambda<" << val.cast<Function>()->argCount() << ">";
         break;
 
     case typeId<String>():
         if (showQuotes) {
-            out << '"' << *obj.cast<String>() << '"';
+            out << '"' << *val.cast<String>() << '"';
         } else {
-            out << *obj.cast<String>();
+            out << *val.cast<String>();
         }
         break;
 
     case typeId<Float>():
-        out << obj.cast<Float>()->value();
+        out << val.cast<Float>()->value();
         break;
 
     case typeId<Complex>():
-        out << obj.cast<Complex>()->value();
+        out << val.cast<Complex>()->value();
         break;
 
     case typeId<Symbol>(): {
-        out << *obj.cast<Symbol>()->value();
+        out << *val.cast<Symbol>()->value();
     } break;
 
     case typeId<RawPointer>():
-        out << obj.cast<RawPointer>()->value();
+        out << val.cast<RawPointer>()->value();
         break;
 
     case typeId<Character>():
-        out << *obj.cast<Character>();
+        out << *val.cast<Character>();
         break;
 
     default:
-        out << "unknownObject";
+        out << "unknownValue";
         break;
     }
 }
@@ -141,7 +141,7 @@ struct BuiltinFunctionInfo {
 
 static const BuiltinFunctionInfo builtins[] =
     {{"cons", "(cons car cdr) -> create a pair from car and cdr", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Pair>(args[0], args[1]);
       }},
      {"car", "(car pair) -> get the first element of pair", 1,
@@ -153,11 +153,11 @@ static const BuiltinFunctionInfo builtins[] =
           return checkedCast<Pair>(args[0])->getCdr();
       }},
      {"box", "(box value) -> create box containing value", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Box>(args[0]);
       }},
      {"set-box!", "(set-box! box value) -> box with overwritten contents", 2,
-      [](Environment&, const Arguments& args) -> ObjectPtr {
+      [](Environment&, const Arguments& args) -> ValuePtr {
           checkedCast<Box>(args[0])->set(args[1]);
           return args[0];
       }},
@@ -166,23 +166,23 @@ static const BuiltinFunctionInfo builtins[] =
           return checkedCast<Box>(args[0])->get();
       }},
      {"symbol", "(symbol string) -> get symbol for string", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           const auto target = checkedCast<String>(args[0]);
           const auto symbLoc = storeI<Symbol>(*env.getContext(), target);
           return env.getContext()->immediates()[symbLoc];
       }},
      {"error", "(error string) -> raise error string and terminate", 1,
-      [](Environment&, const Arguments& args) -> ObjectPtr {
+      [](Environment&, const Arguments& args) -> ValuePtr {
           throw std::runtime_error(
               checkedCast<String>(args[0])->value().toAscii());
       }},
-     {"length", "(length obj) -> get the length of a list or string", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+     {"length", "(length val) -> get the length of a list or string", 1,
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           switch (args[0]->typeId()) {
           case typeId<Pair>(): {
               Integer::Rep length = 0;
               if (not isType<Null>(args[0])) {
-                  dolist(env, args[0], [&](ObjectPtr) { ++length; });
+                  dolist(env, args[0], [&](ValuePtr) { ++length; });
               }
               return env.create<Integer>(length);
           }
@@ -193,8 +193,8 @@ static const BuiltinFunctionInfo builtins[] =
               throw TypeError(args[0]->typeId(), "invalid type");
           }
       }},
-     {"get", "(get obj index) -> get element at index in list or string", 2,
-      [](Environment&, const Arguments& args) -> ObjectPtr {
+     {"get", "(get val index) -> get element at index in list or string", 2,
+      [](Environment&, const Arguments& args) -> ValuePtr {
           switch (args[0]->typeId()) {
           case typeId<String>():
               return (
@@ -227,7 +227,7 @@ static const BuiltinFunctionInfo builtins[] =
      EBL_TYPE_PROC("pointer?", RawPointer),
      EBL_TYPE_PROC("function?", Function),
      {"identical?", "(identical o1 o2) -> "
-                    "true if o1 and o2 are the same object", 2,
+                    "true if o1 and o2 are the same value", 2,
       [](Environment& env, const Arguments& args) {
           return env.getBool(args[0] == args[1]);
       }},
@@ -244,17 +244,17 @@ static const BuiltinFunctionInfo builtins[] =
       [](Environment& env, const Arguments& args) {
           Arguments params(env);
           if (not isType<Null>(args[1])) {
-              dolist(env, args[1], [&](ObjectPtr elem) { params.push(elem); });
+              dolist(env, args[1], [&](ValuePtr elem) { params.push(elem); });
           }
           auto fn = checkedCast<Function>(args[0]);
           return fn->call(params);
       }},
      {"arity", "(arity fn) -> number of required arguments for fn", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Integer>((Integer::Rep)checkedCast<Function>(args[0])->argCount());
       }},
      {"help", "(help fn) -> get the docstring for fn", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           auto fn = checkedCast<Function>(args[0]);
           auto doc = fn->getDocstring();
           if (not(doc == env.getNull())) {
@@ -274,47 +274,47 @@ static const BuiltinFunctionInfo builtins[] =
           checkedCast<Function>(write)->call(params);
           return env.getNull();
       }},
-     {"clone", "(clone obj) -> deep copy of obj", 1,
+     {"clone", "(clone val) -> deep copy of val", 1,
       [](Environment& env, const Arguments& args) {
           return clone(env, args[0]);
       }},
      {"mod", "(mod integer) -> the modulus of integer", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Integer>(checkedCast<Integer>(args[0])->value() %
                                      checkedCast<Integer>(args[1])->value());
       }},
      {"f+", "(f+ f-1 f-2) -> add floats f-1 and f-2", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() +
                                    checkedCast<Float>(args[1])->value());
       }},
      {"f-", "(f- f-1 f-2) -> subtract floats f-1 and f-2", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() -
                                    checkedCast<Float>(args[1])->value());
       }},
      {"f*", "(f* f-1 f-2) -> multiply floats f-1 and f-2", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() *
                                    checkedCast<Float>(args[1])->value());
       }},
      {"f/", "(f/ f-1 f-2) -> divide floats f-1 and f-2", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Float>(checkedCast<Float>(args[0])->value() /
                                    checkedCast<Float>(args[1])->value());
       }},
      {"incr", "(incr int) -> int + 1", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Integer>(checkedCast<Integer>(args[0])->value() +
                                      1);
       }},
      {"decr", "(decr int) -> int - 1", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           return env.create<Integer>(checkedCast<Integer>(args[0])->value() -
                                      1);
       }},
      {"+", "(+ ...) -> the result of adding each arg in ...", 0,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           Integer::Rep iSum = 0;
           Complex::Rep cSum;
           Float::Rep dSum = 0.0;
@@ -345,7 +345,7 @@ static const BuiltinFunctionInfo builtins[] =
           return env.create<Integer>(iSum);
       }},
      {"-", nullptr, 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           // FIXME: this isn't as flexible as it should be
           switch (args[0]->typeId()) {
           case typeId<Integer>():
@@ -383,7 +383,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
       }},
      {"*", "(* ...) -> the result of multiplying each arg in ...", 0,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           Integer::Rep iProd = 1;
           Float::Rep dProd = 1.0;
           Complex::Rep cProd(1.0);
@@ -411,7 +411,7 @@ static const BuiltinFunctionInfo builtins[] =
           return env.create<Integer>(iProd);
       }},
      {"/", nullptr, 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           // FIXME: this isn't as flexible as it should be
           switch (args[0]->typeId()) {
           case typeId<Integer>():
@@ -432,7 +432,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
       }},
      {">", nullptr, 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           switch (args[0]->typeId()) {
           case typeId<Integer>():
               return env.getBool(args[0].cast<Integer>()->value() >
@@ -452,7 +452,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
       }},
      {"<", nullptr, 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           switch (args[0]->typeId()) {
           case typeId<Integer>():
               return env.getBool(args[0].cast<Integer>()->value() <
@@ -472,7 +472,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
       }},
      {"abs", "(abs number) -> absolute value of number", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           auto inp = args[0];
           switch (inp->typeId()) {
           case typeId<Integer>():
@@ -503,13 +503,13 @@ static const BuiltinFunctionInfo builtins[] =
           }
       }},
      {"complex", "(complex real imag) -> complex number from real + (b x imag)", 2,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           const auto real = checkedCast<Float>(args[0])->value();
           const auto imag = checkedCast<Float>(args[1])->value();
           return env.create<Complex>(Complex::Rep(real, imag));
       }},
      {"string", "(string ...) -> string constructed from all the args", 0,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           std::stringstream builder;
           for (auto& arg : args) {
               print(env, arg, builder);
@@ -517,15 +517,15 @@ static const BuiltinFunctionInfo builtins[] =
           return env.create<String>(builder.str());
       }},
      {"rstring", "(rstring ...) -> string constructed from args in reverse", 0,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           std::stringstream builder;
           for (long i = args.count() - 1; i > -1; --i) {
               print(env, args[i], builder);
           }
           return env.create<String>(builder.str());
       }},
-     {"integer", "(integer obj) -> integer conversion of the input", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+     {"integer", "(integer val) -> integer conversion of the input", 1,
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           switch (args[0]->typeId()) {
           case typeId<Integer>():
               return args[0];
@@ -545,7 +545,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
       }},
      {"float", "(float integer-or-string) -> double precision float", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           switch (args[0]->typeId()) {
           case typeId<Float>():
               return args[0];
@@ -561,7 +561,7 @@ static const BuiltinFunctionInfo builtins[] =
           }
       }},
      {"character", "(character ascii-integer-value) -> character", 1,
-      [](Environment& env, const Arguments& args) -> ObjectPtr {
+      [](Environment& env, const Arguments& args) -> ValuePtr {
           const auto val = checkedCast<Integer>(args[0])->value();
           if (val > -127 and val < 127) {
               return env.create<Character>(

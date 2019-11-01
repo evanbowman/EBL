@@ -96,7 +96,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
     {
         ++ip;
         static_assert(std::is_same<decltype(operandStack),
-                                   std::vector<ObjectPtr>&>::value,
+                                   std::vector<ValuePtr>&>::value,
                       "operandStack indexing makes an assumption based "
                       "on random access iterator here.");
         auto cell =

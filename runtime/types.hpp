@@ -26,7 +26,7 @@ using EnvPtr = std::shared_ptr<Environment>;
 using TypeId = uint8_t;
 
 
-class Object {
+class Value {
 private:
     struct Header {
         const TypeId typeInfoIndex;
@@ -35,7 +35,7 @@ private:
     } header_;
 
 public:
-    inline Object(TypeId id) : header_{id, 0, 0}
+    inline Value(TypeId id) : header_{id, 0, 0}
     {
     }
     inline TypeId typeId() const
@@ -57,45 +57,45 @@ public:
 };
 
 
-using ObjectPtr = Heap::Ptr<Object>;
+using ValuePtr = Heap::Ptr<Value>;
 
 
-template <typename T> class ObjectTemplate : public Object {
+template <typename T> class ValueTemplate : public Value {
 public:
-    ObjectTemplate();
+    ValueTemplate();
 
-    static void finalize(Object* obj)
+    static void finalize(Value* val)
     {
-        reinterpret_cast<T*>(obj)->~T();
+        reinterpret_cast<T*>(val)->~T();
     }
 
-    static void relocate(Object* obj, uint8_t* dest)
+    static void relocate(Value* val, uint8_t* dest)
     {
         // NOTE: due to potentially overlapping memory, we need to first move
-        // the object to a temporary buffer, destruct the original, then move
+        // the value to a temporary buffer, destruct the original, then move
         // the buffer contents to the final location, and then destruct the
-        // object in the buffer.
+        // value in the buffer.
         alignas(T) std::array<uint8_t, sizeof(T)> buffer;
-        new ((T*)buffer.data()) T(std::move(*reinterpret_cast<T*>(obj)));
-        ((T*)obj)->~T();
+        new ((T*)buffer.data()) T(std::move(*reinterpret_cast<T*>(val)));
+        ((T*)val)->~T();
         new ((T*)dest) T(std::move(*reinterpret_cast<T*>(buffer.data())));
         ((T*)buffer.data())->~T();
     }
 
-    static ObjectPtr cloneInterface(Environment& env, ObjectPtr obj)
+    static ValuePtr cloneInterface(Environment& env, ValuePtr val)
     {
-        return obj.cast<T>()->clone(env);
+        return val.cast<T>()->clone(env);
     }
 };
 
 
 struct EqualTo {
-    bool operator()(ObjectPtr lhs, ObjectPtr rhs) const;
+    bool operator()(ValuePtr lhs, ValuePtr rhs) const;
 };
 
 
 struct Hash {
-    size_t operator()(ObjectPtr obj) const noexcept;
+    size_t operator()(ValuePtr val) const noexcept;
 };
 
 
@@ -109,10 +109,10 @@ struct ConversionError : TypeError {
 };
 
 
-// NOTE: All Objects are allocated from single contiguous and
+// NOTE: All Values are allocated from single contiguous and
 // compacted heap, and therefore need to share the same alignment
 // requirement. There're static asserts for this elsewhere.
-class alignas(8) Null : public ObjectTemplate<Null> {
+class alignas(8) Null : public ValueTemplate<Null> {
 public:
     static constexpr const char* name()
     {
@@ -123,9 +123,9 @@ public:
 };
 
 
-class Pair : public ObjectTemplate<Pair> {
+class alignas(8) Pair : public ValueTemplate<Pair> {
 public:
-    inline Pair(ObjectPtr car, ObjectPtr cdr) : car_(car), cdr_(cdr)
+    inline Pair(ValuePtr car, ValuePtr cdr) : car_(car), cdr_(cdr)
     {
     }
 
@@ -134,22 +134,22 @@ public:
         return "<Pair>";
     }
 
-    inline ObjectPtr getCar() const
+    inline ValuePtr getCar() const
     {
         return car_;
     }
 
-    inline ObjectPtr getCdr() const
+    inline ValuePtr getCdr() const
     {
         return cdr_;
     }
 
-    inline void setCar(ObjectPtr value)
+    inline void setCar(ValuePtr value)
     {
         car_ = value;
     }
 
-    inline void setCdr(ObjectPtr value)
+    inline void setCdr(ValuePtr value)
     {
         cdr_ = value;
     }
@@ -157,14 +157,14 @@ public:
     Heap::Ptr<Pair> clone(Environment& env) const;
 
 private:
-    ObjectPtr car_;
-    ObjectPtr cdr_;
+    ValuePtr car_;
+    ValuePtr cdr_;
 };
 
 
-class alignas(8) Box : public ObjectTemplate<Box> {
+class alignas(8) Box : public ValueTemplate<Box> {
  public:
-    inline Box(ObjectPtr value) : value_(value)
+    inline Box(ValuePtr value) : value_(value)
     {
 
     }
@@ -174,12 +174,12 @@ class alignas(8) Box : public ObjectTemplate<Box> {
         return "<Box>";
     }
 
-    void set(ObjectPtr value)
+    void set(ValuePtr value)
     {
         value_ = value;
     }
 
-    ObjectPtr get() const
+    ValuePtr get() const
     {
         return value_;
     }
@@ -187,11 +187,11 @@ class alignas(8) Box : public ObjectTemplate<Box> {
     Heap::Ptr<Box> clone(Environment& env) const;
 
  private:
-    ObjectPtr value_;
+    ValuePtr value_;
 };
 
 
-class alignas(8) Boolean : public ObjectTemplate<Boolean> {
+class alignas(8) Boolean : public ValueTemplate<Boolean> {
 public:
     inline Boolean(bool value) : value_(value)
     {
@@ -219,7 +219,7 @@ private:
 };
 
 
-class alignas(8) Integer : public ObjectTemplate<Integer> {
+class alignas(8) Integer : public ValueTemplate<Integer> {
 public:
     using Rep = int32_t;
     using Input = Rep;
@@ -245,7 +245,7 @@ private:
 };
 
 
-class Float : public ObjectTemplate<Float> {
+class alignas(8) Float : public ValueTemplate<Float> {
 public:
     using Rep = double;
     using Input = Rep;
@@ -271,7 +271,7 @@ private:
 };
 
 
-class Complex : public ObjectTemplate<Complex> {
+class alignas(8) Complex : public ValueTemplate<Complex> {
 public:
     using Rep = std::complex<double>;
     using Input = Rep;
@@ -297,7 +297,7 @@ private:
 };
 
 
-class alignas(8) Character : public ObjectTemplate<Character> {
+class alignas(8) Character : public ValueTemplate<Character> {
 public:
     using Rep = std::array<char, 4>;
     using Input = Rep;
@@ -323,7 +323,7 @@ private:
 };
 
 
-class String : public ObjectTemplate<String> {
+class alignas(8) String : public ValueTemplate<String> {
 public:
     using Input = std::string;
 
@@ -359,7 +359,7 @@ private:
 };
 
 
-class Symbol : public ObjectTemplate<Symbol> {
+class alignas(8) Symbol : public ValueTemplate<Symbol> {
 public:
     using Input = Heap::Ptr<String>;
 
@@ -389,7 +389,7 @@ private:
 };
 
 
-class RawPointer : public ObjectTemplate<RawPointer> {
+class alignas(8) RawPointer : public ValueTemplate<RawPointer> {
 public:
     inline RawPointer(void* p) : value_(p)
     {
@@ -415,7 +415,7 @@ private:
 // IMPORTANT: You should not associate multiple Arguments with the same
 // environment at the same time, and doing so is undefined behavior. In terms of
 // implementation, Arguments is an adaptor that places the inputs onto the
-// runtime operand stack, and if you push to two different Arguments objects,
+// runtime operand stack, and if you push to two different Arguments values,
 // your inputs may interleave.
 class Arguments {
 public:
@@ -426,14 +426,14 @@ public:
 
     size_t count() const;
 
-    void push(ObjectPtr arg);
+    void push(ValuePtr arg);
 
-    ObjectPtr operator[](size_t index) const;
+    ValuePtr operator[](size_t index) const;
 
     void consumed();
 
-    std::vector<ObjectPtr>::iterator begin() const;
-    std::vector<ObjectPtr>::iterator end() const;
+    std::vector<ValuePtr>::iterator begin() const;
+    std::vector<ValuePtr>::iterator end() const;
 
 private:
     Context* ctx_;
@@ -442,7 +442,7 @@ private:
 };
 
 
-typedef ObjectPtr (*CFunction)(Environment&, const Arguments&);
+typedef ValuePtr (*CFunction)(Environment&, const Arguments&);
 
 struct InvalidArgumentError : std::runtime_error {
     InvalidArgumentError(const std::string& msg) : std::runtime_error(msg)
@@ -457,15 +457,15 @@ void failedToApply(Environment& env,
                    size_t suppliedArgs,
                    size_t expectedArgs);
 
-class Function : public ObjectTemplate<Function> {
+class alignas(8) Function : public ValueTemplate<Function> {
 public:
-    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+    Function(Environment& env, ValuePtr docstring, size_t requiredArgs,
              CFunction cFn);
 
-    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+    Function(Environment& env, ValuePtr docstring, size_t requiredArgs,
              size_t bytecodeAddress);
 
-    Function(Environment& env, ObjectPtr docstring, size_t requiredArgs,
+    Function(Environment& env, ValuePtr docstring, size_t requiredArgs,
              size_t bytecodeAddress, bool variadic);
 
     static constexpr const char* name()
@@ -473,7 +473,7 @@ public:
         return "<Function>";
     }
 
-    ObjectPtr call(Arguments& params);
+    ValuePtr call(Arguments& params);
 
     // When a VM is executing functions, it will try to extract a function's
     // bytecode address and avoid entering a new execution environment. If the
@@ -481,7 +481,7 @@ public:
     // directCall. If you're a user of the library, and are trying to simply
     // call a function, the regular call() method is probably what you're
     // looking for.
-    inline ObjectPtr directCall(Arguments& params)
+    inline ValuePtr directCall(Arguments& params)
     {
         if (UNLIKELY(params.count() < requiredArgs_)) {
             failedToApply(*envPtr_, this, params.count(), requiredArgs_);
@@ -494,12 +494,12 @@ public:
         return bytecodeAddress_;
     }
 
-    inline ObjectPtr getDocstring()
+    inline ValuePtr getDocstring()
     {
         return docstring_;
     }
 
-    inline void setDocstring(ObjectPtr val)
+    inline void setDocstring(ValuePtr val)
     {
         docstring_ = val;
     }
@@ -525,7 +525,7 @@ public:
 
 private:
     InvocationModel model_;
-    ObjectPtr docstring_;
+    ValuePtr docstring_;
     size_t requiredArgs_;
     CFunction nativeFn_;
     size_t bytecodeAddress_;
@@ -536,9 +536,9 @@ private:
 struct TypeInfo {
     size_t size_;
     const char* name_;
-    void (*finalizer)(Object*);
-    void (*relocatePolicy)(Object*, uint8_t*);
-    ObjectPtr (*clonePolicy)(Environment&, ObjectPtr);
+    void (*finalizer)(Value*);
+    void (*relocatePolicy)(Value*, uint8_t*);
+    ValuePtr (*clonePolicy)(Environment&, ValuePtr);
 };
 
 
@@ -577,9 +577,9 @@ constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Float, Complex, String,
     typeInfoTable;
 
 
-template <typename Ptr> const TypeInfo& typeInfo(Ptr obj)
+template <typename Ptr> const TypeInfo& typeInfo(Ptr val)
 {
-    return typeInfoTable[obj->typeId()];
+    return typeInfoTable[val->typeId()];
 }
 
 
@@ -589,30 +589,30 @@ template <typename T> constexpr TypeId typeId()
 }
 
 
-inline ObjectPtr clone(Environment& env, ObjectPtr obj)
+inline ValuePtr clone(Environment& env, ValuePtr val)
 {
-    return typeInfoTable[obj->typeId()].clonePolicy(env, obj);
+    return typeInfoTable[val->typeId()].clonePolicy(env, val);
 }
 
 
 template <typename T>
-ObjectTemplate<T>::ObjectTemplate() : Object{::ebl::typeId<T>()}
+ValueTemplate<T>::ValueTemplate() : Value{::ebl::typeId<T>()}
 {
 }
 
 
-template <typename T, typename Ptr> bool isType(Ptr obj)
+template <typename T, typename Ptr> bool isType(Ptr val)
 {
-    return typeId<T>() == obj->typeId();
+    return typeId<T>() == val->typeId();
 }
 
 
-template <typename T> Heap::Ptr<T> checkedCast(ObjectPtr obj)
+template <typename T> Heap::Ptr<T> checkedCast(ValuePtr val)
 {
-    if (LIKELY(isType<T>(obj))) {
-        return obj.cast<T>();
+    if (LIKELY(isType<T>(val))) {
+        return val.cast<T>();
     }
-    throw ConversionError{obj->typeId(), typeId<T>()};
+    throw ConversionError{val->typeId(), typeId<T>()};
 }
 
 std::ostream& operator<<(std::ostream& out, const String& str);

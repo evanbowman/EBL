@@ -13,37 +13,37 @@ namespace ebl {
 
 static void markFrame(Environment& frame);
 
-static void markObject(ObjectPtr obj)
+static void markValue(ValuePtr val)
 {
-    if (obj->marked()) {
+    if (val->marked()) {
         return;
     }
-    obj->mark();
-    switch (obj->typeId()) {
+    val->mark();
+    switch (val->typeId()) {
     case typeId<Pair>():
-        markObject(obj.cast<Pair>()->getCar());
-        markObject(obj.cast<Pair>()->getCdr());
+        markValue(val.cast<Pair>()->getCar());
+        markValue(val.cast<Pair>()->getCdr());
         break;
 
     case typeId<Function>():
-        markFrame(*obj.cast<Function>()->definitionEnvironment());
-        markObject(obj.cast<Function>()->getDocstring());
+        markFrame(*val.cast<Function>()->definitionEnvironment());
+        markValue(val.cast<Function>()->getDocstring());
         break;
 
     case typeId<Symbol>():
-        markObject(obj.cast<Symbol>()->value());
+        markValue(val.cast<Symbol>()->value());
         break;
 
     case typeId<Box>():
-        markObject(obj.cast<Box>()->get());
+        markValue(val.cast<Box>()->get());
         break;
     }
 }
 
 static void markFrame(Environment& frame)
 {
-    for (auto& obj : frame.getVars()) {
-        markObject(obj);
+    for (auto& val : frame.getVars()) {
+        markValue(val);
     }
 }
 
@@ -52,15 +52,15 @@ void MarkCompact::mark(Environment& env)
     for (auto& frameInfo : env.getContext()->callStack()) {
         markFrame(*frameInfo.env_);
     }
-    for (auto& obj : env.getContext()->immediates()) {
-        markObject(obj);
+    for (auto& val : env.getContext()->immediates()) {
+        markValue(val);
     }
-    for (auto& obj : env.getContext()->operandStack()) {
-        markObject(obj);
+    for (auto& val : env.getContext()->operandStack()) {
+        markValue(val);
     }
     auto plist = env.getContext()->getPersistentsList();
     while (plist) {
-        markObject(plist->getUntypedObj());
+        markValue(plist->getUntypedVal());
         plist = plist->next();
     }
     env.getBool(true)->mark();
@@ -68,17 +68,17 @@ void MarkCompact::mark(Environment& env)
     env.getNull()->mark();
 }
 
-using BreakList = std::vector<std::pair<Object*, size_t>>;
+using BreakList = std::vector<std::pair<Value*, size_t>>;
 
-static void* remapObjectAddress(void* obj, const BreakList& breaks)
+static void* remapValueAddress(void* val, const BreakList& breaks)
 {
     size_t shiftAmount = 0;
     auto iter = breaks.begin();
-    while (iter not_eq breaks.end() and iter->first < obj) {
+    while (iter not_eq breaks.end() and iter->first < val) {
         shiftAmount += iter->second;
         ++iter;
     }
-    return (uint8_t*)obj - shiftAmount;
+    return (uint8_t*)val - shiftAmount;
 }
 
 // Frames must be visited exactly once! FIXME: but the var shouldn't be global.
@@ -86,8 +86,8 @@ thread_local std::set<Environment*> frameSet;
 
 static void remapFrame(Environment& frame, const BreakList& breaks)
 {
-    for (auto& obj : frame.getVars()) {
-        obj.UNSAFE_overwrite(remapObjectAddress(obj.handle(), breaks));
+    for (auto& val : frame.getVars()) {
+        val.UNSAFE_overwrite(remapValueAddress(val.handle(), breaks));
     }
 }
 
@@ -100,37 +100,37 @@ static void gatherFrames(Environment& env)
     }
 }
 
-static void remapInternalPointers(Object* obj, const BreakList& breaks)
+static void remapInternalPointers(Value* val, const BreakList& breaks)
 {
-    switch (obj->typeId()) {
+    switch (val->typeId()) {
     case typeId<Pair>(): {
-        auto p = (Pair*)obj;
+        auto p = (Pair*)val;
         auto car = p->getCar();
         auto cdr = p->getCdr();
-        car.UNSAFE_overwrite(remapObjectAddress(car.handle(), breaks));
-        cdr.UNSAFE_overwrite(remapObjectAddress(cdr.handle(), breaks));
+        car.UNSAFE_overwrite(remapValueAddress(car.handle(), breaks));
+        cdr.UNSAFE_overwrite(remapValueAddress(cdr.handle(), breaks));
         p->setCar(car);
         p->setCdr(cdr);
     } break;
 
     case typeId<Symbol>(): {
-        auto s = (Symbol*)obj;
+        auto s = (Symbol*)val;
         auto val = s->value();
-        val.UNSAFE_overwrite(remapObjectAddress(val.handle(), breaks));
+        val.UNSAFE_overwrite(remapValueAddress(val.handle(), breaks));
         s->set(val);
     } break;
 
     case typeId<Box>(): {
-        auto b = (Box*)obj;
+        auto b = (Box*)val;
         auto val = b->get();
-        val.UNSAFE_overwrite(remapObjectAddress(val.handle(), breaks));
+        val.UNSAFE_overwrite(remapValueAddress(val.handle(), breaks));
         b->set(val);
     } break;
 
     case typeId<Function>(): {
-        auto f = (Function*)obj;
+        auto f = (Function*)val;
         auto doc = f->getDocstring();
-        doc.UNSAFE_overwrite(remapObjectAddress(doc.handle(), breaks));
+        doc.UNSAFE_overwrite(remapValueAddress(doc.handle(), breaks));
         f->setDocstring(doc);
         gatherFrames(*f->definitionEnvironment());
         break;
@@ -143,9 +143,9 @@ void MarkCompact::compact(Environment& env, Heap& heap)
     BreakList breakList;
     size_t bytesCompacted = 0;
     size_t index = 0;
-    bool collapse = false; // collapse consecutive objs
+    bool collapse = false; // collapse consecutive vals
     while (index < heap.size()) {
-        auto current = (Object*)(heap.begin() + index);
+        auto current = (Value*)(heap.begin() + index);
         const size_t currentSize = typeInfo(current).size_;
         if (current->marked()) {
         PRESERVE:
@@ -178,7 +178,7 @@ void MarkCompact::compact(Environment& env, Heap& heap)
     heap.compacted(bytesCompacted);
     index = 0;
     while (index < heap.size()) {
-        auto current = (Object*)(heap.begin() + index);
+        auto current = (Value*)(heap.begin() + index);
         const size_t currentSize = typeInfo(current).size_;
         remapInternalPointers(current, breakList);
         index += currentSize;
@@ -190,20 +190,20 @@ void MarkCompact::compact(Environment& env, Heap& heap)
         remapFrame(*frame, breakList);
     }
     frameSet.clear();
-    for (auto& obj : env.getContext()->immediates()) {
-        auto target = remapObjectAddress(obj.handle(), breakList);
-        obj.UNSAFE_overwrite(target);
+    for (auto& val : env.getContext()->immediates()) {
+        auto target = remapValueAddress(val.handle(), breakList);
+        val.UNSAFE_overwrite(target);
     }
-    for (auto& obj : env.getContext()->operandStack()) {
-        auto target = remapObjectAddress(obj.handle(), breakList);
-        obj.UNSAFE_overwrite(target);
+    for (auto& val : env.getContext()->operandStack()) {
+        auto target = remapValueAddress(val.handle(), breakList);
+        val.UNSAFE_overwrite(target);
     }
     auto plist = env.getContext()->getPersistentsList();
     while (plist) {
-        auto obj = plist->getUntypedObj();
-        auto target = remapObjectAddress(obj.handle(), breakList);
-        obj.UNSAFE_overwrite(target);
-        plist->UNSAFE_overwrite(obj);
+        auto val = plist->getUntypedVal();
+        auto target = remapValueAddress(val.handle(), breakList);
+        val.UNSAFE_overwrite(target);
+        plist->UNSAFE_overwrite(val);
         plist = plist->next();
     }
 }

@@ -24,7 +24,7 @@ static struct {
          return result;
      }},
      {"slurp", 1, "(slurp file-name) -> string containing entire file",
-      [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ObjectPtr {
+      [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ValuePtr {
           std::ifstream t(ebl::checkedCast<ebl::String>(args[0])->toAscii());
           std::stringstream buffer;
           buffer << t.rdbuf();
@@ -32,7 +32,7 @@ static struct {
           return env.create<ebl::String>(result.c_str(), result.length());
       }},
     {"getline", 1, "(getline file) -> string containing next line in the file",
-     [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ObjectPtr {
+     [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ValuePtr {
          char* line = nullptr;
          size_t cap = 0;
          ssize_t len;
@@ -49,7 +49,7 @@ static struct {
          return env.getNull();
      }},
      {"write", 1, "(write file obj ...) -> write representations of objects to file",
-      [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ObjectPtr {
+      [](ebl::Environment& env, const ebl::Arguments& args) -> ebl::ValuePtr {
           auto file = ebl::checkedCast<ebl::RawPointer>(args[0])->value();
           std::stringstream format;
           for (size_t i = 1; i < args.count(); ++i) {
