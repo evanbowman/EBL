@@ -55,6 +55,7 @@ public:
     void push(ValuePtr value);
     void store(VarLoc loc, ValuePtr value);
     ValuePtr load(VarLoc loc);
+    void clear();
 
     void openDLL(const std::string& name);
 
@@ -139,6 +140,10 @@ public:
     {
         collector_->run(env, heap_);
     }
+
+    void writeToFile(const std::string& fname);
+
+    void loadFromFile(const std::string& fname);
 
     const Bytecode& getProgram() const
     {

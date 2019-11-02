@@ -17,7 +17,9 @@ struct StackFrame {
 
 class VM {
 public:
-    static void execute(Environment& env, const Bytecode& bc, size_t start);
+    static InstructionAddress execute(Environment& env,
+                                      const Bytecode& bc,
+                                      InstructionAddress start);
 };
 
 } // namespace ebl

@@ -35,7 +35,9 @@ void failedToApply(Environment& env,
                    size_t suppliedArgs,
                    size_t expectedArgs);
 
-void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
+InstructionAddress VM::execute(Environment& environment,
+                               const Bytecode& bc,
+                               InstructionAddress start)
 {
     auto env = environment.reference();
     Context* const context = env->getContext();
@@ -406,7 +408,7 @@ void VM::execute(Environment& environment, const Bytecode& bc, size_t start)
 
     VM_BLOCK_BEGIN(Exit)
     {
-        return;
+        return ip;
     }
     VM_BLOCK_END();
 

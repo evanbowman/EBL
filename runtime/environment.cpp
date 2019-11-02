@@ -8,6 +8,9 @@
 #include <fstream>
 #include <iomanip>
 
+#include <iostream>
+#include "ebl.hpp"
+
 namespace ebl {
 
 ValuePtr Environment::getGlobal(const std::string& key)
@@ -71,6 +74,11 @@ void Environment::setGlobal(const std::string& key, ValuePtr value)
 void Environment::push(ValuePtr value)
 {
     vars_.push_back(value);
+}
+
+void Environment::clear()
+{
+    vars_.clear();
 }
 
 Environment& Environment::getFrame(VarLoc loc)
@@ -151,9 +159,72 @@ Context::Context(const Configuration& config)
 
 Context::~Context()
 {
-    // For debugging
-    std::ofstream bc("bc", std::ofstream::binary);
+}
+
+void Context::writeToFile(const std::string& fname)
+{
+    std::ofstream bc(fname, std::ofstream::binary);
+
+    // bc << "@Section:Immediates\n";
+    for (auto& val : immediates_) {
+        bc << val->typeId();
+        print(*topLevel_, val, bc, false);
+        bc << "\n";
+    }
+
+    bc << "@Section:Program\n";
+    std::cout << immediates_.size() << std::endl;
     bc.write((const char*)program_.data(), program_.size());
+}
+
+void Context::loadFromFile(const std::string& fname)
+{
+    operandStack_.clear();
+    callStack_.clear();
+    topLevel_->clear();
+
+
+    std::ifstream bc(fname, std::ifstream::binary);
+    std::string line;
+
+    size_t count = 0;
+    while (std::getline(bc, line)) {
+        if (line == "@Section:Program") {
+            break;
+        }
+
+        // FIXME: First N immediates are builtin functions...
+        if (++count < 126) {
+            continue;
+        }
+
+        TypeId id(line[0]);
+
+        switch (id) {
+        case typeId<Integer>(): {
+            std::string value = line.substr(1);
+            storeI<Integer>(*this, std::stoi(value));
+        } break;
+
+        case typeId<String>(): {
+            std::string value = line.substr(1);
+            storeI<String>(*this, value);
+        } break;
+
+        default:
+            std::cout << "garbled" << std::endl;
+        }
+    }
+
+    program_ = Bytecode(std::istreambuf_iterator<char>(bc),
+                        std::istreambuf_iterator<char>());
+
+    callStack_.push_back({0, 0, topLevel_});
+
+    size_t ip = 0;
+    while (ip < program_.size()) {
+        ip = VM::execute(*topLevel_, program_, ip) + 1;
+    }
 }
 
 Context* Environment::getContext()

@@ -596,6 +596,22 @@ static const BuiltinFunctionInfo builtins[] =
       [](Environment& env, const Arguments& args) {
           env.openDLL(checkedCast<String>(args[0])->value().toAscii());
           return env.getNull();
+      }},
+     {"get-attr", "(get-attr object name) -> get attribute from object", 1,
+      [](Environment& env, const Arguments& args) {
+          return checkedCast<Object>(args[0])
+              ->getAttr(env, checkedCast<Symbol>(args[1]));
+      }},
+     {"set-attr", "(set-attr object name value) -> object with updated attr", 1,
+      [](Environment& env, const Arguments& args) {
+          checkedCast<Object>(args[0])->setAttr(env,
+                                                checkedCast<Symbol>(args[1]),
+                                                args[2]);
+          return args[0];
+      }},
+     {"object", "(object) -> empty object", 0,
+      [](Environment& env, const Arguments& args) ->ValuePtr {
+          return env.create<Object>();
       }}};
 
 void initBuiltins(Environment& env)

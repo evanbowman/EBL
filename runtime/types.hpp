@@ -9,6 +9,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <map>
 
 // FIXME!!!
 #include "../extlib/smallVector.hpp"
@@ -389,6 +390,28 @@ private:
 };
 
 
+// FIXME! Object contains gc roots and needs to have its internal
+// state tracked by the GC!
+class alignas(8) Object : public ValueTemplate<Object> {
+public:
+    static constexpr const char* name()
+    {
+        return "<Object>";
+    }
+
+    Heap::Ptr<Object> clone(Environment& env) const;
+
+    Heap::Ptr<Value> getAttr(Environment& env, Heap::Ptr<Symbol> name) const;
+
+    void setAttr(Environment& env,
+                 Heap::Ptr<Symbol> name,
+                 Heap::Ptr<Value> value);
+
+private:
+    std::map<std::string, Heap::Ptr<Value>> members_;
+};
+
+
 class alignas(8) RawPointer : public ValueTemplate<RawPointer> {
 public:
     inline RawPointer(void* p) : value_(p)
@@ -573,7 +596,7 @@ template <typename... Builtins> struct TypeInfoTable {
 
 
 constexpr TypeInfoTable<Null, Pair, Boolean, Integer, Float, Complex, String,
-                        Character, Symbol, RawPointer, Function, Box>
+                        Character, Symbol, RawPointer, Function, Box, Object>
     typeInfoTable;
 
 

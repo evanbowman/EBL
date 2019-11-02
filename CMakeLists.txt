@@ -45,6 +45,14 @@ add_executable(ebl-dofile
 target_link_libraries(ebl-dofile
   ebl-runtime)
 
+# Execute a script file.
+add_executable(ebl-run-bytecode
+  tools/runBytecode.cpp)
+
+target_link_libraries(ebl-run-bytecode
+  ebl-runtime)
+
+
 # Build extensions
 add_library(fs SHARED dll/fs.cpp)
 target_link_libraries(fs ebl-runtime)

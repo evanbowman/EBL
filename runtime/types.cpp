@@ -204,6 +204,24 @@ Heap::Ptr<Character> String::operator[](size_t index) const
     throw std::runtime_error("invalid index to String");
 }
 
+Heap::Ptr<Value> Object::getAttr(Environment& env,
+                                 Heap::Ptr<Symbol> name) const
+{
+    auto found = members_.find(name->value()->toAscii());
+    if (found not_eq members_.end()) {
+        return found->second;
+    } else {
+        return env.getNull();
+    }
+}
+
+void Object::setAttr(Environment& env,
+                     Heap::Ptr<Symbol> name,
+                     Heap::Ptr<Value> value)
+{
+    members_.emplace(name->value()->toAscii(), value);
+}
+
 std::ostream& operator<<(std::ostream& out, const String& str)
 {
     const auto len = str.length();
@@ -330,6 +348,11 @@ Heap::Ptr<Symbol> Symbol::clone(Environment& env) const
 }
 
 Heap::Ptr<RawPointer> RawPointer::clone(Environment& env) const
+{
+    throw std::runtime_error("Deep clone unimplemented for Object");
+}
+
+Heap::Ptr<Object> Object::clone(Environment& env) const
 {
     throw std::runtime_error("Deep clone unimplemented for RawPointer");
 }

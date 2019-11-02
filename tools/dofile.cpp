@@ -27,6 +27,9 @@ int main(int argc, char** argv)
                   << "ns" << ", ("
                   << duration_cast<seconds>(stop - start).count() << "s)"
                   << std::endl;
+
+        context.writeToFile("bc");
+
     } catch (const std::exception& ex) {
         std::cout << "Error:\n" << ex.what() << std::endl;
         return 1;
